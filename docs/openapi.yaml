@@ -1,0 +1,585 @@
+openapi: 3.1.0
+info:
+  title: DNA Futsal API
+  version: 0.1.0
+  description: API pública, autenticada e interna do aplicativo DNA Futsal.
+servers:
+  - url: http://localhost:8080
+tags:
+  - name: Auth
+  - name: Profile
+  - name: Catalog
+  - name: Sports
+  - name: News
+  - name: Internal
+paths:
+  /api/v1/auth/register:
+    post:
+      tags: [Auth]
+      summary: Cadastra uma conta pendente de confirmação
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegisterRequest' }
+      responses:
+        '201':
+          description: Cadastro criado e e-mail enfileirado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MessageResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /api/v1/auth/email-verification/confirm:
+    get:
+      tags: [Auth]
+      summary: Confirma o e-mail com token de uso único
+      parameters:
+        - in: query
+          name: token
+          required: true
+          schema: { type: string, maxLength: 200 }
+      responses:
+        '200':
+          description: E-mail confirmado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MessageResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+  /api/v1/auth/email-verification/resend:
+    post:
+      tags: [Auth]
+      summary: Reenvia a confirmação de uma conta pendente
+      description: Resposta genérica; considera no máximo três links de confirmação por usuário/dia.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [login]
+              properties:
+                login: { type: string, description: E-mail ou telefone, maxLength: 254 }
+      responses:
+        '202':
+          description: Solicitação processada sem revelar a existência da conta
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MessageResponse' }
+  /api/v1/auth/login:
+    post:
+      tags: [Auth]
+      summary: Entra com e-mail ou telefone e senha
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200':
+          description: Tokens e perfil
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+  /api/v1/auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Rotaciona o refresh token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RefreshTokenRequest' }
+      responses:
+        '200':
+          description: Novo par de tokens
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /api/v1/auth/logout:
+    post:
+      tags: [Auth]
+      summary: Revoga um refresh token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RefreshTokenRequest' }
+      responses:
+        '204': { description: Sessão revogada ou já inexistente }
+  /api/v1/auth/password-reset/request:
+    post:
+      tags: [Auth]
+      summary: Solicita link para redefinir senha
+      description: Sempre responde de forma genérica. O limite é de três solicitações por usuário/dia.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [login]
+              properties:
+                login: { type: string, maxLength: 254 }
+      responses:
+        '202':
+          description: Solicitação processada sem revelar a existência do usuário
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MessageResponse' }
+  /api/v1/auth/password-reset/confirm:
+    post:
+      tags: [Auth]
+      summary: Define nova senha com token de uso único
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, newPassword]
+              properties:
+                token: { type: string, maxLength: 200 }
+                newPassword: { type: string, minLength: 10, maxLength: 72 }
+      responses:
+        '200':
+          description: Senha alterada e sessões revogadas
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MessageResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+  /api/v1/me:
+    get:
+      tags: [Profile]
+      summary: Retorna o perfil autenticado
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Perfil
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UserProfile' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    put:
+      tags: [Profile]
+      summary: Substitui os dados do perfil após validar a senha atual
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateProfileRequest' }
+      responses:
+        '200':
+          description: Perfil atualizado. Se o e-mail mudou, emailVerified será false e as sessões serão revogadas.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UserProfile' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /api/v1/public/catalog/categories:
+    get:
+      tags: [Catalog]
+      summary: Lista categorias
+      responses:
+        '200':
+          description: Categorias
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/CatalogItem' }
+  /api/v1/public/catalog/divisions:
+    get:
+      tags: [Catalog]
+      summary: Lista divisões da categoria
+      parameters:
+        - { $ref: '#/components/parameters/CategoryId' }
+      responses:
+        '200':
+          description: Divisões
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/CatalogItem' }
+  /api/v1/public/catalog/teams:
+    get:
+      tags: [Catalog]
+      summary: Lista times da categoria/divisão
+      parameters:
+        - { $ref: '#/components/parameters/CategoryId' }
+        - { $ref: '#/components/parameters/DivisionId' }
+      responses:
+        '200':
+          description: Times
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Team' }
+  /api/v1/matches/played:
+    get:
+      tags: [Sports]
+      summary: Lista jogos encerrados
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/OptionalCategoryId' }
+        - { $ref: '#/components/parameters/OptionalDivisionId' }
+        - { $ref: '#/components/parameters/OptionalTeamId' }
+      responses:
+        '200':
+          description: Partidas encerradas
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Match' }
+  /api/v1/matches/upcoming:
+    get:
+      tags: [Sports]
+      summary: Lista jogos futuros
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/OptionalCategoryId' }
+        - { $ref: '#/components/parameters/OptionalDivisionId' }
+        - { $ref: '#/components/parameters/OptionalTeamId' }
+      responses:
+        '200':
+          description: Partidas futuras
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Match' }
+  /api/v1/standings:
+    get:
+      tags: [Sports]
+      summary: Retorna classificação
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/OptionalCategoryId' }
+        - { $ref: '#/components/parameters/OptionalDivisionId' }
+        - { $ref: '#/components/parameters/OptionalTeamId' }
+      responses:
+        '200':
+          description: Classificação
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Standing' }
+  /api/v1/top-scorers:
+    get:
+      tags: [Sports]
+      summary: Retorna artilharia
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/OptionalCategoryId' }
+        - { $ref: '#/components/parameters/OptionalDivisionId' }
+        - { $ref: '#/components/parameters/OptionalTeamId' }
+      responses:
+        '200':
+          description: Artilharia
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/TopScorer' }
+  /api/v1/news:
+    get:
+      tags: [News]
+      summary: Lista notícias publicadas
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: query
+          name: page
+          schema: { type: integer, minimum: 0, default: 0 }
+        - in: query
+          name: size
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        '200':
+          description: Página de notícias
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NewsPage' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+  /api/v1/news/{slug}:
+    get:
+      tags: [News]
+      summary: Retorna uma notícia pelo slug
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: slug
+          required: true
+          schema: { type: string, pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$' }
+      responses:
+        '200':
+          description: Notícia completa
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NewsArticle' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+  /api/v1/internal/sports/match-completed:
+    post:
+      tags: [Internal]
+      summary: Notifica jogo concluído e atualiza snapshots
+      security: [{ internalApiKey: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MatchCompletedEvent' }
+      responses:
+        '202':
+          description: Evento aceito ou já processado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MessageResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    internalApiKey:
+      type: apiKey
+      in: header
+      name: X-Internal-Api-Key
+  parameters:
+    CategoryId:
+      in: query
+      name: categoryId
+      required: true
+      schema: { type: string, maxLength: 100 }
+    DivisionId:
+      in: query
+      name: divisionId
+      required: true
+      schema: { type: string, maxLength: 100 }
+    OptionalCategoryId:
+      in: query
+      name: categoryId
+      description: Quando omitido, usa a preferência do perfil.
+      schema: { type: string, maxLength: 100 }
+    OptionalDivisionId:
+      in: query
+      name: divisionId
+      description: Quando omitido, usa a preferência do perfil.
+      schema: { type: string, maxLength: 100 }
+    OptionalTeamId:
+      in: query
+      name: teamId
+      description: Quando omitido, usa a preferência do perfil.
+      schema: { type: string, maxLength: 100 }
+  responses:
+    BadRequest:
+      description: Requisição inválida
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    Unauthorized:
+      description: Não autenticado ou credencial inválida
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    Forbidden:
+      description: Conta ainda não confirmada ou bloqueada
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    Conflict:
+      description: E-mail ou telefone já cadastrado
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    NotFound:
+      description: Recurso não encontrado
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    TooManyRequests:
+      description: Limite temporário atingido
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    Unavailable:
+      description: Integração externa indisponível
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+  schemas:
+    MessageResponse:
+      type: object
+      required: [message]
+      properties:
+        message: { type: string }
+    RegisterRequest:
+      type: object
+      required: [name, email, phone, password]
+      properties:
+        name: { type: string, minLength: 2, maxLength: 120 }
+        email: { type: string, format: email, maxLength: 254 }
+        phone: { type: string, example: '(11) 98765-4321' }
+        password: { type: string, format: password, minLength: 10, maxLength: 72 }
+        childInstagram: { type: [string, 'null'], example: '@atleta' }
+        categoryId: { type: [string, 'null'], maxLength: 100 }
+        divisionId: { type: [string, 'null'], maxLength: 100 }
+        teamId: { type: [string, 'null'], maxLength: 100 }
+    LoginRequest:
+      type: object
+      required: [login, password]
+      properties:
+        login: { type: string, description: E-mail ou telefone }
+        password: { type: string, format: password }
+    RefreshTokenRequest:
+      type: object
+      required: [refreshToken]
+      properties:
+        refreshToken: { type: string, maxLength: 200 }
+    AuthResponse:
+      type: object
+      required: [tokenType, accessToken, expiresIn, refreshToken, user]
+      properties:
+        tokenType: { type: string, const: Bearer }
+        accessToken: { type: string }
+        expiresIn: { type: integer, format: int64, example: 900 }
+        refreshToken: { type: string }
+        user: { $ref: '#/components/schemas/UserProfile' }
+    UserProfile:
+      type: object
+      required: [id, name, email, phone, emailVerified, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        email: { type: string, format: email }
+        phone: { type: string, example: '+5511987654321' }
+        childInstagram: { type: [string, 'null'] }
+        categoryId: { type: [string, 'null'] }
+        divisionId: { type: [string, 'null'] }
+        teamId: { type: [string, 'null'] }
+        emailVerified: { type: boolean }
+        createdAt: { type: string, format: date-time }
+    UpdateProfileRequest:
+      allOf:
+        - { $ref: '#/components/schemas/RegisterRequest' }
+        - type: object
+          required: [currentPassword]
+          properties:
+            currentPassword: { type: string, format: password, maxLength: 72 }
+    CatalogItem:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        logoUrl: { type: [string, 'null'], format: uri }
+    Team:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        shortName: { type: [string, 'null'] }
+        logoUrl: { type: [string, 'null'], format: uri }
+    Match:
+      type: object
+      required: [id, categoryId, divisionId, homeTeam, awayTeam, scheduledAt, status]
+      properties:
+        id: { type: string }
+        competitionName: { type: [string, 'null'] }
+        categoryId: { type: string }
+        categoryName: { type: [string, 'null'] }
+        divisionId: { type: string }
+        divisionName: { type: [string, 'null'] }
+        round: { type: [string, 'null'] }
+        homeTeam: { $ref: '#/components/schemas/Team' }
+        awayTeam: { $ref: '#/components/schemas/Team' }
+        homeScore: { type: [integer, 'null'] }
+        awayScore: { type: [integer, 'null'] }
+        scheduledAt: { type: string, format: date-time }
+        status: { type: string, example: FINISHED }
+        venue: { type: [string, 'null'] }
+    Standing:
+      type: object
+      required: [position, team, played, wins, draws, losses, goalsFor, goalsAgainst, goalDifference, points]
+      properties:
+        position: { type: integer }
+        team: { $ref: '#/components/schemas/Team' }
+        played: { type: integer }
+        wins: { type: integer }
+        draws: { type: integer }
+        losses: { type: integer }
+        goalsFor: { type: integer }
+        goalsAgainst: { type: integer }
+        goalDifference: { type: integer }
+        points: { type: integer }
+    TopScorer:
+      type: object
+      required: [position, athleteName, team, goals, matches]
+      properties:
+        position: { type: integer }
+        athleteId: { type: [string, 'null'] }
+        athleteName: { type: string }
+        team: { $ref: '#/components/schemas/Team' }
+        goals: { type: integer }
+        matches: { type: integer }
+    NewsArticle:
+      type: object
+      required: [id, slug, title, publishedAt]
+      properties:
+        id: { type: string }
+        slug: { type: string }
+        title: { type: string }
+        summary: { type: [string, 'null'] }
+        content: { type: [string, 'null'] }
+        coverImageUrl: { type: [string, 'null'], format: uri }
+        authorName: { type: [string, 'null'] }
+        publishedAt: { type: string, format: date-time }
+    NewsPage:
+      type: object
+      required: [content, page, size, totalElements, totalPages]
+      properties:
+        content:
+          type: array
+          items: { $ref: '#/components/schemas/NewsArticle' }
+        page: { type: integer }
+        size: { type: integer }
+        totalElements: { type: integer, format: int64 }
+        totalPages: { type: integer }
+    MatchCompletedEvent:
+      type: object
+      required: [eventId, categoryId, divisionId, teamIds, occurredAt]
+      properties:
+        eventId: { type: string, format: uuid }
+        categoryId: { type: string, maxLength: 100 }
+        divisionId: { type: string, maxLength: 100 }
+        teamIds:
+          type: array
+          minItems: 1
+          maxItems: 2
+          uniqueItems: true
+          items: { type: string, maxLength: 100 }
+        occurredAt: { type: string, format: date-time }
+    Problem:
+      type: object
+      required: [title, status, detail, code]
+      properties:
+        type: { type: string, format: uri-reference }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance: { type: string, format: uri-reference }
+        code: { type: string }
+        timestamp: { type: string, format: date-time }
+        fields:
+          type: object
+          additionalProperties: { type: string }
