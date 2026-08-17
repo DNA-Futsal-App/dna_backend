@@ -1,6 +1,6 @@
 # DNA Futsal Backend
 
-Backend do aplicativo DNA Futsal, implementado como monólito modular com Java 17 e Spring Boot 4.1.0. O projeto cobre cadastro e confirmação de e-mail, login por e-mail ou telefone, sessões JWT, perfil protegido por senha, redefinição de senha, dados esportivos vindos do scraper, notícias de uma aplicação externa, Redis e entrega de e-mail tolerante a falhas.
+Backend do aplicativo DNA Futsal, implementado como monólito modular com Java 17 e Spring Boot 4.1.0. O projeto cobre cadastro e confirmação de e-mail, login por e-mail ou telefone, sessões JWT, perfil protegido por senha, redefinição de senha, dados esportivos vindos do scraper, notícias de uma aplicação externa, cache local Caffeine e entrega de e-mail tolerante a falhas.
 
 ## Decisões de arquitetura
 
@@ -17,7 +17,7 @@ Essa divisão evita a complexidade operacional de microsserviços para uma equip
 flowchart TD
     App["App mobile / web"] --> API["DNA Futsal API"]
     API --> PG[(PostgreSQL)]
-    API --> Redis[(Redis)]
+    API --> Cache["Caffeine local"]
     API --> Scraper["API de scraping"]
     API --> News["API de notícias"]
     API --> Outbox["Outbox de e-mail"]
@@ -27,7 +27,7 @@ flowchart TD
 
 ## Requisitos implementados
 
-- Cadastro obrigatório com nome, e-mail, telefone e senha; Instagram do filho, categoria, divisão e time são opcionais.
+- Cadastro obrigatório com nome, e-mail, telefone e senha; Instagram do filho, evento, categoria, divisão e time são opcionais.
 - Confirmação obrigatória por e-mail antes do primeiro login.
 - Login com e-mail **ou** telefone e senha.
 - Access token JWT de 15 minutos e refresh token rotativo de 30 dias.
@@ -35,17 +35,16 @@ flowchart TD
 - Troca de e-mail exige nova confirmação e revoga as sessões existentes.
 - Redefinição de senha por link de uso único, com no máximo três solicitações por usuário/dia no fuso `America/Sao_Paulo`.
 - Respostas genéricas no pedido de redefinição para não revelar quais usuários existem.
-- Cache Redis para perfil, versão de segurança, partidas, classificação e artilharia.
+- Cache Caffeine local para perfil, versão de segurança, eventos, equipes e snapshots esportivos.
 - Endpoints separados para partidas encerradas e futuras.
 - Preferências do perfil usadas quando o front não envia filtros esportivos.
-- Webhook interno idempotente para atualizar snapshots somente após jogo concluído.
 - Proxy autenticado da aba de notícias para outra aplicação/banco.
 - Brevo como provedor primário, SMTP como fallback e outbox com até dez tentativas e backoff.
-- Flyway, health checks, métricas Prometheus, CORS restritivo e erros em `application/problem+json`.
+- Flyway, health checks, métricas Prometheus, CORS restritivo e erros em `application/problem+json` correlacionados por `requestId`.
 
-### O que não vai para o Redis
+### O que não vai para o cache
 
-Senha, hash de senha, token de confirmação e token de redefinição não são cacheados. “Cachear credenciais” aumentaria o impacto de um vazamento e não melhora o desenho de autenticação. O Redis guarda somente o perfil não secreto, a versão/status usada para revogar JWTs e contadores de proteção contra força bruta. Tokens de uso único são persistidos no PostgreSQL somente como SHA-256; refresh tokens também são persistidos somente como hash.
+Senha, hash de senha, token de confirmação e token de redefinição não são cacheados. “Cachear credenciais” aumentaria o impacto de um vazamento e não melhora o desenho de autenticação. O Caffeine guarda em memória somente o perfil não secreto, a versão/status usada para revogar JWTs e contadores de proteção contra força bruta. Tokens de uso único são persistidos no PostgreSQL somente como SHA-256; refresh tokens também são persistidos somente como hash.
 
 ## Endpoints
 
@@ -60,16 +59,15 @@ Senha, hash de senha, token de confirmação e token de redefinição não são 
 | `POST` | `/api/v1/auth/password-reset/request` | Público | Solicitar alteração de senha |
 | `POST` | `/api/v1/auth/password-reset/confirm` | Público | Confirmar nova senha |
 | `GET`, `PUT` | `/api/v1/me` | Bearer | Consultar/alterar perfil |
-| `GET` | `/api/v1/public/catalog/categories` | Público | Categorias disponíveis |
-| `GET` | `/api/v1/public/catalog/divisions` | Público | Divisões da categoria |
-| `GET` | `/api/v1/public/catalog/teams` | Público | Times da categoria/divisão |
+| `GET` | `/api/v1/public/events?season=` | Público | Pesquisar competições |
+| `GET` | `/api/v1/public/events/{eventId}` | Público | Consultar competição |
+| `GET` | `/api/v1/public/events/{eventId}/teams` | Público | Times da competição |
 | `GET` | `/api/v1/matches/played` | Bearer | Jogos já encerrados |
 | `GET` | `/api/v1/matches/upcoming` | Bearer | Jogos futuros |
 | `GET` | `/api/v1/standings` | Bearer | Classificação |
 | `GET` | `/api/v1/top-scorers` | Bearer | Artilharia |
 | `GET` | `/api/v1/news` | Bearer | Notícias publicadas |
 | `GET` | `/api/v1/news/{slug}` | Bearer | Notícia completa |
-| `POST` | `/api/v1/internal/sports/match-completed` | `X-Internal-Api-Key` | Atualizar cache após jogo |
 
 O contrato detalhado está em [`docs/openapi.yaml`](docs/openapi.yaml). Os formatos esperados das APIs de scraping e notícias estão em [`docs/integrations.md`](docs/integrations.md).
 
@@ -79,7 +77,7 @@ Pré-requisitos: JDK 17+, Docker e Docker Compose.
 
 ```bash
 cp .env.example .env
-docker compose up -d postgres redis mailpit
+docker compose up -d postgres mailpit
 ./mvnw spring-boot:run
 ```
 
@@ -93,7 +91,7 @@ Para executar tudo em containers:
 docker compose --profile app up --build
 ```
 
-O perfil `prod` impede a inicialização se `JWT_SECRET` ou `INTERNAL_API_KEY` continuarem com os valores inseguros de exemplo.
+As APIs esportiva e de notícias são consumidas sem chaves. O perfil `prod` impede a inicialização somente quando `JWT_SECRET` permanece vazio ou inseguro.
 
 ## Testes e build
 
@@ -102,18 +100,16 @@ O perfil `prod` impede a inicialização se `JWT_SECRET` ou `INTERNAL_API_KEY` c
 ./mvnw clean package
 ```
 
-Os testes unitários cobrem normalização de telefone, tokens opacos, fallback de e-mail e preservação do snapshot esportivo quando o scraper falha. O teste de integração usa Testcontainers/PostgreSQL e valida Flyway versus entidades; ele é ignorado automaticamente quando Docker não está disponível.
+Os testes unitários cobrem normalização de telefone, tokens opacos, fallback de e-mail, contrato HTTP do scraper, normalização de snapshots, filtros esportivos, correlação de erros, configuração do cache e rate limit de login. O teste de integração usa Testcontainers/PostgreSQL e valida Flyway versus entidades; ele é ignorado automaticamente quando Docker não está disponível.
 
 ## Política do cache esportivo
 
-1. A primeira consulta de uma combinação categoria/divisão/time cria o snapshot inicial.
-2. Leituras seguintes usam o mesmo snapshot sem TTL.
-3. Ao terminar uma partida, o scraper envia um `eventId` único ao endpoint interno.
-4. O backend busca **todos** os conjuntos novos antes de substituir o cache.
-5. Se a origem falhar, o snapshot anterior permanece disponível.
-6. Eventos repetidos são ignorados pela chave primária em `processed_sports_events`.
+1. Pesquisas de eventos e listas de equipes permanecem no Caffeine local por uma hora.
+2. O snapshot normalizado de cada `eventId` permanece no Caffeine local por dez minutos.
+3. Quando o TTL expira, a próxima consulta recarrega o snapshot completo do scraper.
+Os TTLs e limites podem ser ajustados por ambiente. O cache é isolado por processo e apagado em cada reinicialização; por isso, uma futura execução com múltiplas instâncias exigirá um armazenamento compartilhado para rate limit e invalidação coordenada. Falhas externas são diferenciadas entre resposta inválida (`502`), indisponibilidade (`503`) e timeout (`504`).
 
-Essa política atende à atualização pós-jogo. Porém, alteração de horário, W.O., punição ou correção da federação também muda dados fora do fim de uma partida. Antes da produção, o scraper deve emitir o mesmo tipo de evento para essas correções ou o contrato deve ganhar eventos específicos; depender literalmente apenas de “jogo concluído” cria dados stale inevitáveis.
+Os limites padrão são 2.000 entradas por cache esportivo, 10.000 por cache de identidade e 50.000 contadores de login. Eles podem ser alterados por `SPORTS_CACHE_MAX_ENTRIES`, `IDENTITY_CACHE_MAX_ENTRIES` e `LOGIN_ATTEMPT_CACHE_MAX_ENTRIES`.
 
 ## E-mail e recuperação de desastre
 
@@ -123,8 +119,8 @@ Em produção, Brevo e SMTP devem ser infraestruturas independentes. Configurar 
 
 ## Segurança e LGPD
 
-- Use TLS em todas as conexões externas e Redis/PostgreSQL privados.
-- Rotacione `JWT_SECRET`, chaves internas e credenciais de provedores por secret manager.
+- Use TLS em todas as conexões externas e mantenha o PostgreSQL privado.
+- Rotacione `JWT_SECRET` e credenciais de provedores por secret manager.
 - O Instagram do filho é dado pessoal de menor. Ele não aparece em endpoints esportivos nem em logs, mas a base legal, consentimento verificável do responsável, retenção e exclusão precisam ser definidos com jurídico antes do lançamento.
 - O conteúdo de e-mails pendentes contém links temporários e fica no banco somente até envio ou esgotamento das tentativas; restrinja acesso à tabela `mail_outbox`.
 - Configure alertas para mensagens `DEAD`, falhas da API esportiva, falhas da API de notícias e crescimento de respostas `401/429`.

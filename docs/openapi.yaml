@@ -2,16 +2,15 @@ openapi: 3.1.0
 info:
   title: DNA Futsal API
   version: 0.1.0
-  description: API pública, autenticada e interna do aplicativo DNA Futsal.
+  description: API pública e autenticada do aplicativo DNA Futsal.
 servers:
   - url: http://localhost:8080
 tags:
   - name: Auth
   - name: Profile
-  - name: Catalog
+  - name: Events
   - name: Sports
   - name: News
-  - name: Internal
 paths:
   /api/v1/auth/register:
     post:
@@ -181,56 +180,83 @@ paths:
               schema: { $ref: '#/components/schemas/UserProfile' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '409': { $ref: '#/components/responses/Conflict' }
-  /api/v1/public/catalog/categories:
+  /api/v1/public/events:
     get:
-      tags: [Catalog]
-      summary: Lista categorias
+      tags: [Events]
+      summary: Pesquisa competições no scraper
+      parameters:
+        - in: query
+          name: season
+          required: true
+          schema: { type: integer, minimum: 2016, maximum: 2100 }
+        - in: query
+          name: title
+          schema: { type: string, maxLength: 150 }
+        - in: query
+          name: division
+          schema: { type: string, maxLength: 100 }
+        - in: query
+          name: category
+          schema: { type: string, maxLength: 100 }
       responses:
         '200':
-          description: Categorias
+          description: Competições encontradas
           content:
             application/json:
               schema:
                 type: array
-                items: { $ref: '#/components/schemas/CatalogItem' }
-  /api/v1/public/catalog/divisions:
+                items: { $ref: '#/components/schemas/SportsEvent' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '502': { $ref: '#/components/responses/BadGateway' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+        '504': { $ref: '#/components/responses/GatewayTimeout' }
+  /api/v1/public/events/{eventId}:
     get:
-      tags: [Catalog]
-      summary: Lista divisões da categoria
+      tags: [Events]
+      summary: Retorna uma competição
       parameters:
-        - { $ref: '#/components/parameters/CategoryId' }
+        - { $ref: '#/components/parameters/EventId' }
       responses:
         '200':
-          description: Divisões
+          description: Competição encontrada
           content:
             application/json:
-              schema:
-                type: array
-                items: { $ref: '#/components/schemas/CatalogItem' }
-  /api/v1/public/catalog/teams:
+              schema: { $ref: '#/components/schemas/SportsEvent' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '502': { $ref: '#/components/responses/BadGateway' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+        '504': { $ref: '#/components/responses/GatewayTimeout' }
+  /api/v1/public/events/{eventId}/teams:
     get:
-      tags: [Catalog]
-      summary: Lista times da categoria/divisão
+      tags: [Events]
+      summary: Lista as equipes da competição
       parameters:
-        - { $ref: '#/components/parameters/CategoryId' }
-        - { $ref: '#/components/parameters/DivisionId' }
+        - { $ref: '#/components/parameters/EventId' }
       responses:
         '200':
-          description: Times
+          description: Equipes participantes
           content:
             application/json:
               schema:
                 type: array
                 items: { $ref: '#/components/schemas/Team' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '502': { $ref: '#/components/responses/BadGateway' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+        '504': { $ref: '#/components/responses/GatewayTimeout' }
   /api/v1/matches/played:
     get:
       tags: [Sports]
       summary: Lista jogos encerrados
       security: [{ bearerAuth: [] }]
       parameters:
-        - { $ref: '#/components/parameters/OptionalCategoryId' }
-        - { $ref: '#/components/parameters/OptionalDivisionId' }
+        - { $ref: '#/components/parameters/OptionalEventId' }
         - { $ref: '#/components/parameters/OptionalTeamId' }
+        - { $ref: '#/components/parameters/OptionalPhase' }
+        - { $ref: '#/components/parameters/OptionalFrom' }
+        - { $ref: '#/components/parameters/OptionalTo' }
       responses:
         '200':
           description: Partidas encerradas
@@ -239,15 +265,23 @@ paths:
               schema:
                 type: array
                 items: { $ref: '#/components/schemas/Match' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '502': { $ref: '#/components/responses/BadGateway' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+        '504': { $ref: '#/components/responses/GatewayTimeout' }
   /api/v1/matches/upcoming:
     get:
       tags: [Sports]
       summary: Lista jogos futuros
       security: [{ bearerAuth: [] }]
       parameters:
-        - { $ref: '#/components/parameters/OptionalCategoryId' }
-        - { $ref: '#/components/parameters/OptionalDivisionId' }
+        - { $ref: '#/components/parameters/OptionalEventId' }
         - { $ref: '#/components/parameters/OptionalTeamId' }
+        - { $ref: '#/components/parameters/OptionalPhase' }
+        - { $ref: '#/components/parameters/OptionalFrom' }
+        - { $ref: '#/components/parameters/OptionalTo' }
       responses:
         '200':
           description: Partidas futuras
@@ -256,15 +290,24 @@ paths:
               schema:
                 type: array
                 items: { $ref: '#/components/schemas/Match' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '502': { $ref: '#/components/responses/BadGateway' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+        '504': { $ref: '#/components/responses/GatewayTimeout' }
   /api/v1/standings:
     get:
       tags: [Sports]
       summary: Retorna classificação
       security: [{ bearerAuth: [] }]
       parameters:
-        - { $ref: '#/components/parameters/OptionalCategoryId' }
-        - { $ref: '#/components/parameters/OptionalDivisionId' }
+        - { $ref: '#/components/parameters/OptionalEventId' }
         - { $ref: '#/components/parameters/OptionalTeamId' }
+        - { $ref: '#/components/parameters/OptionalPhase' }
+        - in: query
+          name: group
+          schema: { type: string, maxLength: 150 }
       responses:
         '200':
           description: Classificação
@@ -273,15 +316,24 @@ paths:
               schema:
                 type: array
                 items: { $ref: '#/components/schemas/Standing' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '502': { $ref: '#/components/responses/BadGateway' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+        '504': { $ref: '#/components/responses/GatewayTimeout' }
   /api/v1/top-scorers:
     get:
       tags: [Sports]
       summary: Retorna artilharia
       security: [{ bearerAuth: [] }]
       parameters:
-        - { $ref: '#/components/parameters/OptionalCategoryId' }
-        - { $ref: '#/components/parameters/OptionalDivisionId' }
+        - { $ref: '#/components/parameters/OptionalEventId' }
         - { $ref: '#/components/parameters/OptionalTeamId' }
+        - { $ref: '#/components/parameters/OptionalPhase' }
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 500, default: 100 }
       responses:
         '200':
           description: Artilharia
@@ -290,6 +342,12 @@ paths:
               schema:
                 type: array
                 items: { $ref: '#/components/schemas/TopScorer' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '502': { $ref: '#/components/responses/BadGateway' }
+        '503': { $ref: '#/components/responses/Unavailable' }
+        '504': { $ref: '#/components/responses/GatewayTimeout' }
   /api/v1/news:
     get:
       tags: [News]
@@ -327,92 +385,105 @@ paths:
               schema: { $ref: '#/components/schemas/NewsArticle' }
         '404': { $ref: '#/components/responses/NotFound' }
         '503': { $ref: '#/components/responses/Unavailable' }
-  /api/v1/internal/sports/match-completed:
-    post:
-      tags: [Internal]
-      summary: Notifica jogo concluído e atualiza snapshots
-      security: [{ internalApiKey: [] }]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: '#/components/schemas/MatchCompletedEvent' }
-      responses:
-        '202':
-          description: Evento aceito ou já processado
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/MessageResponse' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
 components:
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
-    internalApiKey:
-      type: apiKey
-      in: header
-      name: X-Internal-Api-Key
+  headers:
+    RequestId:
+      description: Identificador usado para correlacionar a resposta com os logs do backend.
+      schema: { type: string, minLength: 8, maxLength: 64 }
   parameters:
-    CategoryId:
-      in: query
-      name: categoryId
+    EventId:
+      in: path
+      name: eventId
       required: true
-      schema: { type: string, maxLength: 100 }
-    DivisionId:
+      schema: { type: integer, format: int64, minimum: 1 }
+    OptionalEventId:
       in: query
-      name: divisionId
-      required: true
-      schema: { type: string, maxLength: 100 }
-    OptionalCategoryId:
-      in: query
-      name: categoryId
+      name: eventId
       description: Quando omitido, usa a preferência do perfil.
-      schema: { type: string, maxLength: 100 }
-    OptionalDivisionId:
-      in: query
-      name: divisionId
-      description: Quando omitido, usa a preferência do perfil.
-      schema: { type: string, maxLength: 100 }
+      schema: { type: integer, format: int64, minimum: 1 }
     OptionalTeamId:
       in: query
       name: teamId
       description: Quando omitido, usa a preferência do perfil.
       schema: { type: string, maxLength: 100 }
+    OptionalPhase:
+      in: query
+      name: phase
+      schema: { type: string, maxLength: 150 }
+    OptionalFrom:
+      in: query
+      name: from
+      schema: { type: string, format: date }
+    OptionalTo:
+      in: query
+      name: to
+      schema: { type: string, format: date }
   responses:
     BadRequest:
       description: Requisição inválida
+      headers:
+        X-Request-ID: { $ref: '#/components/headers/RequestId' }
       content:
         application/problem+json:
           schema: { $ref: '#/components/schemas/Problem' }
     Unauthorized:
       description: Não autenticado ou credencial inválida
+      headers:
+        X-Request-ID: { $ref: '#/components/headers/RequestId' }
       content:
         application/problem+json:
           schema: { $ref: '#/components/schemas/Problem' }
     Forbidden:
       description: Conta ainda não confirmada ou bloqueada
+      headers:
+        X-Request-ID: { $ref: '#/components/headers/RequestId' }
       content:
         application/problem+json:
           schema: { $ref: '#/components/schemas/Problem' }
     Conflict:
       description: E-mail ou telefone já cadastrado
+      headers:
+        X-Request-ID: { $ref: '#/components/headers/RequestId' }
       content:
         application/problem+json:
           schema: { $ref: '#/components/schemas/Problem' }
     NotFound:
       description: Recurso não encontrado
+      headers:
+        X-Request-ID: { $ref: '#/components/headers/RequestId' }
       content:
         application/problem+json:
           schema: { $ref: '#/components/schemas/Problem' }
     TooManyRequests:
       description: Limite temporário atingido
+      headers:
+        X-Request-ID: { $ref: '#/components/headers/RequestId' }
       content:
         application/problem+json:
           schema: { $ref: '#/components/schemas/Problem' }
     Unavailable:
       description: Integração externa indisponível
+      headers:
+        X-Request-ID: { $ref: '#/components/headers/RequestId' }
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    BadGateway:
+      description: A integração externa retornou dados inválidos
+      headers:
+        X-Request-ID: { $ref: '#/components/headers/RequestId' }
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    GatewayTimeout:
+      description: A integração externa excedeu o tempo limite
+      headers:
+        X-Request-ID: { $ref: '#/components/headers/RequestId' }
       content:
         application/problem+json:
           schema: { $ref: '#/components/schemas/Problem' }
@@ -431,6 +502,7 @@ components:
         phone: { type: string, example: '(11) 98765-4321' }
         password: { type: string, format: password, minLength: 10, maxLength: 72 }
         childInstagram: { type: [string, 'null'], example: '@atleta' }
+        eventId: { type: [integer, 'null'], format: int64, minimum: 1 }
         categoryId: { type: [string, 'null'], maxLength: 100 }
         divisionId: { type: [string, 'null'], maxLength: 100 }
         teamId: { type: [string, 'null'], maxLength: 100 }
@@ -463,25 +535,35 @@ components:
         email: { type: string, format: email }
         phone: { type: string, example: '+5511987654321' }
         childInstagram: { type: [string, 'null'] }
+        eventId: { type: [integer, 'null'], format: int64 }
         categoryId: { type: [string, 'null'] }
         divisionId: { type: [string, 'null'] }
         teamId: { type: [string, 'null'] }
         emailVerified: { type: boolean }
         createdAt: { type: string, format: date-time }
     UpdateProfileRequest:
-      allOf:
-        - { $ref: '#/components/schemas/RegisterRequest' }
-        - type: object
-          required: [currentPassword]
-          properties:
-            currentPassword: { type: string, format: password, maxLength: 72 }
-    CatalogItem:
       type: object
-      required: [id, name]
+      required: [name, email, phone, currentPassword]
       properties:
-        id: { type: string }
-        name: { type: string }
-        logoUrl: { type: [string, 'null'], format: uri }
+        name: { type: string, minLength: 2, maxLength: 120 }
+        email: { type: string, format: email, maxLength: 254 }
+        phone: { type: string, maxLength: 30, example: '(11) 98765-4321' }
+        childInstagram: { type: [string, 'null'], example: '@atleta' }
+        eventId: { type: [integer, 'null'], format: int64, minimum: 1 }
+        categoryId: { type: [string, 'null'], maxLength: 100 }
+        divisionId: { type: [string, 'null'], maxLength: 100 }
+        teamId: { type: [string, 'null'], maxLength: 100 }
+        currentPassword: { type: string, format: password, maxLength: 72 }
+    SportsEvent:
+      type: object
+      required: [eventId, title, season, category, division]
+      properties:
+        eventId: { type: integer, format: int64 }
+        title: { type: string }
+        season: { type: integer }
+        category: { type: string }
+        division: { type: string }
+        sourceUrl: { type: [string, 'null'], format: uri }
     Team:
       type: object
       required: [id, name]
@@ -492,46 +574,55 @@ components:
         logoUrl: { type: [string, 'null'], format: uri }
     Match:
       type: object
-      required: [id, categoryId, divisionId, homeTeam, awayTeam, scheduledAt, status]
+      required: [id, eventId, competitionName, season, category, division, homeTeam, awayTeam, status, walkover]
       properties:
         id: { type: string }
-        competitionName: { type: [string, 'null'] }
-        categoryId: { type: string }
-        categoryName: { type: [string, 'null'] }
-        divisionId: { type: string }
-        divisionName: { type: [string, 'null'] }
-        round: { type: [string, 'null'] }
+        eventId: { type: integer, format: int64 }
+        competitionName: { type: string }
+        season: { type: integer }
+        category: { type: string }
+        division: { type: string }
+        phase: { type: [string, 'null'] }
         homeTeam: { $ref: '#/components/schemas/Team' }
         awayTeam: { $ref: '#/components/schemas/Team' }
         homeScore: { type: [integer, 'null'] }
         awayScore: { type: [integer, 'null'] }
-        scheduledAt: { type: string, format: date-time }
-        status: { type: string, example: FINISHED }
+        scheduledAt: { type: [string, 'null'], format: date-time }
+        status: { type: string, enum: [FINISHED, SCHEDULED] }
+        walkover: { type: boolean }
         venue: { type: [string, 'null'] }
+        matchSheetUrl: { type: [string, 'null'], format: uri }
     Standing:
       type: object
-      required: [position, team, played, wins, draws, losses, goalsFor, goalsAgainst, goalDifference, points]
+      required: [team]
       properties:
-        position: { type: integer }
+        phase: { type: [string, 'null'] }
+        group: { type: [string, 'null'] }
+        position: { type: [integer, 'null'] }
         team: { $ref: '#/components/schemas/Team' }
-        played: { type: integer }
-        wins: { type: integer }
-        draws: { type: integer }
-        losses: { type: integer }
-        goalsFor: { type: integer }
-        goalsAgainst: { type: integer }
-        goalDifference: { type: integer }
-        points: { type: integer }
+        played: { type: [integer, 'null'] }
+        wins: { type: [integer, 'null'] }
+        draws: { type: [integer, 'null'] }
+        losses: { type: [integer, 'null'] }
+        goalsFor: { type: [integer, 'null'] }
+        goalsAgainst: { type: [integer, 'null'] }
+        goalDifference: { type: [integer, 'null'] }
+        points: { type: [integer, 'null'] }
+        average: { type: [number, 'null'], format: double }
+        goalsForAverage: { type: [number, 'null'], format: double }
+        goalsAgainstAverage: { type: [number, 'null'], format: double }
+        technicalIndex: { type: [number, 'null'], format: double }
     TopScorer:
       type: object
-      required: [position, athleteName, team, goals, matches]
+      required: [position, team, personalDataSuppressed]
       properties:
         position: { type: integer }
-        athleteId: { type: [string, 'null'] }
-        athleteName: { type: string }
+        phase: { type: [string, 'null'] }
+        athleteName: { type: [string, 'null'] }
+        athleteImageUrl: { type: [string, 'null'], format: uri }
         team: { $ref: '#/components/schemas/Team' }
-        goals: { type: integer }
-        matches: { type: integer }
+        goals: { type: [integer, 'null'] }
+        personalDataSuppressed: { type: boolean }
     NewsArticle:
       type: object
       required: [id, slug, title, publishedAt]
@@ -555,23 +646,9 @@ components:
         size: { type: integer }
         totalElements: { type: integer, format: int64 }
         totalPages: { type: integer }
-    MatchCompletedEvent:
-      type: object
-      required: [eventId, categoryId, divisionId, teamIds, occurredAt]
-      properties:
-        eventId: { type: string, format: uuid }
-        categoryId: { type: string, maxLength: 100 }
-        divisionId: { type: string, maxLength: 100 }
-        teamIds:
-          type: array
-          minItems: 1
-          maxItems: 2
-          uniqueItems: true
-          items: { type: string, maxLength: 100 }
-        occurredAt: { type: string, format: date-time }
     Problem:
       type: object
-      required: [title, status, detail, code]
+      required: [title, status, detail, code, timestamp, requestId]
       properties:
         type: { type: string, format: uri-reference }
         title: { type: string }
@@ -580,6 +657,7 @@ components:
         instance: { type: string, format: uri-reference }
         code: { type: string }
         timestamp: { type: string, format: date-time }
+        requestId: { type: string, minLength: 8, maxLength: 64 }
         fields:
           type: object
           additionalProperties: { type: string }

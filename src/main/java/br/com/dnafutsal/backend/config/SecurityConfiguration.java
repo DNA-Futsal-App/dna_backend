@@ -1,7 +1,7 @@
 package br.com.dnafutsal.backend.config;
 
 import br.com.dnafutsal.backend.identity.application.UserSecurityStateService;
-import br.com.dnafutsal.backend.identity.security.InternalApiKeyFilter;
+import br.com.dnafutsal.backend.identity.security.ApiSecurityErrorHandler;
 import br.com.dnafutsal.backend.identity.security.TokenVersionValidator;
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
 import org.springframework.context.annotation.Bean;
@@ -22,10 +22,10 @@ import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import tools.jackson.databind.ObjectMapper;
 
 import javax.crypto.spec.SecretKeySpec;
 import javax.crypto.SecretKey;
@@ -61,20 +61,29 @@ public class SecurityConfiguration {
     }
 
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http, SecurityProperties properties) throws Exception {
-        InternalApiKeyFilter internalApiKeyFilter = new InternalApiKeyFilter(properties);
+    ApiSecurityErrorHandler apiSecurityErrorHandler(ObjectMapper objectMapper) {
+        return new ApiSecurityErrorHandler(objectMapper);
+    }
+
+    @Bean
+    SecurityFilterChain securityFilterChain(HttpSecurity http, ApiSecurityErrorHandler securityErrors)
+            throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
                 .cors(Customizer.withDefaults())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .exceptionHandling(exceptions -> exceptions
+                        .authenticationEntryPoint(securityErrors)
+                        .accessDeniedHandler(securityErrors))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/v1/auth/**", "/api/v1/public/**").permitAll()
-                        .requestMatchers("/api/v1/internal/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/actuator/health", "/actuator/health/**").permitAll()
                         .requestMatchers("/actuator/**").hasAuthority("SCOPE_ADMIN")
                         .anyRequest().authenticated())
-                .oauth2ResourceServer(resource -> resource.jwt(Customizer.withDefaults()))
-                .addFilterBefore(internalApiKeyFilter, UsernamePasswordAuthenticationFilter.class);
+                .oauth2ResourceServer(resource -> resource
+                        .jwt(Customizer.withDefaults())
+                        .authenticationEntryPoint(securityErrors)
+                        .accessDeniedHandler(securityErrors));
         return http.build();
     }
 
@@ -83,8 +92,8 @@ public class SecurityConfiguration {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(properties.corsAllowedOrigins());
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept"));
-        configuration.setExposedHeaders(List.of("Location"));
+        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "X-Request-ID"));
+        configuration.setExposedHeaders(List.of("Location", "X-Request-ID"));
         configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

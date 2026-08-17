@@ -17,15 +17,14 @@ public class SportsFilterResolver {
         this.profiles = profiles;
     }
 
-    public SportsFilter resolve(UUID userId, String categoryId, String divisionId, String teamId) {
+    public SportsFilter resolve(UUID userId, Long eventId, String teamId) {
         UserProfileResponse profile = profiles.get(userId);
-        SportsFilter filter = new SportsFilter(first(categoryId, profile.categoryId()),
-                first(divisionId, profile.divisionId()), first(teamId, profile.teamId()));
-        if (filter.categoryId() == null || filter.divisionId() == null) {
+        Long selectedEventId = eventId == null ? profile.eventId() : eventId;
+        if (selectedEventId == null) {
             throw Errors.badRequest("SPORTS_PREFERENCE_REQUIRED",
-                    "Escolha categoria e divisão no perfil ou informe os filtros na consulta.");
+                    "Escolha uma competição no perfil ou informe eventId na consulta.");
         }
-        return filter;
+        return new SportsFilter(selectedEventId, first(teamId, profile.teamId()));
     }
 
     private String first(String requested, String preferred) {

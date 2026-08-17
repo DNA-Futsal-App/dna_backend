@@ -1,69 +1,67 @@
 package br.com.dnafutsal.backend.config;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import org.springframework.cache.CacheManager;
-import org.springframework.cache.annotation.CachingConfigurer;
-import org.springframework.cache.interceptor.CacheErrorHandler;
+import org.springframework.cache.caffeine.CaffeineCache;
+import org.springframework.cache.support.SimpleCacheManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.data.redis.cache.RedisCacheConfiguration;
-import org.springframework.data.redis.cache.RedisCacheManager;
-import org.springframework.data.redis.connection.RedisConnectionFactory;
-import org.springframework.data.redis.serializer.JdkSerializationRedisSerializer;
-import org.springframework.data.redis.serializer.RedisSerializationContext;
-import org.springframework.data.redis.serializer.StringRedisSerializer;
+
+import java.time.Duration;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Configuration
-public class CacheConfiguration implements CachingConfigurer {
+public class CacheConfiguration {
 
-    private static final Logger log = LoggerFactory.getLogger(CacheConfiguration.class);
-    private final RedisConnectionFactory connectionFactory;
+    static final Duration LOGIN_ATTEMPT_WINDOW = Duration.ofMinutes(15);
 
-    public CacheConfiguration(RedisConnectionFactory connectionFactory) {
-        this.connectionFactory = connectionFactory;
+    private final IntegrationProperties integrations;
+    private final CacheProperties properties;
+
+    public CacheConfiguration(IntegrationProperties integrations, CacheProperties properties) {
+        this.integrations = integrations;
+        this.properties = properties;
     }
 
     @Bean
-    @Override
     public CacheManager cacheManager() {
-        RedisCacheConfiguration configuration = RedisCacheConfiguration.defaultCacheConfig()
-                .disableCachingNullValues()
-                .prefixCacheNameWith("dna-futsal:")
-                .serializeKeysWith(RedisSerializationContext.SerializationPair
-                        .fromSerializer(new StringRedisSerializer()))
-                .serializeValuesWith(RedisSerializationContext.SerializationPair
-                        .fromSerializer(new JdkSerializationRedisSerializer()));
-        return RedisCacheManager.builder(connectionFactory)
-                .cacheDefaults(configuration)
-                .transactionAware()
+        long sportsMaxEntries = properties.sportsMaxEntries();
+        long identityMaxEntries = properties.identityMaxEntries();
+
+        SimpleCacheManager manager = new SimpleCacheManager();
+        manager.setCaches(List.of(
+                expiringCache("sports-events", integrations.sports().eventCacheTtl(), sportsMaxEntries),
+                expiringCache("sports-event", integrations.sports().eventCacheTtl(), sportsMaxEntries),
+                expiringCache("sports-teams", integrations.sports().teamCacheTtl(), sportsMaxEntries),
+                expiringCache("sports-snapshot", integrations.sports().snapshotCacheTtl(), sportsMaxEntries),
+                boundedCache("user-profile", identityMaxEntries),
+                boundedCache("user-security", identityMaxEntries)
+        ));
+        return manager;
+    }
+
+    @Bean("loginAttemptCache")
+    public com.github.benmanes.caffeine.cache.Cache<String, AtomicInteger> loginAttemptCache() {
+        return Caffeine.newBuilder()
+                .maximumSize(properties.loginAttemptMaxEntries())
+                .expireAfterWrite(LOGIN_ATTEMPT_WINDOW)
+                .recordStats()
                 .build();
     }
 
-    @Bean
-    @Override
-    public CacheErrorHandler errorHandler() {
-        return new CacheErrorHandler() {
-            @Override
-            public void handleCacheGetError(RuntimeException exception, Cache cache, Object key) {
-                log.warn("Cache read failed for {}", cache.getName());
-            }
+    private CaffeineCache expiringCache(String name, Duration ttl, long maximumSize) {
+        return new CaffeineCache(name, Caffeine.newBuilder()
+                .maximumSize(maximumSize)
+                .expireAfterWrite(ttl)
+                .recordStats()
+                .build(), false);
+    }
 
-            @Override
-            public void handleCachePutError(RuntimeException exception, Cache cache, Object key, Object value) {
-                log.warn("Cache write failed for {}", cache.getName());
-            }
-
-            @Override
-            public void handleCacheEvictError(RuntimeException exception, Cache cache, Object key) {
-                log.warn("Cache eviction failed for {}", cache.getName());
-            }
-
-            @Override
-            public void handleCacheClearError(RuntimeException exception, Cache cache) {
-                log.warn("Cache clear failed for {}", cache.getName());
-            }
-        };
+    private CaffeineCache boundedCache(String name, long maximumSize) {
+        return new CaffeineCache(name, Caffeine.newBuilder()
+                .maximumSize(maximumSize)
+                .recordStats()
+                .build(), false);
     }
 }

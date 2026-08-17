@@ -35,6 +35,9 @@ public class UserAccount {
     @Column(name = "child_instagram", length = 64)
     private String childInstagram;
 
+    @Column(name = "followed_event_id")
+    private Long followedEventId;
+
     @Column(name = "followed_category_id", length = 100)
     private String followedCategoryId;
 
@@ -67,7 +70,7 @@ public class UserAccount {
     }
 
     public UserAccount(String name, String email, String phone, String passwordHash,
-                       String childInstagram, String followedCategoryId,
+                       String childInstagram, Long followedEventId, String followedCategoryId,
                        String followedDivisionId, String followedTeamId) {
         this.id = UUID.randomUUID();
         this.name = name;
@@ -75,6 +78,7 @@ public class UserAccount {
         this.phone = phone;
         this.passwordHash = passwordHash;
         this.childInstagram = childInstagram;
+        this.followedEventId = followedEventId;
         this.followedCategoryId = followedCategoryId;
         this.followedDivisionId = followedDivisionId;
         this.followedTeamId = followedTeamId;
@@ -99,11 +103,12 @@ public class UserAccount {
     }
 
     public void updateProfile(String name, String email, String phone, String childInstagram,
-                              String categoryId, String divisionId, String teamId) {
+                              Long eventId, String categoryId, String divisionId, String teamId) {
         this.name = name;
         this.email = email;
         this.phone = phone;
         this.childInstagram = childInstagram;
+        this.followedEventId = eventId;
         this.followedCategoryId = categoryId;
         this.followedDivisionId = divisionId;
         this.followedTeamId = teamId;
@@ -142,6 +147,10 @@ public class UserAccount {
 
     public String getChildInstagram() {
         return childInstagram;
+    }
+
+    public Long getFollowedEventId() {
+        return followedEventId;
     }
 
     public String getFollowedCategoryId() {

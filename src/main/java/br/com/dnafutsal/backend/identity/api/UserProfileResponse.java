@@ -12,6 +12,7 @@ public record UserProfileResponse(
         String email,
         String phone,
         String childInstagram,
+        Long eventId,
         String categoryId,
         String divisionId,
         String teamId,
@@ -20,7 +21,7 @@ public record UserProfileResponse(
 ) implements Serializable {
     public static UserProfileResponse from(UserAccount user) {
         return new UserProfileResponse(user.getId(), user.getName(), user.getEmail(), user.getPhone(),
-                user.getChildInstagram(), user.getFollowedCategoryId(), user.getFollowedDivisionId(),
+                user.getChildInstagram(), user.getFollowedEventId(), user.getFollowedCategoryId(), user.getFollowedDivisionId(),
                 user.getFollowedTeamId(), user.getEmailVerifiedAt() != null, user.getCreatedAt());
     }
 }

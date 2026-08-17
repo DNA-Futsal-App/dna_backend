@@ -8,6 +8,7 @@ CREATE TABLE user_accounts (
     followed_category_id VARCHAR(100),
     followed_division_id VARCHAR(100),
     followed_team_id VARCHAR(100),
+    followed_event_id BIGINT,
     status VARCHAR(40) NOT NULL,
     email_verified_at TIMESTAMPTZ,
     token_version BIGINT NOT NULL DEFAULT 0,

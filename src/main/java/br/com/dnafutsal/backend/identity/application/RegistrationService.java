@@ -68,7 +68,7 @@ public class RegistrationService {
         }
         UserAccount user = new UserAccount(request.name().trim(), email, phone,
                 passwordEncoder.encode(request.password()), normalizer.instagram(request.childInstagram()),
-                normalizer.optionalId(request.categoryId()), normalizer.optionalId(request.divisionId()),
+                request.eventId(), normalizer.optionalId(request.categoryId()), normalizer.optionalId(request.divisionId()),
                 normalizer.optionalId(request.teamId()));
         users.save(user);
         enqueueVerification(user);

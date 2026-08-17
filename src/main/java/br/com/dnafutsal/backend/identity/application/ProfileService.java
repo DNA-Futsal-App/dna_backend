@@ -63,7 +63,7 @@ public class ProfileService {
         }
         boolean emailChanged = !user.getEmail().equals(email);
         user.updateProfile(request.name().trim(), email, phone, normalizer.instagram(request.childInstagram()),
-                normalizer.optionalId(request.categoryId()), normalizer.optionalId(request.divisionId()),
+                request.eventId(), normalizer.optionalId(request.categoryId()), normalizer.optionalId(request.divisionId()),
                 normalizer.optionalId(request.teamId()));
         if (emailChanged) {
             user.requireEmailVerification();
