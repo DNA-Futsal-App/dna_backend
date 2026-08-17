@@ -3,15 +3,21 @@ package br.com.dnafutsal.backend.sports.domain;
 import java.io.Serializable;
 
 public record StandingView(
-        int position,
+        String phase,
+        String group,
+        Integer position,
         TeamView team,
-        int played,
-        int wins,
-        int draws,
-        int losses,
-        int goalsFor,
-        int goalsAgainst,
-        int goalDifference,
-        int points
+        Integer played,
+        Integer wins,
+        Integer draws,
+        Integer losses,
+        Integer goalsFor,
+        Integer goalsAgainst,
+        Integer goalDifference,
+        Integer points,
+        Double average,
+        Double goalsForAverage,
+        Double goalsAgainstAverage,
+        Double technicalIndex
 ) implements Serializable {
 }

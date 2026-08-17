@@ -10,4 +10,3 @@ spring:
 app:
   security:
     jwt-secret: test-secret-with-at-least-sixty-four-characters-01234567890123456789
-    internal-api-key: test-internal-key

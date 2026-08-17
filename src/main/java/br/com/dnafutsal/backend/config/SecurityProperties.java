@@ -15,7 +15,6 @@ public record SecurityProperties(
         @NotNull Duration accessTokenTtl,
         @NotNull Duration refreshTokenTtl,
         @NotNull Duration emailVerificationTtl,
-        @NotNull Duration passwordResetTtl,
-        @NotBlank @Size(min = 16) String internalApiKey
+        @NotNull Duration passwordResetTtl
 ) {
 }

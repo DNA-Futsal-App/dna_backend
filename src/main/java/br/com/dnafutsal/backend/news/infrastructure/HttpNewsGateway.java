@@ -16,11 +16,7 @@ public class HttpNewsGateway implements NewsGateway {
     private final RestClient client;
 
     public HttpNewsGateway(RestClient.Builder builder, IntegrationProperties properties) {
-        RestClient.Builder configured = builder.baseUrl(properties.news().baseUrl());
-        if (properties.news().apiKey() != null && !properties.news().apiKey().isBlank()) {
-            configured.defaultHeader("X-Api-Key", properties.news().apiKey());
-        }
-        this.client = configured.build();
+        this.client = builder.clone().baseUrl(properties.news().baseUrl()).build();
     }
 
     @Override

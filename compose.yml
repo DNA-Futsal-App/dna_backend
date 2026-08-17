@@ -15,19 +15,6 @@ services:
       timeout: 3s
       retries: 10
 
-  redis:
-    image: redis:7.4-alpine
-    command: ["redis-server", "--appendonly", "yes"]
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
-
   mailpit:
     image: axllent/mailpit:latest
     ports:
@@ -40,7 +27,6 @@ services:
     env_file: .env
     environment:
       DATABASE_URL: jdbc:postgresql://postgres:5432/dna_futsal
-      REDIS_HOST: redis
       SMTP_HOST: mailpit
       SMTP_PORT: 1025
     ports:
@@ -48,9 +34,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      redis:
-        condition: service_healthy
 
 volumes:
   postgres_data:
-  redis_data:

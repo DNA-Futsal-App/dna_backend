@@ -4,10 +4,11 @@ import java.io.Serializable;
 
 public record TopScorerView(
         int position,
-        String athleteId,
+        String phase,
         String athleteName,
+        String athleteImageUrl,
         TeamView team,
-        int goals,
-        int matches
+        Integer goals,
+        boolean personalDataSuppressed
 ) implements Serializable {
 }

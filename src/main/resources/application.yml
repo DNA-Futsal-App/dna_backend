@@ -8,7 +8,7 @@ spring:
     hikari:
       maximum-pool-size: ${DB_MAX_POOL_SIZE:10}
       minimum-idle: ${DB_MIN_IDLE:2}
-      connection-timeout: 5000
+      connection-timeout: 25000
   jpa:
     open-in-view: false
     hibernate:
@@ -20,12 +20,6 @@ spring:
         default_batch_fetch_size: 50
   flyway:
     enabled: true
-  data:
-    redis:
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
-      password: ${REDIS_PASSWORD:}
-      timeout: 2s
   mail:
     host: ${SMTP_HOST:localhost}
     port: ${SMTP_PORT:1025}
@@ -69,20 +63,27 @@ app:
   frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:3000}
   cors-allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
   timezone: ${APP_TIMEZONE:America/Sao_Paulo}
+  cache:
+    sports-max-entries: ${SPORTS_CACHE_MAX_ENTRIES:2000}
+    identity-max-entries: ${IDENTITY_CACHE_MAX_ENTRIES:10000}
+    login-attempt-max-entries: ${LOGIN_ATTEMPT_CACHE_MAX_ENTRIES:50000}
   security:
     jwt-secret: ${JWT_SECRET:REPLACE_WITH_AT_LEAST_64_RANDOM_CHARACTERS_BEFORE_PRODUCTION_1234567890}
     access-token-ttl: ${ACCESS_TOKEN_TTL:PT15M}
     refresh-token-ttl: ${REFRESH_TOKEN_TTL:P30D}
     email-verification-ttl: ${EMAIL_VERIFICATION_TTL:PT24H}
     password-reset-ttl: ${PASSWORD_RESET_TTL:PT30M}
-    internal-api-key: ${INTERNAL_API_KEY:change-this-internal-key}
   integrations:
     sports:
-      base-url: ${SPORTS_API_BASE_URL:http://localhost:8090}
-      api-key: ${SPORTS_API_KEY:}
+      base-url: ${SPORTS_API_BASE_URL:https://dna-scrapper.onrender.com}
+      connect-timeout: ${SPORTS_CONNECT_TIMEOUT:PT5S}
+      read-timeout: ${SPORTS_READ_TIMEOUT:PT60S}
+      event-cache-ttl: ${SPORTS_EVENT_CACHE_TTL:PT1H}
+      team-cache-ttl: ${SPORTS_TEAM_CACHE_TTL:PT1H}
+      snapshot-cache-ttl: ${SPORTS_SNAPSHOT_CACHE_TTL:PT10M}
+      include-personal-data: ${SPORTS_INCLUDE_PERSONAL_DATA:false}
     news:
       base-url: ${NEWS_API_BASE_URL:http://localhost:8091}
-      api-key: ${NEWS_API_KEY:}
   mail-delivery:
     from-email: ${MAIL_FROM_EMAIL:no-reply@dnafutsal.com.br}
     from-name: ${MAIL_FROM_NAME:DNA Futsal}
@@ -97,4 +98,4 @@ logging:
     root: INFO
     br.com.dnafutsal: INFO
   pattern:
-    level: "%5p [${spring.application.name:},%X{traceId:-},%X{spanId:-}]"
+    level: "%5p [${spring.application.name:},requestId=%X{requestId:-},traceId=%X{traceId:-},spanId=%X{spanId:-}]"

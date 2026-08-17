@@ -5,18 +5,20 @@ import java.time.Instant;
 
 public record MatchView(
         String id,
+        long eventId,
         String competitionName,
-        String categoryId,
-        String categoryName,
-        String divisionId,
-        String divisionName,
-        String round,
+        int season,
+        String category,
+        String division,
+        String phase,
         TeamView homeTeam,
         TeamView awayTeam,
         Integer homeScore,
         Integer awayScore,
         Instant scheduledAt,
         String status,
-        String venue
+        boolean walkover,
+        String venue,
+        String matchSheetUrl
 ) implements Serializable {
 }

@@ -1,99 +1,258 @@
 package br.com.dnafutsal.backend.sports.infrastructure;
 
+import br.com.dnafutsal.backend.common.BusinessException;
 import br.com.dnafutsal.backend.common.Errors;
 import br.com.dnafutsal.backend.config.IntegrationProperties;
-import br.com.dnafutsal.backend.sports.domain.CatalogItem;
-import br.com.dnafutsal.backend.sports.domain.MatchView;
 import br.com.dnafutsal.backend.sports.domain.SportsDataGateway;
-import br.com.dnafutsal.backend.sports.domain.SportsFilter;
-import br.com.dnafutsal.backend.sports.domain.StandingView;
+import br.com.dnafutsal.backend.sports.domain.SportsEventSearch;
+import br.com.dnafutsal.backend.sports.domain.SportsEventView;
+import br.com.dnafutsal.backend.sports.domain.SportsSnapshot;
 import br.com.dnafutsal.backend.sports.domain.TeamView;
-import br.com.dnafutsal.backend.sports.domain.TopScorerView;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
+import java.net.SocketTimeoutException;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 @Component
 public class HttpSportsDataGateway implements SportsDataGateway {
 
     private final RestClient client;
+    private final SportsScraperMapper mapper;
+    private final boolean includePersonalData;
 
-    public HttpSportsDataGateway(RestClient.Builder builder, IntegrationProperties properties) {
-        RestClient.Builder configured = builder.baseUrl(properties.sports().baseUrl());
-        if (properties.sports().apiKey() != null && !properties.sports().apiKey().isBlank()) {
-            configured.defaultHeader("X-Api-Key", properties.sports().apiKey());
-        }
-        this.client = configured.build();
+    @Autowired
+    public HttpSportsDataGateway(RestClient.Builder builder, IntegrationProperties properties,
+                                 SportsScraperMapper mapper) {
+        this(createClient(builder, properties.sports()), mapper, properties.sports().includePersonalData());
+    }
+
+
+    HttpSportsDataGateway(RestClient client, SportsScraperMapper mapper, boolean includePersonalData) {
+        this.client = client;
+        this.mapper = mapper;
+        this.includePersonalData = includePersonalData;
+    }
+
+    private static RestClient createClient(RestClient.Builder builder,
+                                           IntegrationProperties.SportsEndpoint sports) {
+        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+        requestFactory.setConnectTimeout(sports.connectTimeout());
+        requestFactory.setReadTimeout(sports.readTimeout());
+
+        return builder.clone()
+                .requestFactory(requestFactory)
+                .baseUrl(sports.baseUrl())
+                .build();
     }
 
     @Override
-    public List<CatalogItem> categories() {
-        return get(uri -> uri.path("/api/v1/catalog/categories").build(), new ParameterizedTypeReference<>() {});
-    }
-
-    @Override
-    public List<CatalogItem> divisions(String categoryId) {
-        return get(uri -> uri.path("/api/v1/catalog/divisions").queryParam("categoryId", categoryId).build(),
-                new ParameterizedTypeReference<>() {});
-    }
-
-    @Override
-    public List<TeamView> teams(String categoryId, String divisionId) {
-        return get(uri -> uri.path("/api/v1/catalog/teams")
-                        .queryParam("categoryId", categoryId).queryParam("divisionId", divisionId).build(),
-                new ParameterizedTypeReference<>() {});
-    }
-
-    @Override
-    public List<MatchView> playedMatches(SportsFilter filter) {
-        return sportsList("/api/v1/matches/played", filter, new ParameterizedTypeReference<>() {});
-    }
-
-    @Override
-    public List<MatchView> upcomingMatches(SportsFilter filter) {
-        return sportsList("/api/v1/matches/upcoming", filter, new ParameterizedTypeReference<>() {});
-    }
-
-    @Override
-    public List<StandingView> standings(SportsFilter filter) {
-        return sportsList("/api/v1/standings", filter, new ParameterizedTypeReference<>() {});
-    }
-
-    @Override
-    public List<TopScorerView> topScorers(SportsFilter filter) {
-        return sportsList("/api/v1/top-scorers", filter, new ParameterizedTypeReference<>() {});
-    }
-
-    private <T> List<T> sportsList(String path, SportsFilter filter, ParameterizedTypeReference<List<T>> type) {
-        return get(uri -> {
-            var builder = uri.path(path)
-                    .queryParam("categoryId", filter.categoryId())
-                    .queryParam("divisionId", filter.divisionId());
-            if (filter.teamId() != null) {
-                builder.queryParam("teamId", filter.teamId());
+    public List<SportsEventView> searchEvents(SportsEventSearch search) {
+        Map<String, Object> diagnostics = diagnostics("search-events", "season", search.season());
+        List<ScraperEvent> response = get(diagnostics, uri -> {
+            var builder = uri.path("/api/v1/events/search").queryParam("season", search.season());
+            if (search.title() != null) {
+                builder.queryParam("title", search.title());
+            }
+            if (search.division() != null) {
+                builder.queryParam("division", search.division());
+            }
+            if (search.category() != null) {
+                builder.queryParam("category", search.category());
             }
             return builder.build();
-        }, type);
+        }, new ParameterizedTypeReference<>() {});
+        return mapResponse(diagnostics, () -> response.stream().map(mapper::event).toList());
     }
 
-    private <T> T get(Function<org.springframework.web.util.UriBuilder, java.net.URI> uri,
+    @Override
+    public SportsEventView event(long eventId) {
+        Map<String, Object> diagnostics = diagnostics("get-event", "eventId", eventId);
+        ScraperEvent response = get(diagnostics,
+                uri -> uri.path("/api/v1/events/{eventId}").build(eventId),
+                new ParameterizedTypeReference<>() {});
+        return mapResponse(diagnostics, () -> {
+            validateEventId(eventId, response.eventId(), diagnostics);
+            return mapper.event(response);
+        });
+    }
+
+    @Override
+    public List<TeamView> teams(long eventId) {
+        Map<String, Object> diagnostics = diagnostics("get-teams", "eventId", eventId);
+        List<ScraperTeam> response = get(diagnostics,
+                uri -> uri.path("/api/v1/events/{eventId}/teams").build(eventId),
+                new ParameterizedTypeReference<>() {});
+        return mapResponse(diagnostics, () -> mapper.teams(response));
+    }
+
+    @Override
+    public SportsSnapshot snapshot(long eventId) {
+        Map<String, Object> diagnostics = diagnostics("get-snapshot", "eventId", eventId);
+        ScraperSnapshot response = get(diagnostics,
+                uri -> uri.path("/api/v1/events/{eventId}/snapshot").build(eventId),
+                new ParameterizedTypeReference<>() {});
+        mapResponse(diagnostics, () -> {
+            if (response.event() == null) {
+                throw invalidResponse(diagnostics, null);
+            }
+            validateEventId(eventId, response.event().eventId(), diagnostics);
+            return response;
+        });
+
+        List<ScraperScorer> scorers = null;
+        if (includePersonalData) {
+            Map<String, Object> scorerDiagnostics = diagnostics("get-scorers", "eventId", eventId);
+            scorers = get(scorerDiagnostics, uri -> uri.path("/api/v1/events/{eventId}/scorers")
+                            .queryParam("limit", 500)
+                            .queryParam("includePersonalData", true)
+                            .build(eventId),
+                    new ParameterizedTypeReference<>() {});
+        }
+        List<ScraperScorer> scorerResponse = scorers;
+        return mapResponse(diagnostics, () -> mapper.snapshot(response, scorerResponse));
+    }
+
+    private void validateEventId(long requested, long received, Map<String, Object> diagnostics) {
+        if (requested != received) {
+            throw invalidResponse(diagnostics, null);
+        }
+    }
+
+    private BusinessException invalidResponse(Map<String, Object> diagnostics, Throwable cause) {
+        Throwable diagnosticCause = cause == null
+                ? new IllegalStateException("Sports scraper returned an invalid response")
+                : sanitizedCause("Sports scraper response processing failed", cause);
+        return Errors.badGateway("SPORTS_DATA_INVALID",
+                "A fonte de dados esportivos retornou uma resposta inválida.",
+                diagnosticCause, enrich(diagnostics, cause, null));
+    }
+
+    private <T> T get(Map<String, Object> diagnostics,
+                      Function<org.springframework.web.util.UriBuilder, java.net.URI> uri,
                       ParameterizedTypeReference<T> type) {
         try {
             T response = client.get().uri(uri).retrieve().body(type);
             if (response == null) {
-                throw Errors.dependencyUnavailable("SPORTS_DATA_UNAVAILABLE",
-                        "A fonte de dados esportivos retornou uma resposta vazia.");
+                throw invalidResponse(diagnostics, null);
             }
             return response;
-        } catch (br.com.dnafutsal.backend.common.BusinessException exception) {
+        } catch (HttpClientErrorException.BadRequest exception) {
+            throw Errors.badRequest("SPORTS_FILTER_INVALID", "Os filtros esportivos informados são inválidos.",
+                    sanitizedCause("Sports scraper rejected the request", exception),
+                    enrich(diagnostics, exception, exception.getStatusCode().value()));
+        } catch (HttpClientErrorException.NotFound exception) {
+            throw Errors.notFound("SPORTS_EVENT_NOT_FOUND", "Competição esportiva não encontrada.",
+                    sanitizedCause("Sports scraper resource was not found", exception),
+                    enrich(diagnostics, exception, exception.getStatusCode().value()));
+        } catch (HttpClientErrorException.Unauthorized | HttpClientErrorException.Forbidden exception) {
+            throw Errors.dependencyUnavailable("SPORTS_API_ACCESS_DENIED",
+                    "A fonte de dados esportivos recusou o acesso.",
+                    sanitizedCause("Sports scraper refused access", exception),
+                    enrich(diagnostics, exception, exception.getStatusCode().value()));
+        } catch (HttpClientErrorException.TooManyRequests exception) {
+            throw Errors.dependencyUnavailable("SPORTS_API_RATE_LIMITED",
+                    "A fonte de dados esportivos atingiu o limite de requisições.",
+                    sanitizedCause("Sports scraper rate limit was reached", exception),
+                    enrich(diagnostics, exception, exception.getStatusCode().value()));
+        } catch (HttpClientErrorException exception) {
+            throw Errors.dependencyUnavailable("SPORTS_API_CLIENT_ERROR",
+                    "A fonte de dados esportivos recusou a requisição.",
+                    sanitizedCause("Sports scraper returned an HTTP client error", exception),
+                    enrich(diagnostics, exception, exception.getStatusCode().value()));
+        } catch (HttpServerErrorException exception) {
+            throw Errors.dependencyUnavailable("SPORTS_DATA_UNAVAILABLE",
+                    "Os dados esportivos estão temporariamente indisponíveis.",
+                    sanitizedCause("Sports scraper returned an HTTP server error", exception),
+                    enrich(diagnostics, exception, exception.getStatusCode().value()));
+        } catch (ResourceAccessException exception) {
+            if (isTimeout(exception)) {
+                throw Errors.gatewayTimeout("SPORTS_API_TIMEOUT",
+                        "A fonte de dados esportivos excedeu o tempo limite de resposta.",
+                        sanitizedCause("Sports scraper request timed out", exception),
+                        enrich(diagnostics, exception, null));
+            }
+            throw Errors.dependencyUnavailable("SPORTS_API_CONNECTION_FAILED",
+                    "Não foi possível conectar à fonte de dados esportivos.",
+                    sanitizedCause("Sports scraper connection failed", exception),
+                    enrich(diagnostics, exception, null));
+        } catch (BusinessException exception) {
             throw exception;
         } catch (RestClientException exception) {
-            throw Errors.dependencyUnavailable("SPORTS_DATA_UNAVAILABLE",
-                    "Os dados esportivos estão temporariamente indisponíveis.");
+            throw invalidResponse(diagnostics, exception);
         }
+    }
+
+    private <T> T mapResponse(Map<String, Object> diagnostics, Supplier<T> mapping) {
+        try {
+            return mapping.get();
+        } catch (BusinessException exception) {
+            if (!exception.diagnostics().isEmpty()) {
+                throw exception;
+            }
+            throw new BusinessException(exception.status(), exception.code(), exception.getMessage(), exception,
+                    enrich(diagnostics, exception, null));
+        } catch (RuntimeException exception) {
+            throw invalidResponse(diagnostics, exception);
+        }
+    }
+
+    private Map<String, Object> diagnostics(String operation, Object... entries) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("dependency", "sports-scraper");
+        result.put("operation", operation);
+        for (int index = 0; index + 1 < entries.length; index += 2) {
+            Object value = entries[index + 1];
+            if (value != null) {
+                result.put(String.valueOf(entries[index]), value);
+            }
+        }
+        return Map.copyOf(result);
+    }
+
+    private Map<String, Object> enrich(Map<String, Object> diagnostics, Throwable exception,
+                                       Integer upstreamStatus) {
+        Map<String, Object> result = new LinkedHashMap<>(diagnostics);
+        if (upstreamStatus != null) {
+            result.put("upstreamStatus", upstreamStatus);
+        }
+        if (exception != null) {
+            result.put("exceptionType", exception.getClass().getName());
+            result.put("rootCauseType", rootCause(exception).getClass().getName());
+        }
+        return Map.copyOf(result);
+    }
+
+    private Throwable sanitizedCause(String message, Throwable exception) {
+        Throwable root = rootCause(exception);
+        IllegalStateException sanitized = new IllegalStateException(message + ": "
+                + exception.getClass().getName() + (root == exception ? "" : " -> " + root.getClass().getName()));
+        sanitized.setStackTrace(exception.getStackTrace());
+        return sanitized;
+    }
+
+    private boolean isTimeout(Throwable exception) {
+        Throwable root = rootCause(exception);
+        return root instanceof SocketTimeoutException
+                || root.getClass().getSimpleName().contains("TimeoutException");
+    }
+
+    private Throwable rootCause(Throwable exception) {
+        Throwable current = exception;
+        while (current.getCause() != null && current.getCause() != current) {
+            current = current.getCause();
+        }
+        return current;
     }
 }

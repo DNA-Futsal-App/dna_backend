@@ -1,115 +1,87 @@
 # Contratos das integrações
 
-O backend depende de duas APIs externas. Os caminhos podem ser adaptados dentro dos gateways HTTP sem alterar controllers ou casos de uso.
+O backend depende de duas APIs externas e as consome sem headers de autenticação.
 
 ## API esportiva / scraper
 
 Configuração:
 
-- `SPORTS_API_BASE_URL`
-- `SPORTS_API_KEY`, enviado como `X-Api-Key` quando preenchido
+- `SPORTS_API_BASE_URL`, padrão `https://dna-scrapper.onrender.com`
+- `SPORTS_CONNECT_TIMEOUT`, padrão `PT5S`
+- `SPORTS_READ_TIMEOUT`, padrão `PT60S`
+- `SPORTS_EVENT_CACHE_TTL`, padrão `PT1H`
+- `SPORTS_TEAM_CACHE_TTL`, padrão `PT1H`
+- `SPORTS_SNAPSHOT_CACHE_TTL`, padrão `PT10M`
+- `SPORTS_CACHE_MAX_ENTRIES`, padrão `2000` por cache
+- `SPORTS_INCLUDE_PERSONAL_DATA`, padrão `false`
 
-Endpoints esperados:
+Rotas consumidas no scraper:
 
-| Método | Caminho | Parâmetros |
+| Método | Caminho | Uso |
 | --- | --- | --- |
-| `GET` | `/api/v1/catalog/categories` | — |
-| `GET` | `/api/v1/catalog/divisions` | `categoryId` |
-| `GET` | `/api/v1/catalog/teams` | `categoryId`, `divisionId` |
-| `GET` | `/api/v1/matches/played` | `categoryId`, `divisionId`, `teamId?` |
-| `GET` | `/api/v1/matches/upcoming` | `categoryId`, `divisionId`, `teamId?` |
-| `GET` | `/api/v1/standings` | `categoryId`, `divisionId`, `teamId?` |
-| `GET` | `/api/v1/top-scorers` | `categoryId`, `divisionId`, `teamId?` |
+| `GET` | `/api/v1/events/search` | Pesquisa por temporada, título, divisão e categoria |
+| `GET` | `/api/v1/events/{eventId}` | Metadados da competição |
+| `GET` | `/api/v1/events/{eventId}/teams` | Equipes participantes |
+| `GET` | `/api/v1/events/{eventId}/snapshot` | Jogos, classificação, equipes e artilharia |
+| `GET` | `/api/v1/events/{eventId}/scorers` | Nomes de atletas, somente quando habilitados |
 
-Exemplo de partida:
+O backend converte o snapshot do scraper para seu contrato próprio. Nomes de equipes são normalizados para recuperar `teamId`, jogos são separados entre `FINISHED` e `SCHEDULED`, datas locais são convertidas usando `APP_TIMEZONE` e métricas ausentes permanecem nulas.
+
+Exemplo normalizado de partida:
 
 ```json
 {
-  "id": "match-123",
-  "competitionName": "Campeonato Metropolitano",
-  "categoryId": "sub-13",
-  "categoryName": "Sub-13",
-  "divisionId": "especial",
-  "divisionName": "Divisão Especial",
-  "round": "5ª rodada",
+  "id": "12345",
+  "eventId": 917,
+  "competitionName": "Campeonato Paulista",
+  "season": 2026,
+  "category": "Principal",
+  "division": "A1",
+  "phase": "1ª Fase",
   "homeTeam": {
-    "id": "corinthians",
-    "name": "Sport Club Corinthians Paulista",
-    "shortName": "Corinthians",
-    "logoUrl": "https://cdn.example.com/corinthians.png"
+    "id": "10970",
+    "name": "Time A",
+    "shortName": null,
+    "logoUrl": "https://eventos.admfutsal.com.br/time-a.png"
   },
   "awayTeam": {
-    "id": "magnus",
-    "name": "Magnus Futsal",
-    "shortName": "Magnus",
-    "logoUrl": "https://cdn.example.com/magnus.png"
+    "id": "10971",
+    "name": "Time B",
+    "shortName": null,
+    "logoUrl": "https://eventos.admfutsal.com.br/time-b.png"
   },
   "homeScore": 3,
   "awayScore": 2,
-  "scheduledAt": "2026-08-08T18:00:00Z",
+  "scheduledAt": "2026-04-10T22:30:00Z",
   "status": "FINISHED",
-  "venue": "Ginásio A"
+  "walkover": false,
+  "venue": "Ginásio A",
+  "matchSheetUrl": "https://admfutsal.com.br/sumula_online/sumula_imprimir.php?id_jogo=12345"
 }
 ```
 
-Exemplo de classificação:
+A atualização ocorre exclusivamente pelos TTLs do cache Caffeine local. As entradas não são compartilhadas
+entre instâncias e são descartadas quando a aplicação reinicia; a consulta seguinte recarrega os dados do scraper.
 
-```json
-{
-  "position": 1,
-  "team": { "id": "corinthians", "name": "Corinthians", "shortName": "COR", "logoUrl": null },
-  "played": 8,
-  "wins": 7,
-  "draws": 1,
-  "losses": 0,
-  "goalsFor": 35,
-  "goalsAgainst": 12,
-  "goalDifference": 23,
-  "points": 22
-}
-```
+### Diagnóstico de falhas
 
-Exemplo de artilharia:
+Toda resposta de erro contém `requestId`, também devolvido no header `X-Request-ID`. Use esse valor para localizar o log correspondente, que registra a operação do scraper, `eventId` ou temporada, status HTTP externo e tipos das exceções, sem registrar o corpo da resposta externa.
 
-```json
-{
-  "position": 1,
-  "athleteId": "athlete-88",
-  "athleteName": "Atleta Exemplo",
-  "team": { "id": "corinthians", "name": "Corinthians", "shortName": "COR", "logoUrl": null },
-  "goals": 14,
-  "matches": 8
-}
-```
-
-### Notificação de jogo concluído
-
-Depois de persistir um jogo como encerrado e recalcular os dados, o scraper chama:
-
-```http
-POST /api/v1/internal/sports/match-completed
-X-Internal-Api-Key: <INTERNAL_API_KEY>
-Content-Type: application/json
-```
-
-```json
-{
-  "eventId": "b1304767-66fa-4300-b680-a7d0d62514b1",
-  "categoryId": "sub-13",
-  "divisionId": "especial",
-  "teamIds": ["corinthians", "magnus"],
-  "occurredAt": "2026-08-08T19:40:00Z"
-}
-```
-
-O `eventId` deve permanecer igual em retries. O scraper só deve considerar a entrega concluída após resposta `202`.
+| Situação | Status da API | Código |
+| --- | --- | --- |
+| Filtro rejeitado pelo scraper | `400` | `SPORTS_FILTER_INVALID` |
+| Competição inexistente | `404` | `SPORTS_EVENT_NOT_FOUND` |
+| Payload ou JSON inválido | `502` | `SPORTS_DATA_INVALID` |
+| Acesso recusado | `503` | `SPORTS_API_ACCESS_DENIED` |
+| Limite externo atingido | `503` | `SPORTS_API_RATE_LIMITED` |
+| Conexão ou serviço externo indisponível | `503` | `SPORTS_API_CONNECTION_FAILED` ou `SPORTS_DATA_UNAVAILABLE` |
+| Timeout externo | `504` | `SPORTS_API_TIMEOUT` |
 
 ## API de notícias
 
 Configuração:
 
 - `NEWS_API_BASE_URL`
-- `NEWS_API_KEY`, enviado como `X-Api-Key` quando preenchido
 
 Endpoints esperados:
 

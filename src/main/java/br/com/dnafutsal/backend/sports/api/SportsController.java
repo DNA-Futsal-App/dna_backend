@@ -7,13 +7,18 @@ import br.com.dnafutsal.backend.sports.domain.MatchView;
 import br.com.dnafutsal.backend.sports.domain.SportsFilter;
 import br.com.dnafutsal.backend.sports.domain.StandingView;
 import br.com.dnafutsal.backend.sports.domain.TopScorerView;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Validated
@@ -33,34 +38,48 @@ public class SportsController {
     }
 
     @GetMapping("/matches/played")
-    List<MatchView> played(@RequestParam(required = false) @Size(max = 100) String categoryId,
-                           @RequestParam(required = false) @Size(max = 100) String divisionId,
-                           @RequestParam(required = false) @Size(max = 100) String teamId) {
-        return sports.playedMatches(resolve(categoryId, divisionId, teamId));
+    List<MatchView> played(
+            @RequestParam(required = false) @Positive Long eventId,
+            @RequestParam(required = false) @Size(max = 100) String teamId,
+            @RequestParam(required = false) @Size(max = 150) String phase,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to
+    ) {
+        return sports.playedMatches(resolve(eventId, teamId), phase, from, to);
     }
 
     @GetMapping("/matches/upcoming")
-    List<MatchView> upcoming(@RequestParam(required = false) @Size(max = 100) String categoryId,
-                             @RequestParam(required = false) @Size(max = 100) String divisionId,
-                             @RequestParam(required = false) @Size(max = 100) String teamId) {
-        return sports.upcomingMatches(resolve(categoryId, divisionId, teamId));
+    List<MatchView> upcoming(
+            @RequestParam(required = false) @Positive Long eventId,
+            @RequestParam(required = false) @Size(max = 100) String teamId,
+            @RequestParam(required = false) @Size(max = 150) String phase,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to
+    ) {
+        return sports.upcomingMatches(resolve(eventId, teamId), phase, from, to);
     }
 
     @GetMapping("/standings")
-    List<StandingView> standings(@RequestParam(required = false) @Size(max = 100) String categoryId,
-                                 @RequestParam(required = false) @Size(max = 100) String divisionId,
-                                 @RequestParam(required = false) @Size(max = 100) String teamId) {
-        return sports.standings(resolve(categoryId, divisionId, teamId));
+    List<StandingView> standings(
+            @RequestParam(required = false) @Positive Long eventId,
+            @RequestParam(required = false) @Size(max = 100) String teamId,
+            @RequestParam(required = false) @Size(max = 150) String phase,
+            @RequestParam(required = false) @Size(max = 150) String group
+    ) {
+        return sports.standings(resolve(eventId, teamId), phase, group);
     }
 
     @GetMapping("/top-scorers")
-    List<TopScorerView> topScorers(@RequestParam(required = false) @Size(max = 100) String categoryId,
-                                   @RequestParam(required = false) @Size(max = 100) String divisionId,
-                                   @RequestParam(required = false) @Size(max = 100) String teamId) {
-        return sports.topScorers(resolve(categoryId, divisionId, teamId));
+    List<TopScorerView> topScorers(
+            @RequestParam(required = false) @Positive Long eventId,
+            @RequestParam(required = false) @Size(max = 100) String teamId,
+            @RequestParam(required = false) @Size(max = 150) String phase,
+            @RequestParam(defaultValue = "100") @Min(1) @Max(500) int limit
+    ) {
+        return sports.topScorers(resolve(eventId, teamId), phase, limit);
     }
 
-    private SportsFilter resolve(String categoryId, String divisionId, String teamId) {
-        return filters.resolve(currentUser.userId(), categoryId, divisionId, teamId);
+    private SportsFilter resolve(Long eventId, String teamId) {
+        return filters.resolve(currentUser.userId(), eventId, teamId);
     }
 }
