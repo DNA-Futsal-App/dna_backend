@@ -82,7 +82,7 @@ app:
       team-cache-ttl: ${SPORTS_TEAM_CACHE_TTL:PT1H}
       snapshot-cache-ttl: ${SPORTS_SNAPSHOT_CACHE_TTL:PT10M}
       include-personal-data: ${SPORTS_INCLUDE_PERSONAL_DATA:true}
-      api-key: ${SPORTS_API_KEY:}
+      api-key: ${SPORTS_API_KEY:123456789}
     news:
       base-url: ${NEWS_API_BASE_URL:http://localhost:8091}
   mail-delivery:

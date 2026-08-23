@@ -64,16 +64,6 @@ public class HttpSportsDataGateway implements SportsDataGateway {
                 .requestFactory(requestFactory)
                 .baseUrl(sports.baseUrl());
 
-        if (
-                sports.apiKey() != null &&
-                        !sports.apiKey().isBlank()
-        ) {
-            clientBuilder.defaultHeader(
-                    "X-API-Key",
-                    sports.apiKey()
-            );
-        }
-
         return clientBuilder.build();
     }
 
