@@ -18,8 +18,36 @@ public record IntegrationProperties(@NotNull SportsEndpoint sports, @NotNull End
             @NotNull Duration eventCacheTtl,
             @NotNull Duration teamCacheTtl,
             @NotNull Duration snapshotCacheTtl,
-            boolean includePersonalData
+            boolean includePersonalData,
+            String apiKey
     ) {
+
+        public SportsEndpoint {
+            apiKey = apiKey == null
+                    ? ""
+                    : apiKey.trim();
+        }
+
+        public SportsEndpoint(
+                String baseUrl,
+                Duration connectTimeout,
+                Duration readTimeout,
+                Duration eventCacheTtl,
+                Duration teamCacheTtl,
+                Duration snapshotCacheTtl,
+                boolean includePersonalData
+        ) {
+            this(
+                    baseUrl,
+                    connectTimeout,
+                    readTimeout,
+                    eventCacheTtl,
+                    teamCacheTtl,
+                    snapshotCacheTtl,
+                    includePersonalData,
+                    ""
+            );
+        }
     }
 
     public record Endpoint(@NotBlank String baseUrl) {
