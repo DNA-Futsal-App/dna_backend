@@ -8,6 +8,8 @@ import br.com.dnafutsal.backend.sports.domain.SportsEventSearch;
 import br.com.dnafutsal.backend.sports.domain.SportsEventView;
 import br.com.dnafutsal.backend.sports.domain.SportsSnapshot;
 import br.com.dnafutsal.backend.sports.domain.TeamView;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
@@ -31,6 +33,7 @@ public class HttpSportsDataGateway implements SportsDataGateway {
     private final RestClient client;
     private final SportsScraperMapper mapper;
     private final boolean includePersonalData;
+    private static final Logger log = LoggerFactory.getLogger(HttpSportsDataGateway.class);
 
     @Autowired
     public HttpSportsDataGateway(RestClient.Builder builder, IntegrationProperties properties,
@@ -62,7 +65,24 @@ public class HttpSportsDataGateway implements SportsDataGateway {
 
         RestClient.Builder clientBuilder = builder.clone()
                 .requestFactory(requestFactory)
-                .baseUrl(sports.baseUrl());
+                .baseUrl(sports.baseUrl())
+                .requestInterceptor((request, body, execution) -> {
+                    log.info(
+                            "Sports scraper request method={} uri={}",
+                            request.getMethod(),
+                            request.getURI()
+                    );
+
+                    var response = execution.execute(request, body);
+
+                    log.info(
+                            "Sports scraper response status={} uri={}",
+                            response.getStatusCode(),
+                            request.getURI()
+                    );
+
+                    return response;
+                });
 
         return clientBuilder.build();
     }
