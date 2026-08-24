@@ -45,16 +45,26 @@ public class HttpSportsDataGateway implements SportsDataGateway {
         this.includePersonalData = includePersonalData;
     }
 
-    private static RestClient createClient(RestClient.Builder builder,
-                                           IntegrationProperties.SportsEndpoint sports) {
-        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
-        requestFactory.setConnectTimeout(sports.connectTimeout());
-        requestFactory.setReadTimeout(sports.readTimeout());
+    private static RestClient createClient(
+            RestClient.Builder builder,
+            IntegrationProperties.SportsEndpoint sports
+    ) {
+        SimpleClientHttpRequestFactory requestFactory =
+                new SimpleClientHttpRequestFactory();
 
-        return builder.clone()
+        requestFactory.setConnectTimeout(
+                sports.connectTimeout()
+        );
+
+        requestFactory.setReadTimeout(
+                sports.readTimeout()
+        );
+
+        RestClient.Builder clientBuilder = builder.clone()
                 .requestFactory(requestFactory)
-                .baseUrl(sports.baseUrl())
-                .build();
+                .baseUrl(sports.baseUrl());
+
+        return clientBuilder.build();
     }
 
     @Override

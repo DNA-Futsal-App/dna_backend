@@ -20,6 +20,9 @@ public record IntegrationProperties(@NotNull SportsEndpoint sports, @NotNull End
             @NotNull Duration snapshotCacheTtl,
             boolean includePersonalData
     ) {
+
+
+
     }
 
     public record Endpoint(@NotBlank String baseUrl) {
