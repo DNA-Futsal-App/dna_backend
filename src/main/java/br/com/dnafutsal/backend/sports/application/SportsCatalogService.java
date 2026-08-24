@@ -1,14 +1,12 @@
 package br.com.dnafutsal.backend.sports.application;
 
 import br.com.dnafutsal.backend.common.Errors;
-import br.com.dnafutsal.backend.sports.domain.SportsDataGateway;
-import br.com.dnafutsal.backend.sports.domain.SportsEventSearch;
-import br.com.dnafutsal.backend.sports.domain.SportsEventView;
-import br.com.dnafutsal.backend.sports.domain.TeamView;
+import br.com.dnafutsal.backend.sports.domain.*;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Objects;
 
 @Service
 public class SportsCatalogService {
@@ -42,5 +40,66 @@ public class SportsCatalogService {
         if (search.category() != null && (search.title() == null || search.division() == null)) {
             throw Errors.badRequest("SPORTS_FILTER_INVALID", "Informe título e divisão antes da categoria.");
         }
+    }
+
+    public List<CatalogItemView> categories(int season) {
+        return toCatalogItems(
+                search(
+                        new SportsEventSearch(
+                                season,
+                                null,
+                                null,
+                                null
+                        )
+                ).stream()
+                        .map(SportsEventView::category)
+                        .toList()
+        );
+    }
+
+    public List<CatalogItemView> divisions(
+            int season,
+            String category
+    ) {
+        return toCatalogItems(
+                search(
+                        new SportsEventSearch(
+                                season,
+                                null,
+                                null,
+                                category
+                        )
+                ).stream()
+                        .map(SportsEventView::division)
+                        .toList()
+        );
+    }
+
+    public List<SportsEventView> events(
+            int season,
+            String category,
+            String division
+    ) {
+        return search(
+                new SportsEventSearch(
+                        season,
+                        null,
+                        division,
+                        category
+                )
+        );
+    }
+
+    private List<CatalogItemView> toCatalogItems(
+            List<String> values
+    ) {
+        return values.stream()
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(value -> !value.isBlank())
+                .distinct()
+                .sorted(String.CASE_INSENSITIVE_ORDER)
+                .map(value -> new CatalogItemView(value, value))
+                .toList();
     }
 }
