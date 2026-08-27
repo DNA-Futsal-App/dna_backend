@@ -120,7 +120,7 @@ Em produção, Brevo e SMTP devem ser infraestruturas independentes. Configurar 
 ## Segurança e LGPD
 
 - Use TLS em todas as conexões externas e mantenha o PostgreSQL privado.
-- Rotacione `JWT_SECRET`, chaves internas e credenciais de provedores por secret manager.
+- Rotacione `JWT_SECRET` e credenciais de provedores por secret manager.
 - O Instagram do filho é dado pessoal de menor. Ele não aparece em endpoints esportivos nem em logs, mas a base legal, consentimento verificável do responsável, retenção e exclusão precisam ser definidos com jurídico antes do lançamento.
 - O conteúdo de e-mails pendentes contém links temporários e fica no banco somente até envio ou esgotamento das tentativas; restrinja acesso à tabela `mail_outbox`.
 - Configure alertas para mensagens `DEAD`, falhas da API esportiva, falhas da API de notícias e crescimento de respostas `401/429`.

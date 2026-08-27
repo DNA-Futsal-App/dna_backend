@@ -1,0 +1,102 @@
+spring:
+  application:
+    name: dna-futsal-backend
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/dna_futsal}
+    username: ${DATABASE_USERNAME:dna_futsal}
+    password: ${DATABASE_PASSWORD:dna_futsal}
+    hikari:
+      maximum-pool-size: ${DB_MAX_POOL_SIZE:10}
+      minimum-idle: ${DB_MIN_IDLE:2}
+      connection-timeout: 25000
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+        default_batch_fetch_size: 50
+  flyway:
+    enabled: true
+  mail:
+    host: ${SMTP_HOST:localhost}
+    port: ${SMTP_PORT:1025}
+    username: ${SMTP_USERNAME:}
+    password: ${SMTP_PASSWORD:}
+    properties:
+      mail.smtp.auth: ${SMTP_AUTH:false}
+      mail.smtp.starttls.enable: ${SMTP_STARTTLS:false}
+      mail.smtp.starttls.required: ${SMTP_STARTTLS:false}
+      mail.smtp.connectiontimeout: 5000
+      mail.smtp.timeout: 8000
+      mail.smtp.writetimeout: 8000
+  jackson:
+    default-property-inclusion: non_null
+    time-zone: UTC
+  web:
+    error:
+      include-message: never
+      include-stacktrace: never
+
+server:
+  port: ${PORT:8080}
+  shutdown: graceful
+  forward-headers-strategy: framework
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+app:
+  frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:3000}
+  cors-allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
+  timezone: ${APP_TIMEZONE:America/Sao_Paulo}
+  cache:
+    sports-max-entries: ${SPORTS_CACHE_MAX_ENTRIES:2000}
+    identity-max-entries: ${IDENTITY_CACHE_MAX_ENTRIES:10000}
+    login-attempt-max-entries: ${LOGIN_ATTEMPT_CACHE_MAX_ENTRIES:50000}
+  security:
+    jwt-secret: ${JWT_SECRET:REPLACE_WITH_AT_LEAST_64_RANDOM_CHARACTERS_BEFORE_PRODUCTION_1234567890}
+    access-token-ttl: ${ACCESS_TOKEN_TTL:PT15M}
+    refresh-token-ttl: ${REFRESH_TOKEN_TTL:P30D}
+    email-verification-ttl: ${EMAIL_VERIFICATION_TTL:PT24H}
+    password-reset-ttl: ${PASSWORD_RESET_TTL:PT30M}
+  integrations:
+    sports:
+      base-url: ${SPORTS_API_BASE_URL:https://dna-scrapper.onrender.com}
+      connect-timeout: ${SPORTS_CONNECT_TIMEOUT:PT5S}
+      read-timeout: ${SPORTS_READ_TIMEOUT:PT60S}
+      event-cache-ttl: ${SPORTS_EVENT_CACHE_TTL:PT1H}
+      team-cache-ttl: ${SPORTS_TEAM_CACHE_TTL:PT1H}
+      snapshot-cache-ttl: ${SPORTS_SNAPSHOT_CACHE_TTL:PT10M}
+      include-personal-data: ${SPORTS_INCLUDE_PERSONAL_DATA:true}
+      api-key: ${SPORTS_API_KEY:123456789}
+    news:
+      base-url: ${NEWS_API_BASE_URL:http://localhost:8091}
+  mail-delivery:
+    from-email: ${MAIL_FROM_EMAIL:no-reply@dnafutsal.com.br}
+    from-name: ${MAIL_FROM_NAME:DNA Futsal}
+    brevo-enabled: ${BREVO_ENABLED:false}
+    brevo-api-url: ${BREVO_API_URL:https://api.brevo.com/v3}
+    brevo-api-key: ${BREVO_API_KEY:}
+    outbox-delay: ${MAIL_OUTBOX_DELAY:15000}
+    max-attempts: ${MAIL_MAX_ATTEMPTS:10}
+
+logging:
+  level:
+    root: INFO
+    br.com.dnafutsal: INFO
+  pattern:
+    level: "%5p [${spring.application.name:},requestId=%X{requestId:-},traceId=%X{traceId:-},spanId=%X{spanId:-}]"
