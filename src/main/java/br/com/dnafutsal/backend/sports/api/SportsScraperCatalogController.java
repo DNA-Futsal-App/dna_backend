@@ -1,8 +1,10 @@
 package br.com.dnafutsal.backend.sports.api;
 
 import br.com.dnafutsal.backend.sports.application.SportsCatalogService;
-import br.com.dnafutsal.backend.sports.domain.SportsCatalogOption;
-import br.com.dnafutsal.backend.sports.domain.SportsResultsView;
+import br.com.dnafutsal.backend.sports.domain.CatalogCategoryView;
+import br.com.dnafutsal.backend.sports.domain.CatalogItemView;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import org.springframework.validation.annotation.Validated;
@@ -25,22 +27,21 @@ public class SportsScraperCatalogController {
     }
 
     @GetMapping("/divisions")
-    List<SportsCatalogOption> divisions() {
-        return catalog.divisions();
+    List<CatalogItemView> divisions(
+            @RequestParam @NotBlank Integer season
+    ) {
+        return catalog.divisions(season);
     }
 
     @GetMapping("/categories")
-    List<SportsCatalogOption> categories(
-            @RequestParam @NotBlank @Size(max = 100) String division
+    List<CatalogCategoryView> categories(
+            @RequestParam
+            @Min(2016)
+            @Max(2100)
+            int season,
+            @RequestParam @NotBlank @Size(max = 100) Integer division
     ) {
-        return catalog.categories(division);
+        return catalog.categories(season,division);
     }
 
-    @GetMapping
-    SportsResultsView results(
-            @RequestParam @NotBlank @Size(max = 100) String division,
-            @RequestParam @NotBlank @Size(max = 100) String category
-    ) {
-        return catalog.results(division, category);
-    }
 }

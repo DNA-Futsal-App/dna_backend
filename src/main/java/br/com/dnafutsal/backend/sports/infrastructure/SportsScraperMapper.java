@@ -52,7 +52,7 @@ class SportsScraperMapper {
         }
 
         return new CatalogItemView(
-                Long.toString(source.id()),
+                source.id(),
                 source.name().trim()
         );
     }
@@ -74,7 +74,7 @@ class SportsScraperMapper {
         }
 
         return new CatalogCategoryView(
-                Long.toString(source.id()),
+                source.id(),
                 source.name().trim(),
                 source.eventId()
         );
