@@ -9,6 +9,8 @@ import br.com.dnafutsal.backend.sports.domain.StandingView;
 import br.com.dnafutsal.backend.sports.domain.TeamView;
 import br.com.dnafutsal.backend.sports.domain.TopScorerView;
 import org.springframework.stereotype.Component;
+import br.com.dnafutsal.backend.sports.domain.CatalogCategoryView;
+import br.com.dnafutsal.backend.sports.domain.CatalogItemView;
 
 import java.nio.charset.StandardCharsets;
 import java.text.Normalizer;
@@ -32,6 +34,50 @@ class SportsScraperMapper {
     SportsScraperMapper(AppProperties properties, Clock clock) {
         this.zoneId = properties.zoneId();
         this.clock = clock;
+    }
+
+    CatalogItemView catalogItem(
+            ScraperCatalogOption source
+    ) {
+        if (
+                source == null ||
+                        source.id() <= 0 ||
+                        source.name() == null ||
+                        source.name().isBlank()
+        ) {
+            throw Errors.badGateway(
+                    "SPORTS_DATA_INVALID",
+                    "A fonte de dados esportivos retornou uma divisão inválida."
+            );
+        }
+
+        return new CatalogItemView(
+                Long.toString(source.id()),
+                source.name().trim()
+        );
+    }
+
+    CatalogCategoryView catalogCategory(
+            ScraperCatalogCategory source
+    ) {
+        if (
+                source == null ||
+                        source.id() <= 0 ||
+                        source.eventId() <= 0 ||
+                        source.name() == null ||
+                        source.name().isBlank()
+        ) {
+            throw Errors.badGateway(
+                    "SPORTS_DATA_INVALID",
+                    "A fonte de dados esportivos retornou uma categoria inválida."
+            );
+        }
+
+        return new CatalogCategoryView(
+                Long.toString(source.id()),
+                source.name().trim(),
+                source.eventId()
+        );
     }
 
     SportsEventView event(ScraperEvent source) {

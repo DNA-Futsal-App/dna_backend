@@ -31,12 +31,44 @@ public class CacheConfiguration {
 
         SimpleCacheManager manager = new SimpleCacheManager();
         manager.setCaches(List.of(
-                expiringCache("sports-events", integrations.sports().eventCacheTtl(), sportsMaxEntries),
-                expiringCache("sports-event", integrations.sports().eventCacheTtl(), sportsMaxEntries),
-                expiringCache("sports-teams", integrations.sports().teamCacheTtl(), sportsMaxEntries),
-                expiringCache("sports-snapshot", integrations.sports().snapshotCacheTtl(), sportsMaxEntries),
-                boundedCache("user-profile", identityMaxEntries),
-                boundedCache("user-security", identityMaxEntries)
+                expiringCache(
+                        "sports-catalog-divisions",
+                        integrations.sports().eventCacheTtl(),
+                        sportsMaxEntries
+                ),
+                expiringCache(
+                        "sports-catalog-categories",
+                        integrations.sports().eventCacheTtl(),
+                        sportsMaxEntries
+                ),
+                expiringCache(
+                        "sports-events",
+                        integrations.sports().eventCacheTtl(),
+                        sportsMaxEntries
+                ),
+                expiringCache(
+                        "sports-event",
+                        integrations.sports().eventCacheTtl(),
+                        sportsMaxEntries
+                ),
+                expiringCache(
+                        "sports-teams",
+                        integrations.sports().teamCacheTtl(),
+                        sportsMaxEntries
+                ),
+                expiringCache(
+                        "sports-snapshot",
+                        integrations.sports().snapshotCacheTtl(),
+                        sportsMaxEntries
+                ),
+                boundedCache(
+                        "user-profile",
+                        identityMaxEntries
+                ),
+                boundedCache(
+                        "user-security",
+                        identityMaxEntries
+                )
         ));
         return manager;
     }

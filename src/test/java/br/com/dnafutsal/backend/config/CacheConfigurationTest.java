@@ -18,8 +18,10 @@ class CacheConfigurationTest {
         SimpleCacheManager manager = (SimpleCacheManager) configuration.cacheManager();
         manager.initializeCaches();
 
+
+
         assertThat(manager.getCacheNames()).containsExactlyInAnyOrder(
-                "sports-events", "sports-event", "sports-teams", "sports-snapshot",
+                "sports-catalog-divisions","sports-catalog-categories","sports-events", "sports-event", "sports-teams", "sports-snapshot",
                 "user-profile", "user-security");
         assertPolicy(manager, "sports-events", 2_000, Duration.ofHours(1));
         assertPolicy(manager, "sports-event", 2_000, Duration.ofHours(1));

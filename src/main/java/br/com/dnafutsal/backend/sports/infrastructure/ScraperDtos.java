@@ -81,3 +81,16 @@ record ScraperSnapshot(
         Instant collectedAt
 ) {
 }
+
+record ScraperCatalogOption(
+        long id,
+        String name
+) {
+}
+
+record ScraperCatalogCategory(
+        long id,
+        String name,
+        long eventId
+) {
+}

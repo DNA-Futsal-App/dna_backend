@@ -54,6 +54,11 @@ class HttpSportsDataGatewayTest {
         when(configured.requestFactory(any(ClientHttpRequestFactory.class))).thenReturn(configured);
         when(configured.baseUrl(BASE_URL)).thenReturn(configured);
         when(configured.build()).thenReturn(mock(RestClient.class));
+        when(
+                configured.requestInterceptor(
+                        any()
+                )
+        ).thenReturn(configured);
 
         new HttpSportsDataGateway(root, properties(true), mapper);
 
