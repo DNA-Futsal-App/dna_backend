@@ -3,6 +3,7 @@ package br.com.dnafutsal.backend.sports.api;
 import br.com.dnafutsal.backend.sports.application.SportsCatalogService;
 import br.com.dnafutsal.backend.sports.domain.CatalogCategoryView;
 import br.com.dnafutsal.backend.sports.domain.CatalogItemView;
+import br.com.dnafutsal.backend.sports.domain.TeamView;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Positive;
@@ -56,5 +57,14 @@ public class SportsPublicCatalogController {
                 season,
                 divisionId
         );
+    }
+
+    @GetMapping("/teams")
+    List<TeamView> teams(
+            @RequestParam
+            @Positive
+            long eventId
+    ) {
+        return catalog.teams(eventId);
     }
 }
