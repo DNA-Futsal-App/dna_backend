@@ -15,7 +15,7 @@ tags:
 paths:
   /api/v1/auth/register:
     post:
-      tags: [Auth]
+      tags: [ Auth ]
       summary: Cadastra uma conta pendente de confirmação
       requestBody:
         required: true
@@ -32,7 +32,7 @@ paths:
         '409': { $ref: '#/components/responses/Conflict' }
   /api/v1/auth/email-verification/confirm:
     get:
-      tags: [Auth]
+      tags: [ Auth ]
       summary: Confirma o e-mail com token de uso único
       parameters:
         - in: query
@@ -48,7 +48,7 @@ paths:
         '400': { $ref: '#/components/responses/BadRequest' }
   /api/v1/auth/email-verification/resend:
     post:
-      tags: [Auth]
+      tags: [ Auth ]
       summary: Reenvia a confirmação de uma conta pendente
       description: Resposta genérica; considera no máximo três links de confirmação por usuário/dia.
       requestBody:
@@ -57,7 +57,7 @@ paths:
           application/json:
             schema:
               type: object
-              required: [login]
+              required: [ login ]
               properties:
                 login: { type: string, description: E-mail ou telefone, maxLength: 254 }
       responses:
@@ -68,7 +68,7 @@ paths:
               schema: { $ref: '#/components/schemas/MessageResponse' }
   /api/v1/auth/login:
     post:
-      tags: [Auth]
+      tags: [ Auth ]
       summary: Entra com e-mail ou telefone e senha
       requestBody:
         required: true
@@ -86,7 +86,7 @@ paths:
         '429': { $ref: '#/components/responses/TooManyRequests' }
   /api/v1/auth/refresh:
     post:
-      tags: [Auth]
+      tags: [ Auth ]
       summary: Rotaciona o refresh token
       requestBody:
         required: true
@@ -102,7 +102,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
   /api/v1/auth/logout:
     post:
-      tags: [Auth]
+      tags: [ Auth ]
       summary: Revoga um refresh token
       requestBody:
         required: true
@@ -113,7 +113,7 @@ paths:
         '204': { description: Sessão revogada ou já inexistente }
   /api/v1/auth/password-reset/request:
     post:
-      tags: [Auth]
+      tags: [ Auth ]
       summary: Solicita link para redefinir senha
       description: Sempre responde de forma genérica. O limite é de três solicitações por usuário/dia.
       requestBody:
@@ -122,7 +122,7 @@ paths:
           application/json:
             schema:
               type: object
-              required: [login]
+              required: [ login ]
               properties:
                 login: { type: string, maxLength: 254 }
       responses:
@@ -133,7 +133,7 @@ paths:
               schema: { $ref: '#/components/schemas/MessageResponse' }
   /api/v1/auth/password-reset/confirm:
     post:
-      tags: [Auth]
+      tags: [ Auth ]
       summary: Define nova senha com token de uso único
       requestBody:
         required: true
@@ -141,7 +141,7 @@ paths:
           application/json:
             schema:
               type: object
-              required: [token, newPassword]
+              required: [ token, newPassword ]
               properties:
                 token: { type: string, maxLength: 200 }
                 newPassword: { type: string, minLength: 10, maxLength: 72 }
@@ -154,9 +154,9 @@ paths:
         '400': { $ref: '#/components/responses/BadRequest' }
   /api/v1/me:
     get:
-      tags: [Profile]
+      tags: [ Profile ]
       summary: Retorna o perfil autenticado
-      security: [{ bearerAuth: [] }]
+      security: [ { bearerAuth: [ ] } ]
       responses:
         '200':
           description: Perfil
@@ -165,9 +165,9 @@ paths:
               schema: { $ref: '#/components/schemas/UserProfile' }
         '401': { $ref: '#/components/responses/Unauthorized' }
     put:
-      tags: [Profile]
+      tags: [ Profile ]
       summary: Substitui os dados do perfil após validar a senha atual
-      security: [{ bearerAuth: [] }]
+      security: [ { bearerAuth: [ ] } ]
       requestBody:
         required: true
         content:
@@ -252,7 +252,7 @@ paths:
 
   /api/v1/public/events:
     get:
-      tags: [Events]
+      tags: [ Events ]
       summary: Pesquisa competições no scraper
       parameters:
         - in: query
@@ -279,7 +279,7 @@ paths:
         '504': { $ref: '#/components/responses/GatewayTimeout' }
   /api/v1/public/events/{eventId}:
     get:
-      tags: [Events]
+      tags: [ Events ]
       summary: Retorna uma competição
       parameters:
         - { $ref: '#/components/parameters/EventId' }
@@ -296,7 +296,7 @@ paths:
         '504': { $ref: '#/components/responses/GatewayTimeout' }
   /api/v1/public/events/{eventId}/teams:
     get:
-      tags: [Events]
+      tags: [ Events ]
       summary: Lista as equipes da competição
       parameters:
         - { $ref: '#/components/parameters/EventId' }
@@ -315,9 +315,9 @@ paths:
         '504': { $ref: '#/components/responses/GatewayTimeout' }
   /api/v1/matches/played:
     get:
-      tags: [Sports]
+      tags: [ Sports ]
       summary: Lista jogos encerrados
-      security: [{ bearerAuth: [] }]
+      security: [ { bearerAuth: [ ] } ]
       parameters:
         - { $ref: '#/components/parameters/OptionalEventId' }
         - { $ref: '#/components/parameters/OptionalTeamId' }
@@ -340,9 +340,9 @@ paths:
         '504': { $ref: '#/components/responses/GatewayTimeout' }
   /api/v1/matches/upcoming:
     get:
-      tags: [Sports]
+      tags: [ Sports ]
       summary: Lista jogos futuros
-      security: [{ bearerAuth: [] }]
+      security: [ { bearerAuth: [ ] } ]
       parameters:
         - { $ref: '#/components/parameters/OptionalEventId' }
         - { $ref: '#/components/parameters/OptionalTeamId' }
@@ -365,9 +365,9 @@ paths:
         '504': { $ref: '#/components/responses/GatewayTimeout' }
   /api/v1/standings:
     get:
-      tags: [Sports]
+      tags: [ Sports ]
       summary: Retorna classificação
-      security: [{ bearerAuth: [] }]
+      security: [ { bearerAuth: [ ] } ]
       parameters:
         - { $ref: '#/components/parameters/OptionalEventId' }
         - { $ref: '#/components/parameters/OptionalTeamId' }
@@ -391,9 +391,9 @@ paths:
         '504': { $ref: '#/components/responses/GatewayTimeout' }
   /api/v1/top-scorers:
     get:
-      tags: [Sports]
+      tags: [ Sports ]
       summary: Retorna artilharia
-      security: [{ bearerAuth: [] }]
+      security: [ { bearerAuth: [ ] } ]
       parameters:
         - { $ref: '#/components/parameters/OptionalEventId' }
         - { $ref: '#/components/parameters/OptionalTeamId' }
@@ -417,9 +417,9 @@ paths:
         '504': { $ref: '#/components/responses/GatewayTimeout' }
   /api/v1/news:
     get:
-      tags: [News]
+      tags: [ News ]
       summary: Lista notícias publicadas
-      security: [{ bearerAuth: [] }]
+      security: [ { bearerAuth: [ ] } ]
       parameters:
         - in: query
           name: page
@@ -436,9 +436,9 @@ paths:
         '503': { $ref: '#/components/responses/Unavailable' }
   /api/v1/news/{slug}:
     get:
-      tags: [News]
+      tags: [ News ]
       summary: Retorna uma notícia pelo slug
-      security: [{ bearerAuth: [] }]
+      security: [ { bearerAuth: [ ] } ]
       parameters:
         - in: path
           name: slug
@@ -564,36 +564,36 @@ components:
   schemas:
     MessageResponse:
       type: object
-      required: [message]
+      required: [ message ]
       properties:
         message: { type: string }
     RegisterRequest:
       type: object
-      required: [name, email, phone, password]
+      required: [ name, email, phone, password ]
       properties:
         name: { type: string, minLength: 2, maxLength: 120 }
         email: { type: string, format: email, maxLength: 254 }
         phone: { type: string, example: '(11) 98765-4321' }
         password: { type: string, format: password, minLength: 10, maxLength: 72 }
-        childInstagram: { type: [string, 'null'], example: '@atleta' }
-        eventId: { type: [integer, 'null'], format: int64, minimum: 1 }
-        categoryId: { type: [string, 'null'], maxLength: 100 }
-        divisionId: { type: [string, 'null'], maxLength: 100 }
-        teamId: { type: [string, 'null'], maxLength: 100 }
+        childInstagram: { type: [ string, 'null' ], example: '@atleta' }
+        eventId: { type: [ integer, 'null' ], format: int64, minimum: 1 }
+        categoryId: { type: [ string, 'null' ], maxLength: 100 }
+        divisionId: { type: [ string, 'null' ], maxLength: 100 }
+        teamId: { type: [ string, 'null' ], maxLength: 100 }
     LoginRequest:
       type: object
-      required: [login, password]
+      required: [ login, password ]
       properties:
         login: { type: string, description: E-mail ou telefone }
         password: { type: string, format: password }
     RefreshTokenRequest:
       type: object
-      required: [refreshToken]
+      required: [ refreshToken ]
       properties:
         refreshToken: { type: string, maxLength: 200 }
     AuthResponse:
       type: object
-      required: [tokenType, accessToken, expiresIn, refreshToken, user]
+      required: [ tokenType, accessToken, expiresIn, refreshToken, user ]
       properties:
         tokenType: { type: string, const: Bearer }
         accessToken: { type: string }
@@ -602,53 +602,53 @@ components:
         user: { $ref: '#/components/schemas/UserProfile' }
     UserProfile:
       type: object
-      required: [id, name, email, phone, emailVerified, createdAt]
+      required: [ id, name, email, phone, emailVerified, createdAt ]
       properties:
         id: { type: string, format: uuid }
         name: { type: string }
         email: { type: string, format: email }
         phone: { type: string, example: '+5511987654321' }
-        childInstagram: { type: [string, 'null'] }
-        eventId: { type: [integer, 'null'], format: int64 }
-        categoryId: { type: [string, 'null'] }
-        divisionId: { type: [string, 'null'] }
-        teamId: { type: [string, 'null'] }
+        childInstagram: { type: [ string, 'null' ] }
+        eventId: { type: [ integer, 'null' ], format: int64 }
+        categoryId: { type: [ string, 'null' ] }
+        divisionId: { type: [ string, 'null' ] }
+        teamId: { type: [ string, 'null' ] }
         emailVerified: { type: boolean }
         createdAt: { type: string, format: date-time }
     UpdateProfileRequest:
       type: object
-      required: [name, email, phone, currentPassword]
+      required: [ name, email, phone, currentPassword ]
       properties:
         name: { type: string, minLength: 2, maxLength: 120 }
         email: { type: string, format: email, maxLength: 254 }
         phone: { type: string, maxLength: 30, example: '(11) 98765-4321' }
-        childInstagram: { type: [string, 'null'], example: '@atleta' }
-        eventId: { type: [integer, 'null'], format: int64, minimum: 1 }
-        categoryId: { type: [string, 'null'], maxLength: 100 }
-        divisionId: { type: [string, 'null'], maxLength: 100 }
-        teamId: { type: [string, 'null'], maxLength: 100 }
+        childInstagram: { type: [ string, 'null' ], example: '@atleta' }
+        eventId: { type: [ integer, 'null' ], format: int64, minimum: 1 }
+        categoryId: { type: [ string, 'null' ], maxLength: 100 }
+        divisionId: { type: [ string, 'null' ], maxLength: 100 }
+        teamId: { type: [ string, 'null' ], maxLength: 100 }
         currentPassword: { type: string, format: password, maxLength: 72 }
     SportsEvent:
       type: object
-      required: [eventId, title, season, category, division]
+      required: [ eventId, title, season, category, division ]
       properties:
         eventId: { type: integer, format: int64 }
         title: { type: string }
         season: { type: integer }
         category: { type: string }
         division: { type: string }
-        sourceUrl: { type: [string, 'null'], format: uri }
+        sourceUrl: { type: [ string, 'null' ], format: uri }
     Team:
       type: object
-      required: [id, name]
+      required: [ id, name ]
       properties:
         id: { type: string }
         name: { type: string }
-        shortName: { type: [string, 'null'] }
-        logoUrl: { type: [string, 'null'], format: uri }
+        shortName: { type: [ string, 'null' ] }
+        logoUrl: { type: [ string, 'null' ], format: uri }
     Match:
       type: object
-      required: [id, eventId, competitionName, season, category, division, homeTeam, awayTeam, status, walkover]
+      required: [ id, eventId, competitionName, season, category, division, homeTeam, awayTeam, status, walkover ]
       properties:
         id: { type: string }
         eventId: { type: integer, format: int64 }
@@ -656,62 +656,62 @@ components:
         season: { type: integer }
         category: { type: string }
         division: { type: string }
-        phase: { type: [string, 'null'] }
+        phase: { type: [ string, 'null' ] }
         homeTeam: { $ref: '#/components/schemas/Team' }
         awayTeam: { $ref: '#/components/schemas/Team' }
-        homeScore: { type: [integer, 'null'] }
-        awayScore: { type: [integer, 'null'] }
-        scheduledAt: { type: [string, 'null'], format: date-time }
-        status: { type: string, enum: [FINISHED, SCHEDULED] }
+        homeScore: { type: [ integer, 'null' ] }
+        awayScore: { type: [ integer, 'null' ] }
+        scheduledAt: { type: [ string, 'null' ], format: date-time }
+        status: { type: string, enum: [ FINISHED, SCHEDULED ] }
         walkover: { type: boolean }
-        venue: { type: [string, 'null'] }
-        matchSheetUrl: { type: [string, 'null'], format: uri }
+        venue: { type: [ string, 'null' ] }
+        matchSheetUrl: { type: [ string, 'null' ], format: uri }
     Standing:
       type: object
-      required: [team]
+      required: [ team ]
       properties:
-        phase: { type: [string, 'null'] }
-        group: { type: [string, 'null'] }
-        position: { type: [integer, 'null'] }
+        phase: { type: [ string, 'null' ] }
+        group: { type: [ string, 'null' ] }
+        position: { type: [ integer, 'null' ] }
         team: { $ref: '#/components/schemas/Team' }
-        played: { type: [integer, 'null'] }
-        wins: { type: [integer, 'null'] }
-        draws: { type: [integer, 'null'] }
-        losses: { type: [integer, 'null'] }
-        goalsFor: { type: [integer, 'null'] }
-        goalsAgainst: { type: [integer, 'null'] }
-        goalDifference: { type: [integer, 'null'] }
-        points: { type: [integer, 'null'] }
-        average: { type: [number, 'null'], format: double }
-        goalsForAverage: { type: [number, 'null'], format: double }
-        goalsAgainstAverage: { type: [number, 'null'], format: double }
-        technicalIndex: { type: [number, 'null'], format: double }
+        played: { type: [ integer, 'null' ] }
+        wins: { type: [ integer, 'null' ] }
+        draws: { type: [ integer, 'null' ] }
+        losses: { type: [ integer, 'null' ] }
+        goalsFor: { type: [ integer, 'null' ] }
+        goalsAgainst: { type: [ integer, 'null' ] }
+        goalDifference: { type: [ integer, 'null' ] }
+        points: { type: [ integer, 'null' ] }
+        average: { type: [ number, 'null' ], format: double }
+        goalsForAverage: { type: [ number, 'null' ], format: double }
+        goalsAgainstAverage: { type: [ number, 'null' ], format: double }
+        technicalIndex: { type: [ number, 'null' ], format: double }
     TopScorer:
       type: object
-      required: [position, team, personalDataSuppressed]
+      required: [ position, team, personalDataSuppressed ]
       properties:
         position: { type: integer }
-        phase: { type: [string, 'null'] }
-        athleteName: { type: [string, 'null'] }
-        athleteImageUrl: { type: [string, 'null'], format: uri }
+        phase: { type: [ string, 'null' ] }
+        athleteName: { type: [ string, 'null' ] }
+        athleteImageUrl: { type: [ string, 'null' ], format: uri }
         team: { $ref: '#/components/schemas/Team' }
-        goals: { type: [integer, 'null'] }
+        goals: { type: [ integer, 'null' ] }
         personalDataSuppressed: { type: boolean }
     NewsArticle:
       type: object
-      required: [id, slug, title, publishedAt]
+      required: [ id, slug, title, publishedAt ]
       properties:
         id: { type: string }
         slug: { type: string }
         title: { type: string }
-        summary: { type: [string, 'null'] }
-        content: { type: [string, 'null'] }
-        coverImageUrl: { type: [string, 'null'], format: uri }
-        authorName: { type: [string, 'null'] }
+        summary: { type: [ string, 'null' ] }
+        content: { type: [ string, 'null' ] }
+        coverImageUrl: { type: [ string, 'null' ], format: uri }
+        authorName: { type: [ string, 'null' ] }
         publishedAt: { type: string, format: date-time }
     NewsPage:
       type: object
-      required: [content, page, size, totalElements, totalPages]
+      required: [ content, page, size, totalElements, totalPages ]
       properties:
         content:
           type: array
@@ -722,7 +722,7 @@ components:
         totalPages: { type: integer }
     Problem:
       type: object
-      required: [title, status, detail, code, timestamp, requestId]
+      required: [ title, status, detail, code, timestamp, requestId ]
       properties:
         type: { type: string, format: uri-reference }
         title: { type: string }
@@ -738,7 +738,7 @@ components:
 
       /api/v1/matches:
         get:
-          tags: [Sports]
+          tags: [ Sports ]
 
           summary: Consulta o calendário esportivo
 
@@ -798,3 +798,116 @@ components:
               type: array
               items:
                 $ref: '#/components/schemas/Match'
+
+        /api/v1/my-team:
+          get:
+            tags: [ Sports ]
+
+            summary: Retorna o resumo do time acompanhado
+
+            parameters:
+              - $ref: '#/components/parameters/OptionalEventId'
+
+              - in: query
+                name: teamId
+                schema:
+                  type: string
+
+            responses:
+              '200':
+                description: Resumo personalizado do time
+
+                content:
+                  application/json:
+                    schema:
+                      $ref: '#/components/schemas/MyTeam'
+        TeamFormResult:
+          type: string
+          enum:
+            - WIN
+            - DRAW
+            - LOSS
+            - UNKNOWN
+
+        MyTeam:
+          type: object
+
+          required:
+            - configured
+            - eventId
+            - season
+            - recentMatches
+            - upcomingMatches
+            - topScorers
+            - recentForm
+
+          properties:
+            configured:
+              type: boolean
+
+            team:
+              oneOf:
+                - $ref: '#/components/schemas/Team'
+                - type: 'null'
+
+            eventId:
+              type: integer
+              format: int64
+
+            competitionName:
+              type:
+                - string
+                - 'null'
+
+            season:
+              type: integer
+
+            category:
+              type:
+                - string
+                - 'null'
+
+            division:
+              type:
+                - string
+                - 'null'
+
+            currentPhase:
+              type:
+                - string
+                - 'null'
+
+            standing:
+              oneOf:
+                - $ref: '#/components/schemas/Standing'
+                - type: 'null'
+
+            latestMatch:
+              oneOf:
+                - $ref: '#/components/schemas/Match'
+                - type: 'null'
+
+            nextMatch:
+              oneOf:
+                - $ref: '#/components/schemas/Match'
+                - type: 'null'
+
+            recentMatches:
+              type: array
+              items:
+                $ref: '#/components/schemas/Match'
+
+            upcomingMatches:
+              type: array
+              items:
+                $ref: '#/components/schemas/Match'
+
+            topScorers:
+              type: array
+              items:
+                $ref: '#/components/schemas/TopScorer'
+
+            recentForm:
+              type: array
+              items:
+                $ref: '#/components/schemas/TeamFormResult'

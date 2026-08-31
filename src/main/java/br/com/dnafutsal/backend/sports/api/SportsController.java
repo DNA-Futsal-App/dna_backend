@@ -1,12 +1,10 @@
 package br.com.dnafutsal.backend.sports.api;
 
 import br.com.dnafutsal.backend.identity.application.CurrentUserService;
+import br.com.dnafutsal.backend.sports.application.MyTeamService;
 import br.com.dnafutsal.backend.sports.application.SportsFilterResolver;
 import br.com.dnafutsal.backend.sports.application.SportsQueryService;
-import br.com.dnafutsal.backend.sports.domain.MatchView;
-import br.com.dnafutsal.backend.sports.domain.SportsFilter;
-import br.com.dnafutsal.backend.sports.domain.StandingView;
-import br.com.dnafutsal.backend.sports.domain.TopScorerView;
+import br.com.dnafutsal.backend.sports.domain.*;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Positive;
@@ -17,7 +15,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import br.com.dnafutsal.backend.sports.domain.MatchCalendarView;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -30,12 +27,15 @@ public class SportsController {
     private final CurrentUserService currentUser;
     private final SportsFilterResolver filters;
     private final SportsQueryService sports;
+    private final MyTeamService myTeam;
 
     public SportsController(CurrentUserService currentUser, SportsFilterResolver filters,
-                            SportsQueryService sports) {
+                            SportsQueryService sports,
+                            MyTeamService myTeam) {
         this.currentUser = currentUser;
         this.filters = filters;
         this.sports = sports;
+        this.myTeam = myTeam;
     }
 
     @GetMapping("/matches/played")
@@ -136,6 +136,24 @@ public class SportsController {
                 currentUser.userId(),
                 eventId,
                 teamId
+        );
+    }
+
+    @GetMapping("/my-team")
+    MyTeamView myTeam(
+            @RequestParam(required = false)
+            @Positive
+            Long eventId,
+
+            @RequestParam(required = false)
+            @Size(max = 100)
+            String teamId
+    ) {
+        return myTeam.get(
+                resolve(
+                        eventId,
+                        teamId
+                )
         );
     }
 }
