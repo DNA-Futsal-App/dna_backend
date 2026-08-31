@@ -13,7 +13,7 @@ Configuração:
 - `SPORTS_TEAM_CACHE_TTL`, padrão `PT1H`
 - `SPORTS_SNAPSHOT_CACHE_TTL`, padrão `PT10M`
 - `SPORTS_CACHE_MAX_ENTRIES`, padrão `2000` por cache
-- `SPORTS_INCLUDE_PERSONAL_DATA`, padrão `false`
+- `SPORTS_INCLUDE_PERSONAL_DATA`, padrão `true`
 
 Rotas consumidas no scraper:
 

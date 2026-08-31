@@ -33,12 +33,14 @@ public class SportsFilterResolver {
         Long profileEventId =
                 profile.eventId();
 
-        long selectedEventId;
+        long selectedEventId =
+                selectEventId(
+                        profile,
+                        requestedEventId
+                );
         boolean canReuseProfileTeam;
 
         if (requestedEventId != null) {
-            selectedEventId =
-                    requestedEventId;
 
             canReuseProfileTeam =
                     Objects.equals(
@@ -55,13 +57,6 @@ public class SportsFilterResolver {
             selectedEventId =
                     defaultEvents
                             .resolveCurrentEventId();
-
-            /*
-             * O usuário não possui evento salvo.
-             * Portanto um teamId antigo do perfil não
-             * pode ser presumido como pertencente ao
-             * evento padrão atual.
-             */
             canReuseProfileTeam =
                     false;
         }
@@ -81,6 +76,41 @@ public class SportsFilterResolver {
                 selectedEventId,
                 selectedTeamId
         );
+    }
+
+    public SportsFilter resolveCompetition(
+            UUID userId,
+            Long requestedEventId,
+            String requestedTeamId
+    ) {
+        UserProfileResponse profile =
+                profiles.get(userId);
+
+        long selectedEventId =
+                selectEventId(
+                        profile,
+                        requestedEventId
+                );
+        return new SportsFilter(
+                selectedEventId,
+                clean(requestedTeamId)
+        );
+    }
+
+    private long selectEventId(
+            UserProfileResponse profile,
+            Long requestedEventId
+    ) {
+        if (requestedEventId != null) {
+            return requestedEventId;
+        }
+
+        if (profile.eventId() != null) {
+            return profile.eventId();
+        }
+
+        return defaultEvents
+                .resolveCurrentEventId();
     }
 
     private String clean(

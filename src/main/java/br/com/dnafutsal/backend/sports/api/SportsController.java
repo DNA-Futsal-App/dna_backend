@@ -74,12 +74,30 @@ public class SportsController {
             @RequestParam(required = false) @Positive Long eventId,
             @RequestParam(required = false) @Size(max = 100) String teamId,
             @RequestParam(required = false) @Size(max = 150) String phase,
-            @RequestParam(defaultValue = "100") @Min(1) @Max(500) int limit
+            @RequestParam(defaultValue = "10") @Min(1) @Max(500) int limit
     ) {
-        return sports.topScorers(resolve(eventId, teamId), phase, limit);
+        return sports.topScorers(
+                resolveCompetition(
+                        eventId,
+                        teamId
+                ),
+                phase,
+                limit
+        );
     }
 
     private SportsFilter resolve(Long eventId, String teamId) {
         return filters.resolve(currentUser.userId(), eventId, teamId);
+    }
+
+    private SportsFilter resolveCompetition(
+            Long eventId,
+            String teamId
+    ) {
+        return filters.resolveCompetition(
+                currentUser.userId(),
+                eventId,
+                teamId
+        );
     }
 }

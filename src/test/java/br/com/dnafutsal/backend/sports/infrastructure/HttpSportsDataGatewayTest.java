@@ -128,7 +128,7 @@ class HttpSportsDataGatewayTest {
                             "player": null,
                             "team": "Time A",
                             "goals": 5,
-                            "personalDataSuppressed": true
+                            "personalDataSuppressed": false
                           }],
                           "collectedAt": "2026-08-15T10:00:00Z"
                         }

@@ -126,6 +126,60 @@ class SportsFilterResolverTest {
     }
 
     @Test
+    void competitionFilterDoesNotReuseProfileTeam() {
+        when(
+                profiles.get(userId)
+        ).thenReturn(
+                profile(
+                        917L,
+                        "10"
+                )
+        );
+
+        var result =
+                resolver.resolveCompetition(
+                        userId,
+                        null,
+                        null
+                );
+
+        assertThat(
+                result.eventId()
+        ).isEqualTo(917);
+
+        assertThat(
+                result.teamId()
+        ).isNull();
+    }
+
+    @Test
+    void competitionFilterAcceptsExplicitTeam() {
+        when(
+                profiles.get(userId)
+        ).thenReturn(
+                profile(
+                        917L,
+                        "10"
+                )
+        );
+
+        var result =
+                resolver.resolveCompetition(
+                        userId,
+                        null,
+                        "20"
+                );
+
+        assertThat(
+                result.eventId()
+        ).isEqualTo(917);
+
+        assertThat(
+                result.teamId()
+        ).isEqualTo("20");
+    }
+
+    @Test
     void acceptsRequestedTeamWithDefaultEvent() {
         when(
                 profiles.get(userId)

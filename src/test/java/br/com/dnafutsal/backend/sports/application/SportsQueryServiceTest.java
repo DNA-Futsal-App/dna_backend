@@ -10,6 +10,8 @@ import br.com.dnafutsal.backend.sports.domain.StandingView;
 import br.com.dnafutsal.backend.sports.domain.TeamView;
 import br.com.dnafutsal.backend.sports.domain.TopScorerView;
 import org.junit.jupiter.api.Test;
+import java.time.Clock;
+import java.time.ZoneOffset;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -23,9 +25,26 @@ import static org.mockito.Mockito.when;
 class SportsQueryServiceTest {
 
     private final SportsSnapshotService snapshots = mock(SportsSnapshotService.class);
-    private final SportsQueryService service = new SportsQueryService(snapshots,
-            new AppProperties("http://localhost:3000", List.of("http://localhost:3000"),
-                    "America/Sao_Paulo"));
+    private final Clock clock =
+            Clock.fixed(
+                    Instant.parse(
+                            "2026-08-31T12:00:00Z"
+                    ),
+                    ZoneOffset.UTC
+            );
+
+    private final SportsQueryService service =
+            new SportsQueryService(
+                    snapshots,
+                    new AppProperties(
+                            "http://localhost:3000",
+                            List.of(
+                                    "http://localhost:3000"
+                            ),
+                            "America/Sao_Paulo"
+                    ),
+                    clock
+            );
 
     @Test
     void splitsMatchesAndAppliesTeamPhaseAndDateFilters() {
@@ -71,6 +90,86 @@ class SportsQueryServiceTest {
     }
 
     @Test
+    void returnsWholeGroupForFollowedTeam() {
+        TeamView teamA =
+                new TeamView(
+                        "10",
+                        "Time A",
+                        null,
+                        null
+                );
+
+        TeamView teamB =
+                new TeamView(
+                        "20",
+                        "Time B",
+                        null,
+                        null
+                );
+
+        TeamView teamC =
+                new TeamView(
+                        "30",
+                        "Time C",
+                        null,
+                        null
+                );
+
+        StandingView rowA =
+                standing(
+                        "Grupo A",
+                        teamA
+                );
+
+        StandingView rowB =
+                standing(
+                        "Grupo A",
+                        teamB
+                );
+
+        StandingView rowC =
+                standing(
+                        "Grupo B",
+                        teamC
+                );
+
+        when(
+                snapshots.snapshot(917)
+        ).thenReturn(
+                snapshot(
+                        List.of(),
+                        List.of(
+                                rowA,
+                                rowB,
+                                rowC
+                        ),
+                        List.of()
+                )
+        );
+
+        var result =
+                service.standings(
+                        new SportsFilter(
+                                917,
+                                "10"
+                        ),
+                        "1a fase",
+                        null
+                );
+
+        assertThat(result)
+                .containsExactly(
+                        rowA,
+                        rowB
+                );
+
+        assertThat(result)
+                .doesNotContain(
+                        rowC
+                );
+    }
+
+    @Test
     void rejectsInvertedDateRange() {
         assertThatThrownBy(() -> service.playedMatches(new SportsFilter(917, null), null,
                 LocalDate.of(2026, 5, 2), LocalDate.of(2026, 5, 1)))
@@ -94,5 +193,187 @@ class SportsQueryServiceTest {
     private StandingView standing(String group, TeamView team) {
         return new StandingView("1ª Fase", group, 1, team, 4, 4, 0, 0,
                 20, 5, 15, 12, 3.0, 5.0, 1.25, 0.95);
+    }
+
+    @Test
+    void ordersPlayedNewestFirstAndUpcomingNearestFirst() {
+        TeamView teamA =
+                new TeamView(
+                        "10",
+                        "Time A",
+                        null,
+                        null
+                );
+
+        TeamView teamB =
+                new TeamView(
+                        "20",
+                        "Time B",
+                        null,
+                        null
+                );
+
+        MatchView oldFinished =
+                match(
+                        "100",
+                        "1ª Fase",
+                        teamA,
+                        teamB,
+                        Instant.parse(
+                                "2026-08-10T22:00:00Z"
+                        ),
+                        "FINISHED"
+                );
+
+        MatchView latestFinished =
+                match(
+                        "101",
+                        "1ª Fase",
+                        teamA,
+                        teamB,
+                        Instant.parse(
+                                "2026-08-30T22:00:00Z"
+                        ),
+                        "FINISHED"
+                );
+
+        MatchView next =
+                match(
+                        "102",
+                        "1ª Fase",
+                        teamA,
+                        teamB,
+                        Instant.parse(
+                                "2026-09-02T22:00:00Z"
+                        ),
+                        "SCHEDULED"
+                );
+
+        MatchView later =
+                match(
+                        "103",
+                        "1ª Fase",
+                        teamA,
+                        teamB,
+                        Instant.parse(
+                                "2026-09-10T22:00:00Z"
+                        ),
+                        "SCHEDULED"
+                );
+
+        when(
+                snapshots.snapshot(917)
+        ).thenReturn(
+                snapshot(
+                        List.of(
+                                oldFinished,
+                                later,
+                                latestFinished,
+                                next
+                        ),
+                        List.of(),
+                        List.of()
+                )
+        );
+
+        assertThat(
+                service.playedMatches(
+                        new SportsFilter(
+                                917,
+                                null
+                        ),
+                        null,
+                        null,
+                        null
+                )
+        ).containsExactly(
+                latestFinished,
+                oldFinished
+        );
+
+        assertThat(
+                service.upcomingMatches(
+                        new SportsFilter(
+                                917,
+                                null
+                        ),
+                        null,
+                        null,
+                        null
+                )
+        ).containsExactly(
+                next,
+                later
+        );
+    }
+
+    @Test
+    void doesNotTreatOldUnfinishedMatchAsUpcoming() {
+        TeamView teamA =
+                new TeamView(
+                        "10",
+                        "Time A",
+                        null,
+                        null
+                );
+
+        TeamView teamB =
+                new TeamView(
+                        "20",
+                        "Time B",
+                        null,
+                        null
+                );
+
+        MatchView stale =
+                match(
+                        "100",
+                        "1ª Fase",
+                        teamA,
+                        teamB,
+                        Instant.parse(
+                                "2026-08-20T22:00:00Z"
+                        ),
+                        "SCHEDULED"
+                );
+
+        MatchView future =
+                match(
+                        "101",
+                        "1ª Fase",
+                        teamA,
+                        teamB,
+                        Instant.parse(
+                                "2026-09-02T22:00:00Z"
+                        ),
+                        "SCHEDULED"
+                );
+
+        when(
+                snapshots.snapshot(917)
+        ).thenReturn(
+                snapshot(
+                        List.of(
+                                stale,
+                                future
+                        ),
+                        List.of(),
+                        List.of()
+                )
+        );
+
+        assertThat(
+                service.upcomingMatches(
+                        new SportsFilter(
+                                917,
+                                null
+                        ),
+                        null,
+                        null,
+                        null
+                )
+        ).containsExactly(
+                future
+        );
     }
 }
