@@ -471,8 +471,15 @@ components:
     OptionalEventId:
       in: query
       name: eventId
-      description: Quando omitido, usa a preferência do perfil.
-      schema: { type: integer, format: int64, minimum: 1 }
+      description: >
+        Quando omitido, usa o evento salvo no perfil.
+        Se o usuário não possuir preferência esportiva,
+        o DNA Futsal resolve dinamicamente o evento padrão
+        da temporada atual.
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
     OptionalTeamId:
       in: query
       name: teamId
