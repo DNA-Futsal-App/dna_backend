@@ -911,3 +911,122 @@ components:
               type: array
               items:
                 $ref: '#/components/schemas/TeamFormResult'
+      /api/v1/home:
+        get:
+          tags: [ Sports ]
+
+          summary: Retorna o resumo esportivo da Home
+
+          parameters:
+            - $ref: '#/components/parameters/OptionalEventId'
+
+            - in: query
+              name: teamId
+              schema:
+                type: string
+
+          responses:
+            '200':
+              description: Resumo esportivo
+
+              content:
+                application/json:
+                  schema:
+                    $ref: '#/components/schemas/SportsHome'
+        SportsHomeMode:
+          type: string
+          enum:
+            - TEAM
+            - CATEGORY
+
+        SportsHome:
+          type: object
+
+          required:
+            - mode
+            - eventId
+            - season
+            - teamCount
+            - upcomingCount
+            - standings
+            - topScorers
+            - recentMatches
+
+          properties:
+            mode:
+              $ref: '#/components/schemas/SportsHomeMode'
+
+            eventId:
+              type: integer
+              format: int64
+
+            competitionName:
+              type:
+                - string
+                - 'null'
+
+            season:
+              type: integer
+
+            category:
+              type:
+                - string
+                - 'null'
+
+            division:
+              type:
+                - string
+                - 'null'
+
+            currentPhase:
+              type:
+                - string
+                - 'null'
+
+            standingGroup:
+              type:
+                - string
+                - 'null'
+
+            team:
+              oneOf:
+                - $ref: '#/components/schemas/Team'
+                - type: 'null'
+
+            teamStanding:
+              oneOf:
+                - $ref: '#/components/schemas/Standing'
+                - type: 'null'
+
+            latestMatch:
+              oneOf:
+                - $ref: '#/components/schemas/Match'
+                - type: 'null'
+
+            nextMatch:
+              oneOf:
+                - $ref: '#/components/schemas/Match'
+                - type: 'null'
+
+            teamCount:
+              type: integer
+              minimum: 0
+
+            upcomingCount:
+              type: integer
+              minimum: 0
+
+            standings:
+              type: array
+              items:
+                $ref: '#/components/schemas/Standing'
+
+            topScorers:
+              type: array
+              items:
+                $ref: '#/components/schemas/TopScorer'
+
+            recentMatches:
+              type: array
+              items:
+                $ref: '#/components/schemas/Match'

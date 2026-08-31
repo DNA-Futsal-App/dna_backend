@@ -3,6 +3,7 @@ package br.com.dnafutsal.backend.sports.api;
 import br.com.dnafutsal.backend.identity.application.CurrentUserService;
 import br.com.dnafutsal.backend.sports.application.MyTeamService;
 import br.com.dnafutsal.backend.sports.application.SportsFilterResolver;
+import br.com.dnafutsal.backend.sports.application.SportsHomeService;
 import br.com.dnafutsal.backend.sports.application.SportsQueryService;
 import br.com.dnafutsal.backend.sports.domain.*;
 import jakarta.validation.constraints.Max;
@@ -28,14 +29,17 @@ public class SportsController {
     private final SportsFilterResolver filters;
     private final SportsQueryService sports;
     private final MyTeamService myTeam;
+    private final SportsHomeService home;
 
     public SportsController(CurrentUserService currentUser, SportsFilterResolver filters,
                             SportsQueryService sports,
-                            MyTeamService myTeam) {
+                            MyTeamService myTeam,
+                            SportsHomeService home) {
         this.currentUser = currentUser;
         this.filters = filters;
         this.sports = sports;
         this.myTeam = myTeam;
+        this.home = home;
     }
 
     @GetMapping("/matches/played")
@@ -121,6 +125,24 @@ public class SportsController {
                 phase,
                 from,
                 to
+        );
+    }
+
+    @GetMapping("/home")
+    SportsHomeView home(
+            @RequestParam(required = false)
+            @Positive
+            Long eventId,
+
+            @RequestParam(required = false)
+            @Size(max = 100)
+            String teamId
+    ) {
+        return home.get(
+                resolve(
+                        eventId,
+                        teamId
+                )
         );
     }
 
