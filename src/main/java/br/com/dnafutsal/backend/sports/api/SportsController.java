@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import br.com.dnafutsal.backend.sports.domain.MatchCalendarView;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -83,6 +84,43 @@ public class SportsController {
                 ),
                 phase,
                 limit
+        );
+    }
+
+    @GetMapping("/matches")
+    MatchCalendarView matches(
+            @RequestParam(required = false)
+            @Positive
+            Long eventId,
+
+            @RequestParam(required = false)
+            @Size(max = 100)
+            String teamId,
+
+            @RequestParam(required = false)
+            @Size(max = 150)
+            String phase,
+
+            @RequestParam(required = false)
+            @DateTimeFormat(
+                    iso = DateTimeFormat.ISO.DATE
+            )
+            LocalDate from,
+
+            @RequestParam(required = false)
+            @DateTimeFormat(
+                    iso = DateTimeFormat.ISO.DATE
+            )
+            LocalDate to
+    ) {
+        return sports.matchCalendar(
+                resolve(
+                        eventId,
+                        teamId
+                ),
+                phase,
+                from,
+                to
         );
     }
 

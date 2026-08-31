@@ -9,6 +9,7 @@ import br.com.dnafutsal.backend.sports.domain.StandingView;
 import br.com.dnafutsal.backend.sports.domain.TopScorerView;
 import org.jspecify.annotations.NonNull;
 import org.springframework.stereotype.Service;
+import br.com.dnafutsal.backend.sports.domain.MatchCalendarView;
 
 import java.text.Normalizer;
 import java.time.Clock;
@@ -238,6 +239,48 @@ public class SportsQueryService {
 
         return List.copyOf(
                 ranked
+        );
+    }
+
+    public MatchCalendarView matchCalendar(
+            SportsFilter filter,
+            String phase,
+            LocalDate from,
+            LocalDate to
+    ) {
+        validateDates(
+                from,
+                to
+        );
+
+        SportsSnapshot snapshot =
+                snapshots.snapshot(
+                        filter.eventId()
+                );
+
+        String currentPhase =
+                currentPhase(snapshot);
+
+        List<MatchView> played =
+                playedMatches(
+                        filter,
+                        phase,
+                        from,
+                        to
+                );
+
+        List<MatchView> upcoming =
+                upcomingMatches(
+                        filter,
+                        phase,
+                        from,
+                        to
+                );
+
+        return new MatchCalendarView(
+                currentPhase,
+                played,
+                upcoming
         );
     }
 

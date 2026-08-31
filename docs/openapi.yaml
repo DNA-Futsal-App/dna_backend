@@ -735,3 +735,66 @@ components:
         fields:
           type: object
           additionalProperties: { type: string }
+
+      /api/v1/matches:
+        get:
+          tags: [Sports]
+
+          summary: Consulta o calendário esportivo
+
+          parameters:
+            - $ref: '#/components/parameters/OptionalEventId'
+
+            - in: query
+              name: teamId
+              schema:
+                type: string
+
+            - in: query
+              name: phase
+              schema:
+                type: string
+
+            - in: query
+              name: from
+              schema:
+                type: string
+                format: date
+
+            - in: query
+              name: to
+              schema:
+                type: string
+                format: date
+
+          responses:
+            '200':
+              description: Calendário da competição
+
+              content:
+                application/json:
+                  schema:
+                    $ref: '#/components/schemas/MatchCalendar'
+
+        MatchCalendar:
+          type: object
+
+          required:
+            - played
+            - upcoming
+
+          properties:
+            currentPhase:
+              type:
+                - string
+                - 'null'
+
+            played:
+              type: array
+              items:
+                $ref: '#/components/schemas/Match'
+
+            upcoming:
+              type: array
+              items:
+                $ref: '#/components/schemas/Match'

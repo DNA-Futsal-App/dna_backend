@@ -308,6 +308,93 @@ class SportsQueryServiceTest {
     }
 
     @Test
+    void buildsCalendarWithCurrentPhaseAndOrderedMatches() {
+        TeamView teamA =
+                new TeamView(
+                        "10",
+                        "Time A",
+                        null,
+                        null
+                );
+
+        TeamView teamB =
+                new TeamView(
+                        "20",
+                        "Time B",
+                        null,
+                        null
+                );
+
+        MatchView finished =
+                match(
+                        "100",
+                        "1ª Fase",
+                        teamA,
+                        teamB,
+                        Instant.parse(
+                                "2026-08-20T22:00:00Z"
+                        ),
+                        "FINISHED"
+                );
+
+        MatchView next =
+                match(
+                        "101",
+                        "2ª Fase",
+                        teamA,
+                        teamB,
+                        Instant.parse(
+                                "2026-09-02T22:00:00Z"
+                        ),
+                        "SCHEDULED"
+                );
+
+        when(
+                snapshots.snapshot(
+                        917
+                )
+        ).thenReturn(
+                snapshot(
+                        List.of(
+                                finished,
+                                next
+                        ),
+                        List.of(),
+                        List.of()
+                )
+        );
+
+        var result =
+                service.matchCalendar(
+                        new SportsFilter(
+                                917,
+                                null
+                        ),
+                        null,
+                        null,
+                        null
+                );
+
+        assertThat(
+                result.currentPhase()
+        ).isEqualTo(
+                "2ª Fase"
+        );
+
+        assertThat(
+                result.played()
+        ).containsExactly(
+                finished
+        );
+
+        assertThat(
+                result.upcoming()
+        ).containsExactly(
+                next
+        );
+    }
+
+    @Test
     void doesNotTreatOldUnfinishedMatchAsUpcoming() {
         TeamView teamA =
                 new TeamView(
