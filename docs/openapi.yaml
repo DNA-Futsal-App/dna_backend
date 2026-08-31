@@ -8,6 +8,7 @@ servers:
 tags:
   - name: Auth
   - name: Profile
+  - name: Catalog
   - name: Events
   - name: Sports
   - name: News
@@ -180,6 +181,75 @@ paths:
               schema: { $ref: '#/components/schemas/UserProfile' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '409': { $ref: '#/components/responses/Conflict' }
+
+  /api/v1/public/catalog/divisions:
+    get:
+      tags: [ Catalog ]
+      summary: Lista as divisões do Campeonato Paulista
+      parameters:
+        - in: query
+          name: season
+          required: true
+          schema:
+            type: integer
+            minimum: 2016
+            maximum: 2100
+      responses:
+        '200':
+          description: Divisões disponíveis
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CatalogItem'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '502':
+          $ref: '#/components/responses/BadGateway'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+        '504':
+          $ref: '#/components/responses/GatewayTimeout'
+
+  /api/v1/public/catalog/categories:
+    get:
+      tags: [ Catalog ]
+      summary: Lista categorias de uma divisão do Campeonato Paulista
+      parameters:
+        - in: query
+          name: season
+          required: true
+          schema:
+            type: integer
+            minimum: 2016
+            maximum: 2100
+
+        - in: query
+          name: divisionId
+          required: true
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+      responses:
+        '200':
+          description: Categorias disponíveis
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CatalogCategory'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '502':
+          $ref: '#/components/responses/BadGateway'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+        '504':
+          $ref: '#/components/responses/GatewayTimeout'
+
   /api/v1/public/events:
     get:
       tags: [Events]
@@ -189,9 +259,6 @@ paths:
           name: season
           required: true
           schema: { type: integer, minimum: 2016, maximum: 2100 }
-        - in: query
-          name: title
-          schema: { type: string, maxLength: 150 }
         - in: query
           name: division
           schema: { type: string, maxLength: 100 }
