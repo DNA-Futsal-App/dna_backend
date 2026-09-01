@@ -11,6 +11,7 @@ public record SportsHomeView(
         int season,
         String category,
         String division,
+        SportsScheduleState scheduleState,
 
         String currentPhase,
         String standingGroup,

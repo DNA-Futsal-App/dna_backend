@@ -2,20 +2,14 @@ package br.com.dnafutsal.backend.sports.infrastructure;
 
 import br.com.dnafutsal.backend.common.Errors;
 import br.com.dnafutsal.backend.config.AppProperties;
-import br.com.dnafutsal.backend.sports.domain.MatchView;
-import br.com.dnafutsal.backend.sports.domain.SportsEventView;
-import br.com.dnafutsal.backend.sports.domain.SportsSnapshot;
-import br.com.dnafutsal.backend.sports.domain.StandingView;
-import br.com.dnafutsal.backend.sports.domain.TeamView;
-import br.com.dnafutsal.backend.sports.domain.TopScorerView;
+import br.com.dnafutsal.backend.sports.domain.*;
 import org.springframework.stereotype.Component;
-import br.com.dnafutsal.backend.sports.domain.CatalogCategoryView;
-import br.com.dnafutsal.backend.sports.domain.CatalogItemView;
 
 import java.nio.charset.StandardCharsets;
 import java.text.Normalizer;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -114,25 +108,68 @@ class SportsScraperMapper {
                 source.collectedAt() == null ? clock.instant() : source.collectedAt());
     }
 
-    private MatchView match(SportsEventView event, ScraperGame game, Map<String, TeamView> teamsByName) {
-        boolean finished = game.walkover() || game.homeScore() != null && game.awayScore() != null;
-        Instant scheduledAt = game.date() == null || game.time() == null
-                ? null
-                : game.date().atTime(game.time()).atZone(zoneId).toInstant();
+    private MatchView match(
+            SportsEventView event,
+            ScraperGame game,
+            Map<String, TeamView> teamsByName
+    ) {
+        LocalDate scheduledDate =
+                game.date();
+
+        Instant scheduledAt =
+                game.date() == null
+                        || game.time() == null
+                        ? null
+                        : game.date()
+                        .atTime(
+                                game.time()
+                        )
+                        .atZone(
+                                zoneId
+                        )
+                        .toInstant();
+
+        MatchStatus status =
+                matchStatus(
+                        game,
+                        scheduledDate,
+                        scheduledAt
+                );
+
         return new MatchView(
-                gameId(event.eventId(), game),
+                gameId(
+                        event.eventId(),
+                        game
+                ),
+
                 event.eventId(),
                 event.title(),
                 event.season(),
                 event.category(),
                 event.division(),
+
                 game.phase(),
-                resolveTeam(game.homeTeam(), game.homeLogoUrl(), teamsByName),
-                resolveTeam(game.awayTeam(), game.awayLogoUrl(), teamsByName),
+
+                resolveTeam(
+                        game.homeTeam(),
+                        game.homeLogoUrl(),
+                        teamsByName
+                ),
+
+                resolveTeam(
+                        game.awayTeam(),
+                        game.awayLogoUrl(),
+                        teamsByName
+                ),
+
                 game.homeScore(),
                 game.awayScore(),
+
+                scheduledDate,
                 scheduledAt,
-                finished ? "FINISHED" : "SCHEDULED",
+
+                status,
+
                 game.walkover(),
                 game.venue(),
                 game.matchSheetUrl()
@@ -231,5 +268,85 @@ class SportsScraperMapper {
 
     private <T> List<T> safe(List<T> values) {
         return values == null ? List.of() : values;
+    }
+
+    private MatchStatus matchStatus(
+            ScraperGame game,
+            LocalDate scheduledDate,
+            Instant scheduledAt
+    ) {
+        /*
+         * W.O. é um resultado oficial já declarado.
+         */
+        if (game.walkover()) {
+            return MatchStatus.FINISHED;
+        }
+
+        LocalDate today =
+                LocalDate.now(
+                        clock.withZone(
+                                zoneId
+                        )
+                );
+
+        Instant now =
+                clock.instant();
+
+        if (
+                scheduledDate != null
+                        && scheduledDate.isAfter(
+                        today
+                )
+        ) {
+            return MatchStatus.SCHEDULED;
+        }
+
+        if (
+                scheduledDate != null
+                        && scheduledDate.isEqual(
+                        today
+                )
+                        && scheduledAt != null
+                        && scheduledAt.isAfter(
+                        now
+                )
+        ) {
+            return MatchStatus.SCHEDULED;
+        }
+
+        boolean hasResult =
+                game.homeScore() != null
+                        && game.awayScore() != null;
+
+        if (hasResult) {
+            return MatchStatus.FINISHED;
+        }
+
+        /*
+         * Dia anterior sem resultado.
+         */
+        if (
+                scheduledDate != null
+                        && scheduledDate.isBefore(
+                        today
+                )
+        ) {
+            return MatchStatus.RESULT_PENDING;
+        }
+
+        /*
+         * Jogo de hoje cujo horário passou,
+         * mas a fonte ainda não atualizou.
+         */
+        if (
+                scheduledAt != null
+                        && !scheduledAt.isAfter(
+                        now
+                )
+        ) {
+            return MatchStatus.RESULT_PENDING;
+        }
+
+        return MatchStatus.SCHEDULED;
     }
 }

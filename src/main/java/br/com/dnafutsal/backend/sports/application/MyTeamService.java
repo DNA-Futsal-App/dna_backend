@@ -1,16 +1,7 @@
 package br.com.dnafutsal.backend.sports.application;
 
 import br.com.dnafutsal.backend.common.Errors;
-import br.com.dnafutsal.backend.sports.domain.MatchCalendarView;
-import br.com.dnafutsal.backend.sports.domain.MatchView;
-import br.com.dnafutsal.backend.sports.domain.MyTeamView;
-import br.com.dnafutsal.backend.sports.domain.SportsEventView;
-import br.com.dnafutsal.backend.sports.domain.SportsFilter;
-import br.com.dnafutsal.backend.sports.domain.SportsSnapshot;
-import br.com.dnafutsal.backend.sports.domain.StandingView;
-import br.com.dnafutsal.backend.sports.domain.TeamFormResult;
-import br.com.dnafutsal.backend.sports.domain.TeamView;
-import br.com.dnafutsal.backend.sports.domain.TopScorerView;
+import br.com.dnafutsal.backend.sports.domain.*;;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -60,12 +51,13 @@ public class MyTeamService {
                                         )
                         )
                         .findFirst()
-                        .orElseThrow(() ->
-                                Errors.notFound(
-                                        "SPORTS_TEAM_NOT_FOUND",
-                                        "O time selecionado não participa desta competição."
-                                )
-                        );
+                        .orElse(null);
+
+        if (team == null) {
+            return unavailable(
+                    event
+            );
+        }
 
         MatchCalendarView calendar =
                 sports.matchCalendar(
@@ -126,6 +118,7 @@ public class MyTeamService {
 
         return new MyTeamView(
                 true,
+                MyTeamState.READY,
 
                 team,
 
@@ -136,6 +129,7 @@ public class MyTeamService {
                 event.division(),
 
                 calendar.currentPhase(),
+                calendar.scheduleState(),
 
                 standing,
 
@@ -145,10 +139,12 @@ public class MyTeamService {
 
                 first(
                         upcomingMatches
+
                 ),
 
                 recentMatches,
                 upcomingMatches,
+                calendar.pendingResults(),
 
                 topScorers,
 
@@ -162,6 +158,8 @@ public class MyTeamService {
         return new MyTeamView(
                 false,
 
+                MyTeamState.NOT_CONFIGURED,
+
                 null,
 
                 event.eventId(),
@@ -177,11 +175,45 @@ public class MyTeamService {
                 null,
                 null,
 
+                null,
+                List.of(),
                 List.of(),
                 List.of(),
 
                 List.of(),
 
+                List.of()
+        );
+    }
+
+    private MyTeamView unavailable(
+            SportsEventView event
+    ) {
+        return new MyTeamView(
+                false,
+                MyTeamState.TEAM_UNAVAILABLE,
+                null,
+
+                event.eventId(),
+                event.title(),
+                event.season(),
+                event.category(),
+                event.division(),
+
+                null,
+
+                SportsScheduleState.NO_GAMES,
+
+                null,
+
+                null,
+                null,
+
+                List.of(),
+                List.of(),
+                List.of(),
+
+                List.of(),
                 List.of()
         );
     }

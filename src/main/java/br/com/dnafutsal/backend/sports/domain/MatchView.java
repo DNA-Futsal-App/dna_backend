@@ -2,6 +2,7 @@ package br.com.dnafutsal.backend.sports.domain;
 
 import java.io.Serializable;
 import java.time.Instant;
+import java.time.LocalDate;
 
 public record MatchView(
         String id,
@@ -15,8 +16,12 @@ public record MatchView(
         TeamView awayTeam,
         Integer homeScore,
         Integer awayScore,
+
+        LocalDate scheduledDate,
         Instant scheduledAt,
-        String status,
+
+        MatchStatus status,
+
         boolean walkover,
         String venue,
         String matchSheetUrl

@@ -146,20 +146,6 @@ public class SportsController {
         );
     }
 
-    private SportsFilter resolve(Long eventId, String teamId) {
-        return filters.resolve(currentUser.userId(), eventId, teamId);
-    }
-
-    private SportsFilter resolveCompetition(
-            Long eventId,
-            String teamId
-    ) {
-        return filters.resolveCompetition(
-                currentUser.userId(),
-                eventId,
-                teamId
-        );
-    }
 
     @GetMapping("/my-team")
     MyTeamView myTeam(
@@ -178,4 +164,57 @@ public class SportsController {
                 )
         );
     }
+
+    @GetMapping("/matches/pending")
+    List<MatchView> pending(
+            @RequestParam(required = false)
+            @Positive
+            Long eventId,
+
+            @RequestParam(required = false)
+            @Size(max = 100)
+            String teamId,
+
+            @RequestParam(required = false)
+            @Size(max = 150)
+            String phase,
+
+            @RequestParam(required = false)
+            @DateTimeFormat(
+                    iso = DateTimeFormat.ISO.DATE
+            )
+            LocalDate from,
+
+            @RequestParam(required = false)
+            @DateTimeFormat(
+                    iso = DateTimeFormat.ISO.DATE
+            )
+            LocalDate to
+    ) {
+        return sports.pendingResults(
+                resolve(
+                        eventId,
+                        teamId
+                ),
+                phase,
+                from,
+                to
+        );
+    }
+
+    private SportsFilter resolve(Long eventId, String teamId) {
+        return filters.resolve(currentUser.userId(), eventId, teamId);
+    }
+
+    private SportsFilter resolveCompetition(
+            Long eventId,
+            String teamId
+    ) {
+        return filters.resolveCompetition(
+                currentUser.userId(),
+                eventId,
+                teamId
+        );
+    }
+
 }

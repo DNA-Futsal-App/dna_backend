@@ -1,7 +1,9 @@
 package br.com.dnafutsal.backend.sports.infrastructure;
 
 import br.com.dnafutsal.backend.config.AppProperties;
+import br.com.dnafutsal.backend.sports.domain.MatchStatus;
 import br.com.dnafutsal.backend.sports.domain.SportsSnapshot;
+import br.com.dnafutsal.backend.sports.domain.TopScorerView;
 import org.junit.jupiter.api.Test;
 
 import java.time.Clock;
@@ -64,9 +66,9 @@ class SportsScraperMapperTest {
         assertThat(result.matches().get(1).status()).isEqualTo("FINISHED");
         assertThat(result.standings().get(0).team().id()).isEqualTo("10");
         assertThat(result.standings().get(0).technicalIndex()).isEqualTo(0.95);
-        assertThat(result.topScorers()).extracting(scorer -> scorer.athleteName())
+        assertThat(result.topScorers()).extracting(TopScorerView::athleteName)
                 .containsExactly("Jogadora A", "Jogadora B");
-        assertThat(result.topScorers()).extracting(scorer -> scorer.position()).containsExactly(1, 2);
+        assertThat(result.topScorers()).extracting(TopScorerView::position).containsExactly(1, 2);
     }
 
     @Test
@@ -84,5 +86,125 @@ class SportsScraperMapperTest {
             assertThat(scorer.athleteName()).isEqualTo("Atleta A");
             assertThat(scorer.personalDataSuppressed()).isFalse();
         });
+    }
+
+    @Test
+    void doesNotTreatFutureZeroZeroAsFinished() {
+        ScraperEvent event =
+                new ScraperEvent(
+                        917,
+                        "Campeonato Paulista",
+                        2026,
+                        "Principal",
+                        "A1",
+                        null
+                );
+
+        ScraperGame future =
+                new ScraperGame(
+                        100L,
+                        "1ª Fase",
+                        LocalDate.of(
+                                2026,
+                                9,
+                                8
+                        ),
+                        LocalTime.of(
+                                19,
+                                0
+                        ),
+                        "Ginásio",
+                        "Time A",
+                        null,
+                        0,
+                        "Time B",
+                        null,
+                        0,
+                        false,
+                        "https://example.com/sumula"
+                );
+
+        SportsSnapshot result =
+                mapper.snapshot(
+                        new ScraperSnapshot(
+                                event,
+                                List.of(),
+                                List.of(
+                                        future
+                                ),
+                                List.of(),
+                                List.of(),
+                                null
+                        ),
+                        null
+                );
+
+        assertThat(
+                result.matches()
+                        .get(0)
+                        .status()
+        ).isEqualTo(
+                MatchStatus.SCHEDULED
+        );
+    }
+
+    @Test
+    void marksPastMatchWithoutScoreAsResultPending() {
+        ScraperEvent event =
+                new ScraperEvent(
+                        917,
+                        "Campeonato Paulista",
+                        2026,
+                        "Principal",
+                        "A1",
+                        null
+                );
+
+        ScraperGame past =
+                new ScraperGame(
+                        100L,
+                        "1ª Fase",
+                        LocalDate.of(
+                                2026,
+                                8,
+                                30
+                        ),
+                        LocalTime.of(
+                                19,
+                                0
+                        ),
+                        "Ginásio",
+                        "Time A",
+                        null,
+                        null,
+                        "Time B",
+                        null,
+                        null,
+                        false,
+                        null
+                );
+
+        SportsSnapshot result =
+                mapper.snapshot(
+                        new ScraperSnapshot(
+                                event,
+                                List.of(),
+                                List.of(
+                                        past
+                                ),
+                                List.of(),
+                                List.of(),
+                                null
+                        ),
+                        null
+                );
+
+        assertThat(
+                result.matches()
+                        .get(0)
+                        .status()
+        ).isEqualTo(
+                MatchStatus.RESULT_PENDING
+        );
     }
 }

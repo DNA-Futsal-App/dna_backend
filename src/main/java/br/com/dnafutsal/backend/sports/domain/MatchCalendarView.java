@@ -5,7 +5,11 @@ import java.util.List;
 
 public record MatchCalendarView(
         String currentPhase,
+
+        SportsScheduleState scheduleState,
+
         List<MatchView> played,
-        List<MatchView> upcoming
+        List<MatchView> upcoming,
+        List<MatchView> pendingResults
 ) implements Serializable {
 }

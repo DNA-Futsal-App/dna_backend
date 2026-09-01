@@ -1,10 +1,14 @@
 package br.com.dnafutsal.backend.sports.domain;
 
+import br.com.dnafutsal.backend.sports.domain.*;
+
 import java.io.Serializable;
 import java.util.List;
 
 public record MyTeamView(
         boolean configured,
+
+        MyTeamState state,
 
         TeamView team,
 
@@ -15,6 +19,8 @@ public record MyTeamView(
         String division,
         String currentPhase,
 
+        SportsScheduleState scheduleState,
+
         StandingView standing,
 
         MatchView latestMatch,
@@ -22,6 +28,7 @@ public record MyTeamView(
 
         List<MatchView> recentMatches,
         List<MatchView> upcomingMatches,
+        List<MatchView> pendingResults,
 
         List<TopScorerView> topScorers,
 

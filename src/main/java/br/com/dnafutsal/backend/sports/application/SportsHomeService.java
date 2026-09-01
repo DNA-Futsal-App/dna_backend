@@ -100,11 +100,6 @@ public class SportsHomeService {
                         standings
                 );
 
-        /*
-         * Em CATEGORY mode podem existir vários grupos.
-         * A Home mostra apenas um grupo coerente,
-         * nunca mistura 1º do A, 1º do B, 2º do A...
-         */
         List<StandingView> standingsPreview =
                 hasText(standingGroup)
                         ? standings.stream()
@@ -117,13 +112,6 @@ public class SportsHomeService {
                         .toList()
                         : standings;
 
-        /*
-         * A Home sempre mostra a artilharia GERAL
-         * da categoria.
-         *
-         * Artilharia específica do clube pertence
-         * à tela Meu Time.
-         */
         List<TopScorerView> topScorers =
                 sports.topScorers(
                         categoryFilter,
@@ -149,6 +137,7 @@ public class SportsHomeService {
                 event.season(),
                 event.category(),
                 event.division(),
+                calendar.scheduleState(),
 
                 calendar.currentPhase(),
                 standingGroup,

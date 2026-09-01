@@ -2,14 +2,9 @@ package br.com.dnafutsal.backend.sports.application;
 
 import br.com.dnafutsal.backend.common.Errors;
 import br.com.dnafutsal.backend.config.AppProperties;
-import br.com.dnafutsal.backend.sports.domain.MatchView;
-import br.com.dnafutsal.backend.sports.domain.SportsFilter;
-import br.com.dnafutsal.backend.sports.domain.SportsSnapshot;
-import br.com.dnafutsal.backend.sports.domain.StandingView;
-import br.com.dnafutsal.backend.sports.domain.TopScorerView;
+import br.com.dnafutsal.backend.sports.domain.*;
 import org.jspecify.annotations.NonNull;
 import org.springframework.stereotype.Service;
-import br.com.dnafutsal.backend.sports.domain.MatchCalendarView;
 
 import java.text.Normalizer;
 import java.time.Clock;
@@ -54,12 +49,18 @@ public class SportsQueryService {
         )
                 .stream()
                 .filter(match ->
-                        "FINISHED".equals(
-                                match.status()
-                        )
+                        match.status()
+                                == MatchStatus.FINISHED
                 )
                 .sorted(
-                        Comparator.comparing(
+                        Comparator
+                                .comparing(
+                                        MatchView::scheduledDate,
+                                        Comparator.nullsLast(
+                                                Comparator.reverseOrder()
+                                        )
+                                )
+                                .thenComparing(
                                         MatchView::scheduledAt,
                                         Comparator.nullsLast(
                                                 Comparator.reverseOrder()
@@ -91,9 +92,8 @@ public class SportsQueryService {
         )
                 .stream()
                 .filter(match ->
-                        "SCHEDULED".equals(
-                                match.status()
-                        )
+                        match.status()
+                                == MatchStatus.SCHEDULED
                 )
                 .filter(match ->
                         match.scheduledAt() == null
@@ -101,7 +101,14 @@ public class SportsQueryService {
                                 .isBefore(today)
                 )
                 .sorted(
-                        Comparator.comparing(
+                        Comparator
+                                .comparing(
+                                        MatchView::scheduledDate,
+                                        Comparator.nullsLast(
+                                                Comparator.naturalOrder()
+                                        )
+                                )
+                                .thenComparing(
                                         MatchView::scheduledAt,
                                         Comparator.nullsLast(
                                                 Comparator.naturalOrder()
@@ -258,9 +265,6 @@ public class SportsQueryService {
                         filter.eventId()
                 );
 
-        String currentPhase =
-                currentPhase(snapshot);
-
         List<MatchView> played =
                 playedMatches(
                         filter,
@@ -277,11 +281,91 @@ public class SportsQueryService {
                         to
                 );
 
+        List<MatchView> pending =
+                pendingResults(
+                        filter,
+                        phase,
+                        from,
+                        to
+                );
+
         return new MatchCalendarView(
-                currentPhase,
+                currentPhase(
+                        snapshot
+                ),
+
+                scheduleState(
+                        played,
+                        upcoming,
+                        pending
+                ),
+
                 played,
-                upcoming
+                upcoming,
+                pending
         );
+    }
+
+    public List<MatchView> pendingResults(
+            SportsFilter filter,
+            String phase,
+            LocalDate from,
+            LocalDate to
+    ) {
+        validateDates(
+                from,
+                to
+        );
+
+        return matches(
+                filter,
+                phase,
+                from,
+                to
+        )
+                .stream()
+                .filter(match ->
+                        match.status()
+                                == MatchStatus.RESULT_PENDING
+                )
+                .sorted(
+                        Comparator
+                                .comparing(
+                                        MatchView::scheduledDate,
+                                        Comparator.nullsLast(
+                                                Comparator.reverseOrder()
+                                        )
+                                )
+                                .thenComparing(
+                                        MatchView::scheduledAt,
+                                        Comparator.nullsLast(
+                                                Comparator.reverseOrder()
+                                        )
+                                )
+                                .thenComparing(
+                                        MatchView::id
+                                )
+                )
+                .toList();
+    }
+
+    private SportsScheduleState scheduleState(
+            List<MatchView> played,
+            List<MatchView> upcoming,
+            List<MatchView> pending
+    ) {
+        if (!upcoming.isEmpty()) {
+            return SportsScheduleState.ACTIVE;
+        }
+
+        if (
+                !played.isEmpty()
+                        || !pending.isEmpty()
+        ) {
+            return SportsScheduleState.AWAITING_SCHEDULE;
+        }
+
+        return SportsScheduleState.NO_GAMES;
     }
 
     private static @NonNull List<TopScorerView> getTopScorerViews(List<TopScorerView> filtered) {
@@ -422,6 +506,7 @@ public class SportsQueryService {
 
         return result;
     }
+
     private String currentPhase(
             SportsSnapshot snapshot
     ) {
@@ -432,9 +517,8 @@ public class SportsQueryService {
                 snapshot.matches()
                         .stream()
                         .filter(match ->
-                                "SCHEDULED".equals(
-                                        match.status()
-                                )
+                                match.status()
+                                        == MatchStatus.SCHEDULED
                         )
                         .filter(match ->
                                 match.scheduledAt() != null
@@ -466,9 +550,8 @@ public class SportsQueryService {
                 snapshot.matches()
                         .stream()
                         .filter(match ->
-                                "SCHEDULED".equals(
-                                        match.status()
-                                )
+                                match.status()
+                                        == MatchStatus.SCHEDULED
                         )
                         .filter(match ->
                                 match.scheduledAt() == null
@@ -490,9 +573,8 @@ public class SportsQueryService {
                 snapshot.matches()
                         .stream()
                         .filter(match ->
-                                "FINISHED".equals(
-                                        match.status()
-                                )
+                                match.status()
+                                        == MatchStatus.FINISHED
                         )
                         .filter(match ->
                                 match.scheduledAt() != null
