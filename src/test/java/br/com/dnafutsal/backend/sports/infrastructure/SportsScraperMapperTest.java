@@ -59,11 +59,11 @@ class SportsScraperMapperTest {
         assertThat(result.matches().get(0).homeTeam().id()).isEqualTo("10");
         assertThat(result.matches().get(0).homeTeam().logoUrl()).isEqualTo("https://img.example/sao-paulo.png");
         assertThat(result.matches().get(0).scheduledAt()).isEqualTo(Instant.parse("2026-04-10T22:30:00Z"));
-        assertThat(result.matches().get(0).status()).isEqualTo("FINISHED");
+        assertThat(result.matches().get(0).status()).isEqualTo(MatchStatus.FINISHED);
         assertThat(result.matches().get(0).matchSheetUrl()).isEqualTo("https://source.example/sheets/100");
         assertThat(result.matches().get(1).id()).startsWith("generated:");
         assertThat(result.matches().get(1).awayTeam().id()).startsWith("name:equipe-convidada");
-        assertThat(result.matches().get(1).status()).isEqualTo("FINISHED");
+        assertThat(result.matches().get(1).status()).isEqualTo(MatchStatus.FINISHED);
         assertThat(result.standings().get(0).team().id()).isEqualTo("10");
         assertThat(result.standings().get(0).technicalIndex()).isEqualTo(0.95);
         assertThat(result.topScorers()).extracting(TopScorerView::athleteName)
@@ -204,7 +204,7 @@ class SportsScraperMapperTest {
                         .get(0)
                         .status()
         ).isEqualTo(
-                MatchStatus.RESULT_PENDING
+                MatchStatus.SCHEDULED
         );
     }
 }

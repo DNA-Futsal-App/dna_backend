@@ -38,6 +38,7 @@ class CacheConfigurationTest {
         org.springframework.cache.Cache cache = manager.getCache("sports-events");
         AtomicInteger loads = new AtomicInteger();
 
+        assert cache != null;
         String first = cache.get("season-2026", () -> {
             loads.incrementAndGet();
             return "events";
@@ -65,6 +66,7 @@ class CacheConfigurationTest {
 
     private void assertPolicy(SimpleCacheManager manager, String cacheName, long maximumSize, Duration ttl) {
         CaffeineCache springCache = (CaffeineCache) manager.getCache(cacheName);
+        assert springCache != null;
         Cache<Object, Object> cache = springCache.getNativeCache();
 
         assertThat(cache.policy().eviction()).isPresent();

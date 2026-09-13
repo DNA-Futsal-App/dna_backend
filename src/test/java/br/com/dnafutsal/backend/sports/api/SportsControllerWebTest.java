@@ -2,29 +2,28 @@ package br.com.dnafutsal.backend.sports.api;
 
 import br.com.dnafutsal.backend.common.BusinessException;
 import br.com.dnafutsal.backend.common.RequestIdFilter;
-import br.com.dnafutsal.backend.config.SecurityConfiguration;
 import br.com.dnafutsal.backend.config.AppProperties;
+import br.com.dnafutsal.backend.config.SecurityConfiguration;
 import br.com.dnafutsal.backend.config.SecurityProperties;
 import br.com.dnafutsal.backend.identity.application.CurrentUserService;
 import br.com.dnafutsal.backend.identity.application.UserSecurityStateService;
-import br.com.dnafutsal.backend.sports.application.SportsCatalogService;
-import br.com.dnafutsal.backend.sports.application.SportsFilterResolver;
-import br.com.dnafutsal.backend.sports.application.SportsQueryService;
+import br.com.dnafutsal.backend.sports.application.*;
 import br.com.dnafutsal.backend.sports.domain.SportsEventView;
 import br.com.dnafutsal.backend.sports.domain.SportsFilter;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.security.autoconfigure.SecurityAutoConfiguration;
 import org.springframework.boot.security.autoconfigure.web.servlet.ServletWebSecurityAutoConfiguration;
-import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.cache.CacheManager;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import org.springframework.context.annotation.Import;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.cache.CacheManager;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -36,17 +35,38 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest({SportsCatalogController.class, SportsController.class})
+@ActiveProfiles("test")
+@WebMvcTest(
+        controllers = {
+                SportsCatalogController.class,
+                SportsController.class
+        },
+        properties = {
+                "app.frontend-base-url=http://localhost:3000",
+                "app.cors-allowed-origins[0]=http://localhost:3000",
+                "app.timezone=America/Sao_Paulo",
+
+                "app.security.jwt-secret=test-secret-with-at-least-sixty-four-characters-01234567890123456789",
+                "app.security.access-token-ttl=PT15M",
+                "app.security.refresh-token-ttl=P30D",
+                "app.security.email-verification-ttl=PT24H",
+                "app.security.password-reset-ttl=PT30M"
+        }
+)
 @Import(SecurityConfiguration.class)
-@ImportAutoConfiguration({SecurityAutoConfiguration.class, ServletWebSecurityAutoConfiguration.class})
-@EnableConfigurationProperties({SecurityProperties.class, AppProperties.class})
+@ImportAutoConfiguration({
+        SecurityAutoConfiguration.class,
+        ServletWebSecurityAutoConfiguration.class
+})
+@EnableConfigurationProperties({
+        SecurityProperties.class,
+        AppProperties.class
+})
 @ExtendWith(OutputCaptureExtension.class)
 class SportsControllerWebTest {
 
@@ -70,6 +90,12 @@ class SportsControllerWebTest {
 
     @MockitoBean
     private CacheManager cacheManager;
+
+    @MockitoBean
+    private MyTeamService myTeam;
+
+    @MockitoBean
+    private SportsHomeService home;
 
     @Test
     void exposesEventDiscoveryWithoutAuthentication() throws Exception {

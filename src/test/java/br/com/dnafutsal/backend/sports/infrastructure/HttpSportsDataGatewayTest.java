@@ -3,6 +3,7 @@ package br.com.dnafutsal.backend.sports.infrastructure;
 import br.com.dnafutsal.backend.common.BusinessException;
 import br.com.dnafutsal.backend.config.AppProperties;
 import br.com.dnafutsal.backend.config.IntegrationProperties;
+import br.com.dnafutsal.backend.sports.domain.MatchStatus;
 import br.com.dnafutsal.backend.sports.domain.SportsEventSearch;
 import br.com.dnafutsal.backend.sports.domain.SportsSnapshot;
 import org.junit.jupiter.api.Test;
@@ -151,7 +152,7 @@ class HttpSportsDataGatewayTest {
         assertThat(result.matches()).singleElement().satisfies(match -> {
             assertThat(match.id()).isEqualTo("100");
             assertThat(match.homeTeam().id()).isEqualTo("10");
-            assertThat(match.status()).isEqualTo("FINISHED");
+            assertThat(match.status()).isEqualTo(MatchStatus.FINISHED);
         });
         assertThat(result.topScorers()).singleElement().satisfies(scorer -> {
             assertThat(scorer.athleteName()).isEqualTo("Atleta A");
