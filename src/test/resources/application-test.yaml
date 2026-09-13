@@ -10,6 +10,15 @@ spring:
   flyway:
     enabled: false
 
+  mail:
+    host: localhost
+    port: 1025
+    username: ""
+    password: ""
+    properties:
+      mail.smtp.auth: false
+      mail.smtp.starttls.enable: false
+
 app:
   frontend-base-url: http://localhost:3000
 
@@ -18,9 +27,41 @@ app:
 
   timezone: America/Sao_Paulo
 
+  sports:
+    defaults:
+      division: A1
+      category: Principal
+
+  cache:
+    sports-max-entries: 2000
+    identity-max-entries: 10000
+    login-attempt-max-entries: 50000
+
   security:
-    jwt-secret: K2mV7FX1SywkmbPa3PKFUp6NlD4xALfdjGbtFUsRJbK
+    jwt-secret: test-secret-only-for-automated-tests-0123456789012345678901234567890123456789
     access-token-ttl: PT15M
     refresh-token-ttl: P30D
     email-verification-ttl: PT24H
     password-reset-ttl: PT30M
+
+  integrations:
+    sports:
+      base-url: http://localhost:8082
+      connect-timeout: PT1S
+      read-timeout: PT1S
+      event-cache-ttl: PT1H
+      team-cache-ttl: PT1H
+      snapshot-cache-ttl: PT10M
+      include-personal-data: false
+
+    news:
+      base-url: http://127.0.0.1:9
+
+  mail-delivery:
+    from-email: no-reply@example.com
+    from-name: DNA Futsal Test
+    brevo-enabled: false
+    brevo-api-url: https://api.brevo.com/v3
+    brevo-api-key: test-key
+    outbox-delay: 15000
+    max-attempts: 3
