@@ -19,7 +19,7 @@ app:
   timezone: America/Sao_Paulo
 
   security:
-    jwt-secret: ${JWT_SECRET}
+    jwt-secret: K2mV7FX1SywkmbPa3PKFUp6NlD4xALfdjGbtFUsRJbK
     access-token-ttl: PT15M
     refresh-token-ttl: P30D
     email-verification-ttl: PT24H
