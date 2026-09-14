@@ -203,7 +203,7 @@ public class HttpSportsDataGateway implements SportsDataGateway {
         List<ScraperTeam> response = get(diagnostics,
                 uri -> uri.path("/api/v1/events/{eventId}/teams").build(eventId),
                 new ParameterizedTypeReference<>() {});
-        return mapResponse(diagnostics, () -> mapper.teams(response));
+        return mapResponse(diagnostics, () -> mapper.teams(eventId, response));
     }
 
     @Override
@@ -296,8 +296,6 @@ public class HttpSportsDataGateway implements SportsDataGateway {
                     "Não foi possível conectar à fonte de dados esportivos.",
                     sanitizedCause("Sports scraper connection failed", exception),
                     enrich(diagnostics, exception, null));
-        } catch (BusinessException exception) {
-            throw exception;
         } catch (RestClientException exception) {
             throw invalidResponse(diagnostics, exception);
         }

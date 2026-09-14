@@ -1,0 +1,473 @@
+diff --git a/src/main/java/br/com/dnafutsal/backend/sports/infrastructure/TeamLogoResolver.java b/src/main/java/br/com/dnafutsal/backend/sports/infrastructure/TeamLogoResolver.java
+new file mode 100644
+index 0000000..b9a923a
+--- /dev/null
++++ b/src/main/java/br/com/dnafutsal/backend/sports/infrastructure/TeamLogoResolver.java
+@@ -0,0 +1,135 @@
++package br.com.dnafutsal.backend.sports.infrastructure;
++
++import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.beans.factory.annotation.Value;
++import org.springframework.core.io.ClassPathResource;
++import org.springframework.stereotype.Component;
++import tools.jackson.databind.DeserializationFeature;
++import tools.jackson.databind.json.JsonMapper;
++
++import java.io.IOException;
++import java.net.URI;
++import java.text.Normalizer;
++import java.util.HashMap;
++import java.util.HashSet;
++import java.util.List;
++import java.util.Locale;
++import java.util.Map;
++import java.util.Objects;
++
++@Component
++public class TeamLogoResolver {
++
++    public record Club(String key, String logoPath) {}
++    public record Binding(long eventId, String teamId, String clubKey, List<String> aliases) {}
++    public record Manifest(int version, List<Club> clubs, List<Binding> bindings) {}
++    private record Key(long eventId, String value) {}
++
++    private final boolean enabled;
++    private final Map<Key, String> byId;
++    private final Map<Key, String> byAlias;
++
++    @Autowired
++    public TeamLogoResolver(
++            JsonMapper mapper,
++            @Value("${TEAM_LOGOS_ENABLED:false}") boolean enabled,
++            @Value("${TEAM_LOGOS_BASE_URL:}") String baseUrl
++    ) {
++        this(enabled, baseUrl, enabled ? readManifest(mapper) : null);
++    }
++
++    TeamLogoResolver(boolean enabled, String baseUrl, Manifest manifest) {
++        this.enabled = enabled;
++        if (!enabled) {
++            byId = Map.of();
++            byAlias = Map.of();
++            return;
++        }
++        String origin = validateOrigin(baseUrl);
++        require(manifest != null && manifest.version() == 1, "Manifest version must be 1");
++        require(manifest.clubs() != null && manifest.bindings() != null, "Missing clubs/bindings");
++        require(!manifest.bindings().isEmpty(), "No approved team logos; keep TEAM_LOGOS_ENABLED=false");
++        Map<String, String> clubs = new HashMap<>();
++        for (Club club : manifest.clubs()) {
++            require(club != null && club.key() != null && club.key().matches("[a-z0-9]+(?:-[a-z0-9]+)*"),
++                    "Invalid club key");
++            require(club.logoPath() != null && club.logoPath().matches("/team-logos/[a-f0-9]{64}\\.webp"),
++                    "Invalid logo path for " + club.key());
++            require(clubs.putIfAbsent(club.key(), origin + club.logoPath()) == null,
++                    "Duplicate club key: " + club.key());
++        }
++        Map<Key, String> ids = new HashMap<>();
++        Map<Key, String> aliases = new HashMap<>();
++        for (Binding binding : manifest.bindings()) {
++            require(binding != null && binding.eventId() > 0 && numericId(binding.teamId()),
++                    "Invalid event/team ID");
++            String url = clubs.get(binding.clubKey());
++            require(url != null, "Unknown club: " + binding.clubKey());
++            require(ids.putIfAbsent(new Key(binding.eventId(), binding.teamId()), url) == null,
++                    "Duplicate event/team: " + binding.eventId() + "/" + binding.teamId());
++            require(binding.aliases() != null, "Aliases must be an array");
++            var uniqueAliases = new HashSet<String>();
++            for (String alias : binding.aliases()) {
++                String normalized = normalize(alias);
++                require(!normalized.isBlank(), "Empty alias");
++                if (uniqueAliases.add(normalized)) {
++                    require(aliases.putIfAbsent(new Key(binding.eventId(), normalized), url) == null,
++                            "Ambiguous alias in event " + binding.eventId() + ": " + alias);
++                }
++            }
++        }
++        byId = Map.copyOf(ids);
++        byAlias = Map.copyOf(aliases);
++    }
++
++    public static TeamLogoResolver disabled() {
++        return new TeamLogoResolver(false, "", null);
++    }
++
++    public String resolve(long eventId, String teamId, String teamName, String upstreamLogo) {
++        if (!enabled) return upstreamLogo;
++        // An unknown numeric ID must never inherit another team's logo by name.
++        return numericId(teamId)
++                ? byId.get(new Key(eventId, teamId))
++                : byAlias.get(new Key(eventId, normalize(teamName)));
++    }
++
++    static String normalize(String value) {
++        String prepared = Objects.toString(value, "").replace('ª', 'a').replace('º', 'o');
++        return Normalizer.normalize(prepared, Normalizer.Form.NFD)
++                .replaceAll("\\p{M}", "")
++                .toLowerCase(Locale.ROOT)
++                .replaceAll("[^\\p{L}\\p{N}]+", " ")
++                .replaceAll("\\s+", " ").trim();
++    }
++
++    private static boolean numericId(String id) {
++        return id != null && id.matches("[1-9][0-9]*");
++    }
++
++    private static String validateOrigin(String value) {
++        String origin = Objects.toString(value, "").trim().replaceAll("/+$", "");
++        URI uri = URI.create(origin);
++        String host = uri.getHost();
++        boolean localHttp = "http".equals(uri.getScheme())
++                && ("localhost".equals(host) || "127.0.0.1".equals(host));
++        require(host != null && ("https".equals(uri.getScheme()) || localHttp)
++                        && uri.getRawUserInfo() == null && uri.getRawQuery() == null
++                        && uri.getRawFragment() == null && uri.getRawPath().isEmpty(),
++                "TEAM_LOGOS_BASE_URL must be an HTTPS origin (HTTP only for localhost/127.0.0.1)");
++        return origin;
++    }
++
++    private static Manifest readManifest(JsonMapper mapper) {
++        try (var stream = new ClassPathResource("team-logos.json").getInputStream()) {
++            return mapper.rebuild().enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
++                    .build().readValue(stream, Manifest.class);
++        } catch (IOException | RuntimeException exception) {
++            throw new IllegalStateException("Cannot load team-logos.json", exception);
++        }
++    }
++
++    private static void require(boolean condition, String message) {
++        if (!condition) throw new IllegalArgumentException(message);
++    }
++}
+diff --git a/src/main/resources/team-logos.json b/src/main/resources/team-logos.json
+new file mode 100644
+index 0000000..872d828
+--- /dev/null
++++ b/src/main/resources/team-logos.json
+@@ -0,0 +1,5 @@
++{
++  "version": 1,
++  "clubs": [],
++  "bindings": []
++}
+diff --git a/src/main/java/br/com/dnafutsal/backend/sports/infrastructure/SportsScraperMapper.java b/src/main/java/br/com/dnafutsal/backend/sports/infrastructure/SportsScraperMapper.java
+index e87320f..68977e7 100644
+--- a/src/main/java/br/com/dnafutsal/backend/sports/infrastructure/SportsScraperMapper.java
++++ b/src/main/java/br/com/dnafutsal/backend/sports/infrastructure/SportsScraperMapper.java
+@@ -24,10 +24,12 @@ class SportsScraperMapper {
+ 
+     private final ZoneId zoneId;
+     private final Clock clock;
++    private final TeamLogoResolver logos;
+ 
+-    SportsScraperMapper(AppProperties properties, Clock clock) {
++    SportsScraperMapper(AppProperties properties, Clock clock, TeamLogoResolver logos) {
+         this.zoneId = properties.zoneId();
+         this.clock = clock;
++        this.logos = logos;
+     }
+ 
+     CatalogItemView catalogItem(
+@@ -83,8 +85,8 @@ class SportsScraperMapper {
+                 source.division(), source.sourceUrl());
+     }
+ 
+-    List<TeamView> teams(List<ScraperTeam> source) {
+-        return safe(source).stream().map(this::team).toList();
++    List<TeamView> teams(long eventId, List<ScraperTeam> source) {
++        return safe(source).stream().map(item -> team(eventId, item)).toList();
+     }
+ 
+     SportsSnapshot snapshot(ScraperSnapshot source, List<ScraperScorer> scorerOverride) {
+@@ -94,17 +96,17 @@ class SportsScraperMapper {
+         }
+ 
+         SportsEventView event = event(source.event());
+-        List<TeamView> teams = teams(source.teams());
++        List<TeamView> teams = teams(event.eventId(), source.teams());
+         Map<String, TeamView> teamsByName = indexByName(teams);
+         List<MatchView> matches = safe(source.games()).stream()
+                 .map(game -> match(event, game, teamsByName))
+                 .toList();
+         List<StandingView> standings = safe(source.standings()).stream()
+-                .map(row -> standing(row, teamsByName))
++                .map(row -> standing(event.eventId(), row, teamsByName))
+                 .toList();
+         List<ScraperScorer> scorers = scorerOverride == null ? safe(source.scorers()) : safe(scorerOverride);
+ 
+-        return new SportsSnapshot(event, teams, matches, standings, topScorers(scorers, teamsByName),
++        return new SportsSnapshot(event, teams, matches, standings, topScorers(event.eventId(), scorers, teamsByName),
+                 source.collectedAt() == null ? clock.instant() : source.collectedAt());
+     }
+ 
+@@ -151,12 +153,14 @@ class SportsScraperMapper {
+                 game.phase(),
+ 
+                 resolveTeam(
++                        event.eventId(),
+                         game.homeTeam(),
+                         game.homeLogoUrl(),
+                         teamsByName
+                 ),
+ 
+                 resolveTeam(
++                        event.eventId(),
+                         game.awayTeam(),
+                         game.awayLogoUrl(),
+                         teamsByName
+@@ -176,12 +180,12 @@ class SportsScraperMapper {
+         );
+     }
+ 
+-    private StandingView standing(ScraperStanding row, Map<String, TeamView> teamsByName) {
++    private StandingView standing(long eventId, ScraperStanding row, Map<String, TeamView> teamsByName) {
+         return new StandingView(
+                 row.phase(),
+                 row.group(),
+                 row.position(),
+-                resolveTeam(row.team(), row.logoUrl(), teamsByName),
++                resolveTeam(eventId, row.team(), row.logoUrl(), teamsByName),
+                 row.games(),
+                 row.wins(),
+                 row.draws(),
+@@ -197,7 +201,7 @@ class SportsScraperMapper {
+         );
+     }
+ 
+-    private List<TopScorerView> topScorers(List<ScraperScorer> source, Map<String, TeamView> teamsByName) {
++    private List<TopScorerView> topScorers(long eventId, List<ScraperScorer> source, Map<String, TeamView> teamsByName) {
+         List<ScraperScorer> sorted = source.stream()
+                 .sorted(Comparator.comparing(ScraperScorer::goals,
+                                 Comparator.nullsLast(Comparator.reverseOrder()))
+@@ -211,7 +215,7 @@ class SportsScraperMapper {
+                     scorer.phase(),
+                     scorer.player(),
+                     scorer.playerImageUrl(),
+-                    resolveTeam(scorer.team(), scorer.teamLogoUrl(), teamsByName),
++                    resolveTeam(eventId, scorer.team(), scorer.teamLogoUrl(), teamsByName),
+                     scorer.goals(),
+                     scorer.personalDataSuppressed()
+             ));
+@@ -219,28 +223,41 @@ class SportsScraperMapper {
+         return List.copyOf(result);
+     }
+ 
+-    private TeamView team(ScraperTeam source) {
+-        return new TeamView(Long.toString(source.teamId()), source.name(), null, source.logoUrl());
++    private TeamView team(long eventId, ScraperTeam source) {
++        String id = Long.toString(source.teamId());
++        return new TeamView(id, source.name(), null,
++                logos.resolve(eventId, id, source.name(), source.logoUrl()));
+     }
+ 
+     private Map<String, TeamView> indexByName(List<TeamView> teams) {
+         Map<String, TeamView> result = new LinkedHashMap<>();
+-        teams.forEach(team -> result.putIfAbsent(normalize(team.name()), team));
++        var ambiguous = new java.util.HashSet<String>();
++        for (TeamView team : teams) {
++            String name = normalize(team.name());
++            if (ambiguous.contains(name)) continue;
++            TeamView previous = result.putIfAbsent(name, team);
++            if (previous != null && !previous.id().equals(team.id())) {
++                // A null entry marks a name shared by different teams.
++                result.put(name, null);
++                ambiguous.add(name);
++            }
++        }
+         return result;
+     }
+ 
+-    private TeamView resolveTeam(String name, String logoUrl, Map<String, TeamView> teamsByName) {
++    private TeamView resolveTeam(long eventId, String name, String logoUrl, Map<String, TeamView> teamsByName) {
+         String normalized = normalize(name);
+         TeamView known = teamsByName.get(normalized);
+         if (known != null) {
+-            if (known.logoUrl() == null && logoUrl != null) {
+-                return new TeamView(known.id(), known.name(), known.shortName(), logoUrl);
+-            }
+-            return known;
++            String upstream = known.logoUrl() != null ? known.logoUrl() : logoUrl;
++            return new TeamView(known.id(), known.name(), known.shortName(),
++                    logos.resolve(eventId, known.id(), known.name(), upstream));
+         }
+         String displayName = name == null || name.isBlank() ? "Equipe não informada" : name.trim();
+         String suffix = normalized.isBlank() ? deterministicId(displayName) : normalized.replace(' ', '-');
+-        return new TeamView("name:" + suffix, displayName, null, logoUrl);
++        String id = "name:" + suffix;
++        return new TeamView(id, displayName, null, teamsByName.containsKey(normalized)
++                ? null : logos.resolve(eventId, id, displayName, logoUrl));
+     }
+ 
+     private String gameId(long eventId, ScraperGame game) {
+diff --git a/src/main/java/br/com/dnafutsal/backend/sports/infrastructure/HttpSportsDataGateway.java b/src/main/java/br/com/dnafutsal/backend/sports/infrastructure/HttpSportsDataGateway.java
+index 161a31b..50cfc14 100644
+--- a/src/main/java/br/com/dnafutsal/backend/sports/infrastructure/HttpSportsDataGateway.java
++++ b/src/main/java/br/com/dnafutsal/backend/sports/infrastructure/HttpSportsDataGateway.java
+@@ -203,7 +203,7 @@ public class HttpSportsDataGateway implements SportsDataGateway {
+         List<ScraperTeam> response = get(diagnostics,
+                 uri -> uri.path("/api/v1/events/{eventId}/teams").build(eventId),
+                 new ParameterizedTypeReference<>() {});
+-        return mapResponse(diagnostics, () -> mapper.teams(response));
++        return mapResponse(diagnostics, () -> mapper.teams(eventId, response));
+     }
+ 
+     @Override
+diff --git a/src/test/java/br/com/dnafutsal/backend/sports/infrastructure/SportsScraperMapperTest.java b/src/test/java/br/com/dnafutsal/backend/sports/infrastructure/SportsScraperMapperTest.java
+index 92b1a2e..4df3e81 100644
+--- a/src/test/java/br/com/dnafutsal/backend/sports/infrastructure/SportsScraperMapperTest.java
++++ b/src/test/java/br/com/dnafutsal/backend/sports/infrastructure/SportsScraperMapperTest.java
+@@ -20,7 +20,8 @@ class SportsScraperMapperTest {
+     private final SportsScraperMapper mapper = new SportsScraperMapper(
+             new AppProperties("http://localhost:3000", List.of("http://localhost:3000"),
+                     "America/Sao_Paulo"),
+-            Clock.fixed(Instant.parse("2026-08-15T12:00:00Z"), ZoneOffset.UTC)
++            Clock.fixed(Instant.parse("2026-08-15T12:00:00Z"), ZoneOffset.UTC),
++            TeamLogoResolver.disabled()
+     );
+ 
+     @Test
+diff --git a/src/test/java/br/com/dnafutsal/backend/sports/infrastructure/HttpSportsDataGatewayTest.java b/src/test/java/br/com/dnafutsal/backend/sports/infrastructure/HttpSportsDataGatewayTest.java
+index 7a05421..aea6701 100644
+--- a/src/test/java/br/com/dnafutsal/backend/sports/infrastructure/HttpSportsDataGatewayTest.java
++++ b/src/test/java/br/com/dnafutsal/backend/sports/infrastructure/HttpSportsDataGatewayTest.java
+@@ -44,7 +44,8 @@ class HttpSportsDataGatewayTest {
+     private final SportsScraperMapper mapper = new SportsScraperMapper(
+             new AppProperties("http://localhost:3000", List.of("http://localhost:3000"),
+                     "America/Sao_Paulo"),
+-            Clock.fixed(Instant.parse("2026-08-15T12:00:00Z"), ZoneOffset.UTC)
++            Clock.fixed(Instant.parse("2026-08-15T12:00:00Z"), ZoneOffset.UTC),
++            TeamLogoResolver.disabled()
+     );
+ 
+     @Test
+diff --git a/src/test/java/br/com/dnafutsal/backend/sports/infrastructure/TeamLogoResolverTest.java b/src/test/java/br/com/dnafutsal/backend/sports/infrastructure/TeamLogoResolverTest.java
+new file mode 100644
+index 0000000..3589d57
+--- /dev/null
++++ b/src/test/java/br/com/dnafutsal/backend/sports/infrastructure/TeamLogoResolverTest.java
+@@ -0,0 +1,61 @@
++package br.com.dnafutsal.backend.sports.infrastructure;
++
++import org.junit.jupiter.api.Test;
++import java.util.List;
++import static org.assertj.core.api.Assertions.*;
++
++class TeamLogoResolverTest {
++    private static final String PATH = "/team-logos/" + "a".repeat(64) + ".webp";
++    private static final String BASE = "https://assets.example.test";
++
++    private TeamLogoResolver.Manifest manifest(TeamLogoResolver.Binding... bindings) {
++        return new TeamLogoResolver.Manifest(1,
++                List.of(new TeamLogoResolver.Club("clube-teste", PATH)), List.of(bindings));
++    }
++    private TeamLogoResolver.Binding binding(long event, String id, String alias) {
++        return new TeamLogoResolver.Binding(event, id, "clube-teste", List.of(alias));
++    }
++
++    @Test
++    void scopesIdsAndAliasesToTheEventAndDoesNotGuessAnUnknownNumericId() {
++        var resolver = new TeamLogoResolver(true, BASE, manifest(binding(7001, "10", "São Clube")));
++        assertThat(resolver.resolve(7001, "10", "Outro nome", null)).isEqualTo(BASE + PATH);
++        assertThat(resolver.resolve(7002, "10", "São Clube", null)).isNull();
++        assertThat(resolver.resolve(7001, "999", "São Clube", null)).isNull();
++        assertThat(resolver.resolve(7001, "name:sao-clube", " SÃO  CLUBE ", null)).isEqualTo(BASE + PATH);
++        assertThat(resolver.resolve(7001, "name:sao-clube-b", "São Clube B", null)).isNull();
++    }
++
++    @Test
++    void rejectsAmbiguousAliasesAndDuplicateIdsBeforeServingRequests() {
++        assertThatThrownBy(() -> new TeamLogoResolver(true, BASE,
++                manifest(binding(7001, "10", "São Clube"), binding(7001, "20", "Sao Clube"))))
++                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("Ambiguous alias");
++        assertThatThrownBy(() -> new TeamLogoResolver(true, BASE,
++                manifest(binding(7001, "10", "A"), binding(7001, "10", "B"))))
++                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("Duplicate event/team");
++    }
++
++    @Test
++    void allowsTheSameAliasAndIdInDifferentEvents() {
++        var resolver = new TeamLogoResolver(true, BASE,
++                manifest(binding(7001, "10", "Clube"), binding(7002, "10", "Clube")));
++        assertThat(resolver.resolve(7002, "10", "Clube", null)).isEqualTo(BASE + PATH);
++    }
++
++    @Test
++    void disablesEnrichmentWithoutNeedingAValidManifestOrOrigin() {
++        var resolver = TeamLogoResolver.disabled();
++        assertThat(resolver.resolve(7001, "10", "Clube", "https://source.example/logo.png"))
++                .isEqualTo("https://source.example/logo.png");
++    }
++
++    @Test
++    void rejectsEmptyManifestAndNonLocalHttpOrigin() {
++        assertThatThrownBy(() -> new TeamLogoResolver(true, BASE, manifest()))
++                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("No approved");
++        assertThatThrownBy(() -> new TeamLogoResolver(true, "http://assets.example.test",
++                manifest(binding(7001, "10", "Clube"))))
++                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("HTTPS origin");
++    }
++}
+diff --git a/src/test/java/br/com/dnafutsal/backend/sports/infrastructure/TeamLogoIntegrationTest.java b/src/test/java/br/com/dnafutsal/backend/sports/infrastructure/TeamLogoIntegrationTest.java
+new file mode 100644
+index 0000000..e70f163
+--- /dev/null
++++ b/src/test/java/br/com/dnafutsal/backend/sports/infrastructure/TeamLogoIntegrationTest.java
+@@ -0,0 +1,58 @@
++package br.com.dnafutsal.backend.sports.infrastructure;
++
++import br.com.dnafutsal.backend.config.AppProperties;
++import org.junit.jupiter.api.Test;
++import java.time.Clock;
++import java.time.LocalDate;
++import java.util.List;
++import static org.assertj.core.api.Assertions.assertThat;
++
++class TeamLogoIntegrationTest {
++    @Test
++    void enrichesCatalogMatchesStandingsAndScorersWithoutReplacingTheAthletePhoto() {
++        String logo = "/team-logos/" + "b".repeat(64) + ".webp";
++        var logos = new TeamLogoResolver(true, "https://site.example.test",
++                new TeamLogoResolver.Manifest(1,
++                        List.of(new TeamLogoResolver.Club("clube-a", logo)),
++                        List.of(new TeamLogoResolver.Binding(7001, "10", "clube-a", List.of("Clube A", "Clube A Futsal")))));
++        var mapper = new SportsScraperMapper(new AppProperties("http://localhost:3000",
++                List.of("http://localhost:3000"), "America/Sao_Paulo"), Clock.systemUTC(), logos);
++        var teams = List.of(new ScraperTeam(10, "Clube A", "https://source.example/old.png", null));
++        var event = new ScraperEvent(7001, "Paulista", 2026, "Sub-10", "A1", null);
++        var game = new ScraperGame(1L, "Fase", LocalDate.of(2026, 1, 1), null, null,
++                "Clube A", null, 1, "Sem escudo", null, 0, false, null);
++        var standing = new ScraperStanding("Fase", "A", 1, "Clube A", null,
++                3, 1, 1, 0, 0, 1, 0, 1, null, null, null, null);
++        var scorer = new ScraperScorer("Fase", "Atleta teste", "https://source.example/photo.jpg",
++                "Clube A Futsal", null, 1, false);
++        var result = mapper.snapshot(new ScraperSnapshot(event, List.of(standing), List.of(game),
++                teams, List.of(scorer), null), null);
++        String expected = "https://site.example.test" + logo;
++        assertThat(mapper.teams(7001, teams).get(0).logoUrl()).isEqualTo(expected);
++        assertThat(result.teams().get(0).logoUrl()).isEqualTo(expected);
++        assertThat(result.matches().get(0).homeTeam().logoUrl()).isEqualTo(expected);
++        assertThat(result.standings().get(0).team().logoUrl()).isEqualTo(expected);
++        assertThat(result.topScorers().get(0).team().id()).startsWith("name:");
++        assertThat(result.topScorers().get(0).team().logoUrl()).isEqualTo(expected);
++        assertThat(result.topScorers().get(0).athleteImageUrl()).isEqualTo("https://source.example/photo.jpg");
++        assertThat(result.matches().get(0).awayTeam().logoUrl()).isNull();
++    }
++
++    @Test
++    void doesNotUseAStaleAliasWhenTheCurrentSnapshotHasTwoTeamsWithTheSameName() {
++        var logos = new TeamLogoResolver(true, "https://site.example.test",
++                new TeamLogoResolver.Manifest(1,
++                        List.of(new TeamLogoResolver.Club("clube-a", "/team-logos/" + "b".repeat(64) + ".webp")),
++                        List.of(new TeamLogoResolver.Binding(7001, "10", "clube-a", List.of("Clube A")))));
++        var mapper = new SportsScraperMapper(new AppProperties("http://localhost:3000",
++                List.of("http://localhost:3000"), "America/Sao_Paulo"), Clock.systemUTC(), logos);
++        var teams = List.of(new ScraperTeam(10, "Clube A", null, null),
++                new ScraperTeam(20, "CLUBE A", null, null));
++        var event = new ScraperEvent(7001, "Paulista", 2026, "Sub-10", "A1", null);
++        var scorer = new ScraperScorer("Fase", "Atleta teste", null, "Clube A", null, 1, false);
++        var result = mapper.snapshot(new ScraperSnapshot(event, List.of(), List.of(), teams,
++                List.of(scorer), null), null);
++        assertThat(result.topScorers().get(0).team().logoUrl()).isNull();
++        assertThat(result.topScorers().get(0).team().id()).startsWith("name:");
++    }
++}

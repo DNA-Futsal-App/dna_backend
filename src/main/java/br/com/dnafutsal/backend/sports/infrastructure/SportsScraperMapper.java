@@ -24,10 +24,12 @@ class SportsScraperMapper {
 
     private final ZoneId zoneId;
     private final Clock clock;
+    private final TeamLogoResolver logos;
 
-    SportsScraperMapper(AppProperties properties, Clock clock) {
+    SportsScraperMapper(AppProperties properties, Clock clock, TeamLogoResolver logos) {
         this.zoneId = properties.zoneId();
         this.clock = clock;
+        this.logos = logos;
     }
 
     CatalogItemView catalogItem(
@@ -83,8 +85,8 @@ class SportsScraperMapper {
                 source.division(), source.sourceUrl());
     }
 
-    List<TeamView> teams(List<ScraperTeam> source) {
-        return safe(source).stream().map(this::team).toList();
+    List<TeamView> teams(long eventId, List<ScraperTeam> source) {
+        return safe(source).stream().map(item -> team(eventId, item)).toList();
     }
 
     SportsSnapshot snapshot(ScraperSnapshot source, List<ScraperScorer> scorerOverride) {
@@ -94,17 +96,17 @@ class SportsScraperMapper {
         }
 
         SportsEventView event = event(source.event());
-        List<TeamView> teams = teams(source.teams());
+        List<TeamView> teams = teams(event.eventId(), source.teams());
         Map<String, TeamView> teamsByName = indexByName(teams);
         List<MatchView> matches = safe(source.games()).stream()
                 .map(game -> match(event, game, teamsByName))
                 .toList();
         List<StandingView> standings = safe(source.standings()).stream()
-                .map(row -> standing(row, teamsByName))
+                .map(row -> standing(event.eventId(), row, teamsByName))
                 .toList();
         List<ScraperScorer> scorers = scorerOverride == null ? safe(source.scorers()) : safe(scorerOverride);
 
-        return new SportsSnapshot(event, teams, matches, standings, topScorers(scorers, teamsByName),
+        return new SportsSnapshot(event, teams, matches, standings, topScorers(event.eventId(), scorers, teamsByName),
                 source.collectedAt() == null ? clock.instant() : source.collectedAt());
     }
 
@@ -151,12 +153,14 @@ class SportsScraperMapper {
                 game.phase(),
 
                 resolveTeam(
+                        event.eventId(),
                         game.homeTeam(),
                         game.homeLogoUrl(),
                         teamsByName
                 ),
 
                 resolveTeam(
+                        event.eventId(),
                         game.awayTeam(),
                         game.awayLogoUrl(),
                         teamsByName
@@ -176,12 +180,12 @@ class SportsScraperMapper {
         );
     }
 
-    private StandingView standing(ScraperStanding row, Map<String, TeamView> teamsByName) {
+    private StandingView standing(long eventId, ScraperStanding row, Map<String, TeamView> teamsByName) {
         return new StandingView(
                 row.phase(),
                 row.group(),
                 row.position(),
-                resolveTeam(row.team(), row.logoUrl(), teamsByName),
+                resolveTeam(eventId, row.team(), row.logoUrl(), teamsByName),
                 row.games(),
                 row.wins(),
                 row.draws(),
@@ -197,7 +201,7 @@ class SportsScraperMapper {
         );
     }
 
-    private List<TopScorerView> topScorers(List<ScraperScorer> source, Map<String, TeamView> teamsByName) {
+    private List<TopScorerView> topScorers(long eventId, List<ScraperScorer> source, Map<String, TeamView> teamsByName) {
         List<ScraperScorer> sorted = source.stream()
                 .sorted(Comparator.comparing(ScraperScorer::goals,
                                 Comparator.nullsLast(Comparator.reverseOrder()))
@@ -211,7 +215,7 @@ class SportsScraperMapper {
                     scorer.phase(),
                     scorer.player(),
                     scorer.playerImageUrl(),
-                    resolveTeam(scorer.team(), scorer.teamLogoUrl(), teamsByName),
+                    resolveTeam(eventId, scorer.team(), scorer.teamLogoUrl(), teamsByName),
                     scorer.goals(),
                     scorer.personalDataSuppressed()
             ));
@@ -219,28 +223,41 @@ class SportsScraperMapper {
         return List.copyOf(result);
     }
 
-    private TeamView team(ScraperTeam source) {
-        return new TeamView(Long.toString(source.teamId()), source.name(), null, source.logoUrl());
+    private TeamView team(long eventId, ScraperTeam source) {
+        String id = Long.toString(source.teamId());
+        return new TeamView(id, source.name(), null,
+                logos.resolve(eventId, id, source.name(), source.logoUrl()));
     }
 
     private Map<String, TeamView> indexByName(List<TeamView> teams) {
         Map<String, TeamView> result = new LinkedHashMap<>();
-        teams.forEach(team -> result.putIfAbsent(normalize(team.name()), team));
+        var ambiguous = new java.util.HashSet<String>();
+        for (TeamView team : teams) {
+            String name = normalize(team.name());
+            if (ambiguous.contains(name)) continue;
+            TeamView previous = result.putIfAbsent(name, team);
+            if (previous != null && !previous.id().equals(team.id())) {
+                // A null entry marks a name shared by different teams.
+                result.put(name, null);
+                ambiguous.add(name);
+            }
+        }
         return result;
     }
 
-    private TeamView resolveTeam(String name, String logoUrl, Map<String, TeamView> teamsByName) {
+    private TeamView resolveTeam(long eventId, String name, String logoUrl, Map<String, TeamView> teamsByName) {
         String normalized = normalize(name);
         TeamView known = teamsByName.get(normalized);
         if (known != null) {
-            if (known.logoUrl() == null && logoUrl != null) {
-                return new TeamView(known.id(), known.name(), known.shortName(), logoUrl);
-            }
-            return known;
+            String upstream = known.logoUrl() != null ? known.logoUrl() : logoUrl;
+            return new TeamView(known.id(), known.name(), known.shortName(),
+                    logos.resolve(eventId, known.id(), known.name(), upstream));
         }
         String displayName = name == null || name.isBlank() ? "Equipe não informada" : name.trim();
         String suffix = normalized.isBlank() ? deterministicId(displayName) : normalized.replace(' ', '-');
-        return new TeamView("name:" + suffix, displayName, null, logoUrl);
+        String id = "name:" + suffix;
+        return new TeamView(id, displayName, null, teamsByName.containsKey(normalized)
+                ? null : logos.resolve(eventId, id, displayName, logoUrl));
     }
 
     private String gameId(long eventId, ScraperGame game) {

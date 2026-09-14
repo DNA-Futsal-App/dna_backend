@@ -20,7 +20,8 @@ class SportsScraperMapperTest {
     private final SportsScraperMapper mapper = new SportsScraperMapper(
             new AppProperties("http://localhost:3000", List.of("http://localhost:3000"),
                     "America/Sao_Paulo"),
-            Clock.fixed(Instant.parse("2026-08-15T12:00:00Z"), ZoneOffset.UTC)
+            Clock.fixed(Instant.parse("2026-08-15T12:00:00Z"), ZoneOffset.UTC),
+            TeamLogoResolver.disabled()
     );
 
     @Test
