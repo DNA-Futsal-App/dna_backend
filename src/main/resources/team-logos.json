@@ -1,0 +1,3459 @@
+{
+  "version": 1,
+  "clubs": [
+    {
+      "key": "ca-juventus",
+      "logoPath": "/team-logos/7d5fc73461be986ec4079fb5204913dae511587f9153e15af0d7ac9fea19305c.webp"
+    },
+    {
+      "key": "asf-magnum",
+      "logoPath": "/team-logos/5af66bee55f9a1ee32487e6ca1daa261b3316e48f2b61ab86ba1d94836568abd.webp"
+    },
+    {
+      "key": "pulo-futsal-campinas",
+      "logoPath": "/team-logos/08e3bbae91c4c8088e6add48d9b1023940bbc59dca9590955dc7bd83c4d915d4.webp"
+    },
+    {
+      "key": "ad-indaiatuba-iniciacao",
+      "logoPath": "/team-logos/d3dd6b7c3ca9e2ec8ac0e94f757c10590e1909ddf6d3b3591177a6781ed6ebf9.webp"
+    },
+    {
+      "key": "associacao-portuguesa-de-desportos",
+      "logoPath": "/team-logos/d2dab51c3aee95ad82842d9c6736b129b1f6e4edfb046321941ccfce53e7e978.webp"
+    },
+    {
+      "key": "associacao-desportiva-do-abcd-mesc-sao-bernardo",
+      "logoPath": "/team-logos/a32d105e958e7d8f4d62487828b52810b402b8134916297b181699fd726ab279.webp"
+    },
+    {
+      "key": "prospere-hortolandia-iniciacao",
+      "logoPath": "/team-logos/e141b4065dcaef9642abeb1e0da8483ecc543bff09a4a71817b712a163f6c3b1.webp"
+    },
+    {
+      "key": "santos-fc",
+      "logoPath": "/team-logos/0adb6cd7a09ecd791b8defcb147b7eead4254a846ac63eff6a493754040e4f6d.webp"
+    },
+    {
+      "key": "associacao-desportiva-olimpik-ativo",
+      "logoPath": "/team-logos/15ba42f28054a924f694f934b85394bc85e79db352e77103606f15bbb709695b.webp"
+    },
+    {
+      "key": "fae-osasco-audax-iniciacao",
+      "logoPath": "/team-logos/8cc505e11ce7d0bca9589ece787f64897c7219a05bc95b01ca01e3f00ada4f4e.webp"
+    },
+    {
+      "key": "sc-corinthians-paulista-pta-iniciacao",
+      "logoPath": "/team-logos/75b77454a267d3ab88545afb46a71c9ba9f8a8060ac596ff7025e1a91504a970.webp"
+    },
+    {
+      "key": "se-palmeiras",
+      "logoPath": "/team-logos/4ce6fbc3c1843e48294672a60afd7714d2bd29b1e653b6169017ea365dc43848.webp"
+    },
+    {
+      "key": "ad-batebola",
+      "logoPath": "/team-logos/d02e8eef8cf192f452cc8ed7d61b1fb46dd2c2cc903822763a48789e97c99040.webp"
+    },
+    {
+      "key": "clube-atletico-ypiranga-ca-ypiranga",
+      "logoPath": "/team-logos/dc90145f292e1fc4d6f86e6e55efedb31424b24fbbfb233d9866f2b42665a4bb.webp"
+    },
+    {
+      "key": "uniao-rd",
+      "logoPath": "/team-logos/529aa56cc7c7f7a310f4428c3ccd23b1641ef3e5ca441eae946e2bb285087bc2.webp"
+    },
+    {
+      "key": "sao-paulo-fc",
+      "logoPath": "/team-logos/1b13e240c1f8ff9e2d3d365f5a0eb229e1a3d461a4cbe6d65cad2348f8eadfc7.webp"
+    },
+    {
+      "key": "lausanne-paulista-fc-a-iniciacao",
+      "logoPath": "/team-logos/c0ca39d679ab0aed87f23e261d78bdc002babd8d6294ddbbe78b1bb433e4b719.webp"
+    },
+    {
+      "key": "taubate-futsal-iniciacao",
+      "logoPath": "/team-logos/049885a8d3edf8347598752cbe689eadcb3ed2a843d0c4a894aca6d5e31af7a5.webp"
+    },
+    {
+      "key": "tabuca-jrs",
+      "logoPath": "/team-logos/2fd2f4213da32d7ae152313dd439abff2828323190f66b5a83079f51193f4542.webp"
+    },
+    {
+      "key": "sao-caetano-fc",
+      "logoPath": "/team-logos/4c8f724f31afc052188bd92de79c6d1fbd6af2616c3d945ad670abe0a5e0ba9c.webp"
+    },
+    {
+      "key": "ca-juventus-iniciacao",
+      "logoPath": "/team-logos/a7f925d6364a006b280d74f8082582034e376c7eb1d4bcb79c5a62ee9e81a51e.webp"
+    },
+    {
+      "key": "se-palmeiras-iniciacao",
+      "logoPath": "/team-logos/4ce6fbc3c1843e48294672a60afd7714d2bd29b1e653b6169017ea365dc43848.webp"
+    },
+    {
+      "key": "santos-fc-iniciacao",
+      "logoPath": "/team-logos/0adb6cd7a09ecd791b8defcb147b7eead4254a846ac63eff6a493754040e4f6d.webp"
+    },
+    {
+      "key": "se-palmeiras-base",
+      "logoPath": "/team-logos/50e8d0a9306ca7ba7cec8275cf24272b6209f2698236f562dd0f3e5e349a1230.webp"
+    },
+    {
+      "key": "sc-corinthians-paulista-pta-base",
+      "logoPath": "/team-logos/75085310b3c8246f0f30dafba49f44e8606484bf783405024617bc5a1fb5a18d.webp"
+    },
+    {
+      "key": "associacao-atletica-botucatuense",
+      "logoPath": "/team-logos/e6a802534f688907e1f0a4b57a3b211fa633d42123f540b0669d9aee5dcf8cd1.webp"
+    },
+    {
+      "key": "clube-esportivo-da-penha-ce-penha",
+      "logoPath": "/team-logos/bb7f88e56a013bffbe19b5514fc44b8b1432fe285d81d71571aa3801d5efddc4.webp"
+    },
+    {
+      "key": "santos-fc-base",
+      "logoPath": "/team-logos/3590a77e76ef4a2f90c7b3d4b62e39ee8c0ac37893f2e41b854a08d6aa4cfbc3.webp"
+    },
+    {
+      "key": "fae-osasco-audax-base",
+      "logoPath": "/team-logos/11820768af89efa051dfdf32017d7f6a5e8712ec47bb865bd97dc102e0a0a8a5.webp"
+    },
+    {
+      "key": "ca-juventus-base",
+      "logoPath": "/team-logos/7d5fc73461be986ec4079fb5204913dae511587f9153e15af0d7ac9fea19305c.webp"
+    },
+    {
+      "key": "colorado-caieiras",
+      "logoPath": "/team-logos/5cd8de56df94bddda453060da18c3ac698c2e5c7e843a0bfeb8d0cb7e05b6dc6.webp"
+    },
+    {
+      "key": "ad-indaiatuba-base",
+      "logoPath": "/team-logos/f9f7ab6150da55fef2a3a34c555a02752b7ee24d81535a48dd1927643d086f36.webp"
+    },
+    {
+      "key": "sao-jose-futsal",
+      "logoPath": "/team-logos/4818c17a4cbc642c4b61738fe0163825a65a4034e27f41b317f7f70d3184e2ce.webp"
+    },
+    {
+      "key": "sao-caetano-fc-rsfc",
+      "logoPath": "/team-logos/61659285e83b6c273260f3fae57f89632047a0a8418dd3d5656c76aaa290e818.webp"
+    },
+    {
+      "key": "lausanne-paulista-fc-a-base",
+      "logoPath": "/team-logos/b25bb6a3c35f4c4a837c54ea72ad00d625924dd65f400a0bc469f6b922be0918.webp"
+    },
+    {
+      "key": "mogi-das-cruzes",
+      "logoPath": "/team-logos/4c2b7c1d51869ef0923c4bf0a682d7a5b6b83ccd47d2518e1fdcafa4e949d4c3.webp"
+    },
+    {
+      "key": "aa-wimpro-guarulhos-iniciacao",
+      "logoPath": "/team-logos/dcd34b2318c29a7ea019c18c8e8fb41f26fcfa03ea20db60bd2c854e56473721.webp"
+    },
+    {
+      "key": "ae-friburgo",
+      "logoPath": "/team-logos/a89a7cb8180a96d556af704aa298009cff9cddf51c1410202eeee27c84a54391.webp"
+    },
+    {
+      "key": "a-uniao-maua",
+      "logoPath": "/team-logos/bdbd2f19faea6acf688447cea6f5d4911057479ae9e06b611b9f0aa81c6cd99b.webp"
+    },
+    {
+      "key": "associacao-desportiva-nando-grana",
+      "logoPath": "/team-logos/f2f353f5c31b05b0b9cb1ee02e76f7184f73b6421bfd129cbbab00e8646977ed.webp"
+    },
+    {
+      "key": "ctc-vila-ema",
+      "logoPath": "/team-logos/e499e5dd80a045fb373ad4fcf07a4941bff18a929334997342887d88de590ca0.webp"
+    },
+    {
+      "key": "metalurgicos-de-jundiai",
+      "logoPath": "/team-logos/909e908232f146f1082167f8169f04b9ac5ba278c17e599412efc77006179f32.webp"
+    },
+    {
+      "key": "sport-benfica-de-mogi-das-cruzes",
+      "logoPath": "/team-logos/672490adc703af5481e5dadd10baa3dcb0bd9dba3d0c74ca09507ea03c492c02.webp"
+    },
+    {
+      "key": "mx7-diadema",
+      "logoPath": "/team-logos/914c6ce5654a125f1f447fc6b1b97d71f40a3407250d072f84d9668f2f923ca5.webp"
+    },
+    {
+      "key": "ad-suzano",
+      "logoPath": "/team-logos/4831b319432899744a9b092de698f65d84739b701e8d47eeb525d874409e21ae.webp"
+    },
+    {
+      "key": "ser-caieiras",
+      "logoPath": "/team-logos/27c6fc1b9a538fb57b62198d7861bf7ebab39a0de02c7ee062bfdd86d306fe00.webp"
+    },
+    {
+      "key": "clube-mooca",
+      "logoPath": "/team-logos/3d1766cd2e51e158c8f6a7dcb5880417fca7f406f4e24b663638e6a2d5d8b409.webp"
+    },
+    {
+      "key": "adc-marvel",
+      "logoPath": "/team-logos/2252aa474ffbe6947e5a6232c7a4dcaa7571eaf60c1327dfe00ed418d9051568.webp"
+    },
+    {
+      "key": "clube-batalha",
+      "logoPath": "/team-logos/785fea1561c2d063ffeb7d7d6065fbc2648fc09843aa120d287de341a447fd51.webp"
+    },
+    {
+      "key": "river-do-belem",
+      "logoPath": "/team-logos/3bb0d52aa806e8ad906b29e8df6bd4955aad6090b9a1a4ef99db7d4caf69eaf9.webp"
+    },
+    {
+      "key": "gr-gremetal",
+      "logoPath": "/team-logos/c16e86dcea6b8ec8d17eb7dac0137f88c7b20356dcdea8131fac49f039a79d24.webp"
+    },
+    {
+      "key": "adc-mercedes-benz",
+      "logoPath": "/team-logos/7069d41f431c1b9f58baac15e8d98f895d6eeeb10b5d6652bcaeb620f918f837.webp"
+    },
+    {
+      "key": "adef-cotia",
+      "logoPath": "/team-logos/c23360f372c93defd1bcfc35bf6862a1fd1133e7da42bb011bc23b4bcb7cbc4d.webp"
+    },
+    {
+      "key": "chute-futsal",
+      "logoPath": "/team-logos/fcbbdc1c44261ea096047d95990906740af7e9c31821c6b96ec726cbcd20d5ec.webp"
+    },
+    {
+      "key": "associacao-paulista-futebol-clube-mooca",
+      "logoPath": "/team-logos/3d1766cd2e51e158c8f6a7dcb5880417fca7f406f4e24b663638e6a2d5d8b409.webp"
+    },
+    {
+      "key": "stadium-futsal",
+      "logoPath": "/team-logos/ff8f86f36a6fc0e749e29004f8b233ab308627782a4ac42f5e78b1f0ecaf9cc4.webp"
+    },
+    {
+      "key": "impacto-fc",
+      "logoPath": "/team-logos/44038db1c6cca0ffa75e98b766b14d0465cdddc1bdcb5a290c59a31ccbe0160a.webp"
+    },
+    {
+      "key": "ad-prudente",
+      "logoPath": "/team-logos/2bd0cf56f4382c8dc8d84a0ffe7d45b977673520a98db482346da655b27f0137.webp"
+    },
+    {
+      "key": "liga-sebastianense-de-futsal-lisfuts-sao-sebastiao",
+      "logoPath": "/team-logos/93e57f049b2291c1b02170b0330f333ce1efdf6ef3ceadf66afb70ee962ba56e.webp"
+    },
+    {
+      "key": "selecionados-futsal",
+      "logoPath": "/team-logos/8b4973fac1ef4e148ee1608e31409e9a464424d4b20fd3867842f23e548740bf.webp"
+    },
+    {
+      "key": "sao-paulo-fc-b",
+      "logoPath": "/team-logos/0e5f56ee90dc7213af3bef6a71d3b47d168bda2ad0b749d2d6c45179b1c93552.webp"
+    },
+    {
+      "key": "prospera-hortolandia",
+      "logoPath": "/team-logos/5ebf56aaee3aef72dd66ba003fcd6ab4c29dbcb732b8fdec3e99fead0ce0e832.webp"
+    },
+    {
+      "key": "taubate-futsal-base",
+      "logoPath": "/team-logos/884a488da7aff0226e676283684f04e6bbff6da60ddd22b5729fbc1d61846a7f.webp"
+    },
+    {
+      "key": "aa-wimpro-guarulhos-base",
+      "logoPath": "/team-logos/6c1204dc76e02871f21c3c3a59d9de54d2012efd3ee5af7fcd6d5fbcc279a046.webp"
+    },
+    {
+      "key": "prospere-hortolandia-base",
+      "logoPath": "/team-logos/5ebf56aaee3aef72dd66ba003fcd6ab4c29dbcb732b8fdec3e99fead0ce0e832.webp"
+    },
+    {
+      "key": "acissa-astros-futsal",
+      "logoPath": "/team-logos/37170750677a871302b97628b7208eee7041f1a25c485273d1511913eba08a8a.webp"
+    },
+    {
+      "key": "r7-futsal",
+      "logoPath": "/team-logos/b36ab02d2fd835c06721a912445146639205c89ecdc1ca2be9b01d46770e45d7.webp"
+    },
+    {
+      "key": "jabaquara-atletico-clube",
+      "logoPath": "/team-logos/38b512b3db86a07ab733d600737d3444f791e3e7e3047882b27b014ad3fcc760.webp"
+    },
+    {
+      "key": "napole-sports",
+      "logoPath": "/team-logos/bc510b5384b3802f39c58b37744305463fd42ef9b417807f76ed54aebd7432af.webp"
+    },
+    {
+      "key": "atibaiaense-de-futsal",
+      "logoPath": "/team-logos/3c32be88ed359232bd1028ac2e158b6a5c595f7ac0feb7aa69667d57bb680042.webp"
+    },
+    {
+      "key": "rosa-negra-ipasure-futsal",
+      "logoPath": "/team-logos/c84f88f4faf1704de0ea371f2d3195db9ec464cda96c8c1fc7f0b3454966c0db.webp"
+    },
+    {
+      "key": "prospere-hortolandia-b",
+      "logoPath": "/team-logos/48865c405fe4a2e89d85849683b2e4d3a6a6a48d7a32ef2bca04aaf6585c3fc1.webp"
+    },
+    {
+      "key": "cc-de-tatui",
+      "logoPath": "/team-logos/9ae09d4a783053fbdd1aee4481a7f6c67437bbce4ccfb4e43531c09ccf760fd9.webp"
+    },
+    {
+      "key": "sporting-club-paulinense",
+      "logoPath": "/team-logos/7af7381fce49e67583544e6ddd948389c1deb2e4c740aac5b3fe05f26eba55c7.webp"
+    },
+    {
+      "key": "pequeninos-de-perus",
+      "logoPath": "/team-logos/718c54bd3aa829b921e4d2eab785e111704ef6f648de787e0c1251facf5d9c93.webp"
+    },
+    {
+      "key": "itaquerense-futsal",
+      "logoPath": "/team-logos/f16ea223331a976a9460162702f76f28c131a04719a4461a046d882f885fc5a6.webp"
+    },
+    {
+      "key": "vem-comigo-gerando-frutos-cfaf",
+      "logoPath": "/team-logos/97023b6395d787854f80a28608264b8bf25cc52064d207bdee0fe46235e44fd6.webp"
+    },
+    {
+      "key": "guarulhense-tbc-tranportes",
+      "logoPath": "/team-logos/ae942ddd247d5e364e523f28b6dea813f5face17ebd1d8dd5ed2d239c3aa2313.webp"
+    },
+    {
+      "key": "ae-company-sports",
+      "logoPath": "/team-logos/56d66fac9170f51db9a7bcdcc691ed3c6d9fccb1096abcd6d8329db9f2b0826d.webp"
+    },
+    {
+      "key": "liga-amadora-de-itapevi-de-futsal",
+      "logoPath": "/team-logos/04f9e25bddd7c39afed2b5cce6175590853da3117daf8c4d41d17afa61481087.webp"
+    },
+    {
+      "key": "jacarei-alianca-futsal-ser",
+      "logoPath": "/team-logos/9581e2ca2ffe56683331f665c9cfd980f5211848956327e9d05c66d71a0a5776.webp"
+    },
+    {
+      "key": "ferroviaria-pinda-futsal-semelp",
+      "logoPath": "/team-logos/f72318507ef47c61ac2590ea575176bbca8b4c3f88acfa2e0e166f7eb9f3e2e8.webp"
+    },
+    {
+      "key": "aec-incriveis-cidade-tiradentes-incriveis-futsal",
+      "logoPath": "/team-logos/9b5c4f5b7c144555ada0b3520ad00f7ad3cf169616612c95f2a99bbe39e968c4.webp"
+    },
+    {
+      "key": "associacao-esportiva-discipulos-do-futebol",
+      "logoPath": "/team-logos/93a0bb126c35e2dffce83a63e151644a9b0f18ab7ad7d25c6e30ff0a4684e97d.webp"
+    },
+    {
+      "key": "associacao-desportiva-e-cultural-lazuli-adc-lazuli",
+      "logoPath": "/team-logos/9c09b2c2a54174f6b3e08357b99c63273ab6c762eceb88123ca22fa0ad109810.webp"
+    },
+    {
+      "key": "capao-bonito",
+      "logoPath": "/team-logos/0e5f56ee90dc7213af3bef6a71d3b47d168bda2ad0b749d2d6c45179b1c93552.webp"
+    },
+    {
+      "key": "associacao-esportiva-metropole",
+      "logoPath": "/team-logos/ab3fbfe680f894377deb3020b9c54d2129f92ea0eb85dfc812a508aef304c8d6.webp"
+    },
+    {
+      "key": "abesc-cacapava",
+      "logoPath": "/team-logos/f231fafce5730847d14a594a7da58a8c857353d93f98f4185b183d07022f0b07.webp"
+    },
+    {
+      "key": "associacao-esportiva-friburgo-ae-friburgo",
+      "logoPath": "/team-logos/a89a7cb8180a96d556af704aa298009cff9cddf51c1410202eeee27c84a54391.webp"
+    },
+    {
+      "key": "selecionados-futsal-a3",
+      "logoPath": "/team-logos/d99bd5b7457dda20d213234dc3de7239bd5599601a66ee1edd8ebacb4462d34e.webp"
+    },
+    {
+      "key": "associacao-contra-ataque-paulista-acap",
+      "logoPath": "/team-logos/d131fe9c0aebcbd9ad5c583658cd0bd02d51fa5b3a7592eb87b8f3492e697757.webp"
+    },
+    {
+      "key": "associacao-amigos-de-camilopolis-camilopolis-futsal",
+      "logoPath": "/team-logos/932c17f87bf30a22f6b4514c97c0733f314ed8f4fc7fce6512411ff75376ab12.webp"
+    },
+    {
+      "key": "escola-de-futsal-atletico-mangalot-ltda-ef-atletico-mangalot",
+      "logoPath": "/team-logos/149d9157bc5be3fbd3f189a3153cdf0cbaa948e4d894d0553be3621e6d1fb4d1.webp"
+    },
+    {
+      "key": "unileste-ponto-de-encontro",
+      "logoPath": "/team-logos/54ac65e82f11edb5de4831e447b267e52cc8ae2de998c9047bf4fcc8debaa51e.webp"
+    },
+    {
+      "key": "desportivo-sorocaba",
+      "logoPath": "/team-logos/e92a61b26dba6356e2e6b080703ce88e94100576a8bc3fee9b274cba0463abd2.webp"
+    },
+    {
+      "key": "clube-da-comunidade-faria-lima-kiloukura-vila-industrial",
+      "logoPath": "/team-logos/1037307271497c7d1b279d4b56f06febb7484d0f2e9e2cd9884cfdc842f5682f.webp"
+    },
+    {
+      "key": "liga-lest",
+      "logoPath": "/team-logos/4e29c7688f71a715bd6b1df5c1c3cb30052e48d669db1b62274cb95e715c792f.webp"
+    },
+    {
+      "key": "liga-leste-viks-elevadores",
+      "logoPath": "/team-logos/4e29c7688f71a715bd6b1df5c1c3cb30052e48d669db1b62274cb95e715c792f.webp"
+    },
+    {
+      "key": "associacao-esportiva-capao-bonito-ae-capao-bonito",
+      "logoPath": "/team-logos/0e5f56ee90dc7213af3bef6a71d3b47d168bda2ad0b749d2d6c45179b1c93552.webp"
+    }
+  ],
+  "bindings": [
+    {
+      "eventId": 908,
+      "teamId": "12295",
+      "clubKey": "ca-juventus",
+      "aliases": [
+        "C.A. JUVENTUS"
+      ]
+    },
+    {
+      "eventId": 908,
+      "teamId": "12352",
+      "clubKey": "asf-magnum",
+      "aliases": [
+        "ASSOCIAÇÃO SOROCABANA DE FUTSAL - ASF/MAGNU"
+      ]
+    },
+    {
+      "eventId": 908,
+      "teamId": "12223",
+      "clubKey": "pulo-futsal-campinas",
+      "aliases": [
+        "PULO FUTSAL CAMPINAS"
+      ]
+    },
+    {
+      "eventId": 908,
+      "teamId": "12167",
+      "clubKey": "ad-indaiatuba-iniciacao",
+      "aliases": [
+        "A.D. INDAIATUBA"
+      ]
+    },
+    {
+      "eventId": 908,
+      "teamId": "12333",
+      "clubKey": "associacao-portuguesa-de-desportos",
+      "aliases": [
+        "ASSOCIAÇÃO PORTUGUESA DE DESPORTOS"
+      ]
+    },
+    {
+      "eventId": 908,
+      "teamId": "12348",
+      "clubKey": "associacao-desportiva-do-abcd-mesc-sao-bernardo",
+      "aliases": [
+        "ASSOCIAÇÃO DESPORTIVA DO ABCD - MESC SÃO BERNARDO"
+      ]
+    },
+    {
+      "eventId": 908,
+      "teamId": "12337",
+      "clubKey": "prospere-hortolandia-iniciacao",
+      "aliases": [
+        "PROSPERE / HORTOLANDIA"
+      ]
+    },
+    {
+      "eventId": 908,
+      "teamId": "12858",
+      "clubKey": "santos-fc",
+      "aliases": [
+        "SANTOS FC"
+      ]
+    },
+    {
+      "eventId": 908,
+      "teamId": "12390",
+      "clubKey": "associacao-desportiva-olimpik-ativo",
+      "aliases": [
+        "ASSOCIAÇÃO DESPORTIVA OLIMPIK | ATIVO"
+      ]
+    },
+    {
+      "eventId": 908,
+      "teamId": "12313",
+      "clubKey": "fae-osasco-audax-iniciacao",
+      "aliases": [
+        "FAE/OSASCO/AUDAX"
+      ]
+    },
+    {
+      "eventId": 908,
+      "teamId": "12261",
+      "clubKey": "sc-corinthians-paulista-pta-iniciacao",
+      "aliases": [
+        "S.C. CORINTHIANS PAULISTA PTA."
+      ]
+    },
+    {
+      "eventId": 908,
+      "teamId": "12253",
+      "clubKey": "se-palmeiras",
+      "aliases": [
+        "SE PALMEIRAS"
+      ]
+    },
+    {
+      "eventId": 908,
+      "teamId": "12321",
+      "clubKey": "ad-batebola",
+      "aliases": [
+        "A.D. BATEBOLA"
+      ]
+    },
+    {
+      "eventId": 908,
+      "teamId": "12364",
+      "clubKey": "clube-atletico-ypiranga-ca-ypiranga",
+      "aliases": [
+        "CLUBE ATLÉTICO YPIRANGA | C.A. YPIRANGA"
+      ]
+    },
+    {
+      "eventId": 908,
+      "teamId": "12233",
+      "clubKey": "uniao-rd",
+      "aliases": [
+        "UNIÃO RD"
+      ]
+    },
+    {
+      "eventId": 908,
+      "teamId": "12271",
+      "clubKey": "sao-paulo-fc",
+      "aliases": [
+        "SÃO PAULO FC - A"
+      ]
+    },
+    {
+      "eventId": 908,
+      "teamId": "12186",
+      "clubKey": "lausanne-paulista-fc-a-iniciacao",
+      "aliases": [
+        "LAUSANNE PAULISTA FC - A"
+      ]
+    },
+    {
+      "eventId": 908,
+      "teamId": "12373",
+      "clubKey": "taubate-futsal-iniciacao",
+      "aliases": [
+        "TAUBATÉ FUTSAL"
+      ]
+    },
+    {
+      "eventId": 908,
+      "teamId": "12215",
+      "clubKey": "tabuca-jrs",
+      "aliases": [
+        "C.A. TABUCA JRS"
+      ]
+    },
+    {
+      "eventId": 908,
+      "teamId": "12287",
+      "clubKey": "sao-caetano-fc",
+      "aliases": [
+        "SÃO CAETANO FC - RSFC"
+      ]
+    },
+    {
+      "eventId": 909,
+      "teamId": "12349",
+      "clubKey": "associacao-desportiva-do-abcd-mesc-sao-bernardo",
+      "aliases": [
+        "ASSOCIAÇÃO DESPORTIVA DO ABCD - MESC SÃO BERNARDO"
+      ]
+    },
+    {
+      "eventId": 909,
+      "teamId": "12262",
+      "clubKey": "sc-corinthians-paulista-pta-iniciacao",
+      "aliases": [
+        "S.C. CORINTHIANS PAULISTA PTA."
+      ]
+    },
+    {
+      "eventId": 909,
+      "teamId": "12168",
+      "clubKey": "ad-indaiatuba-iniciacao",
+      "aliases": [
+        "A.D. INDAIATUBA"
+      ]
+    },
+    {
+      "eventId": 909,
+      "teamId": "12322",
+      "clubKey": "ad-batebola",
+      "aliases": [
+        "A.D. BATEBOLA"
+      ]
+    },
+    {
+      "eventId": 909,
+      "teamId": "12224",
+      "clubKey": "pulo-futsal-campinas",
+      "aliases": [
+        "PULO FUTSAL CAMPINAS"
+      ]
+    },
+    {
+      "eventId": 909,
+      "teamId": "12391",
+      "clubKey": "associacao-desportiva-olimpik-ativo",
+      "aliases": [
+        "ASSOCIAÇÃO DESPORTIVA OLIMPIK | ATIVO"
+      ]
+    },
+    {
+      "eventId": 909,
+      "teamId": "12340",
+      "clubKey": "prospere-hortolandia-iniciacao",
+      "aliases": [
+        "PROSPERE / HORTOLANDIA"
+      ]
+    },
+    {
+      "eventId": 909,
+      "teamId": "12296",
+      "clubKey": "ca-juventus-iniciacao",
+      "aliases": [
+        "C.A. JUVENTUS"
+      ]
+    },
+    {
+      "eventId": 909,
+      "teamId": "12254",
+      "clubKey": "se-palmeiras-iniciacao",
+      "aliases": [
+        "SE PALMEIRAS"
+      ]
+    },
+    {
+      "eventId": 909,
+      "teamId": "12859",
+      "clubKey": "santos-fc-iniciacao",
+      "aliases": [
+        "SANTOS FC"
+      ]
+    },
+    {
+      "eventId": 909,
+      "teamId": "12187",
+      "clubKey": "lausanne-paulista-fc-a-iniciacao",
+      "aliases": [
+        "LAUSANNE PAULISTA FC - A"
+      ]
+    },
+    {
+      "eventId": 909,
+      "teamId": "12314",
+      "clubKey": "fae-osasco-audax-iniciacao",
+      "aliases": [
+        "FAE/OSASCO/AUDAX"
+      ]
+    },
+    {
+      "eventId": 909,
+      "teamId": "12365",
+      "clubKey": "clube-atletico-ypiranga-ca-ypiranga",
+      "aliases": [
+        "CLUBE ATLÉTICO YPIRANGA | C.A. YPIRANGA"
+      ]
+    },
+    {
+      "eventId": 909,
+      "teamId": "12234",
+      "clubKey": "uniao-rd",
+      "aliases": [
+        "UNIÃO RD"
+      ]
+    },
+    {
+      "eventId": 909,
+      "teamId": "12334",
+      "clubKey": "associacao-portuguesa-de-desportos",
+      "aliases": [
+        "ASSOCIAÇÃO PORTUGUESA DE DESPORTOS"
+      ]
+    },
+    {
+      "eventId": 909,
+      "teamId": "12375",
+      "clubKey": "taubate-futsal-iniciacao",
+      "aliases": [
+        "TAUBATÉ FUTSAL"
+      ]
+    },
+    {
+      "eventId": 910,
+      "teamId": "12235",
+      "clubKey": "uniao-rd",
+      "aliases": [
+        "UNIÃO RD"
+      ]
+    },
+    {
+      "eventId": 910,
+      "teamId": "12188",
+      "clubKey": "lausanne-paulista-fc-a-iniciacao",
+      "aliases": [
+        "LAUSANNE PAULISTA FC - A"
+      ]
+    },
+    {
+      "eventId": 910,
+      "teamId": "12860",
+      "clubKey": "santos-fc-iniciacao",
+      "aliases": [
+        "SANTOS FC"
+      ]
+    },
+    {
+      "eventId": 910,
+      "teamId": "12169",
+      "clubKey": "ad-indaiatuba-iniciacao",
+      "aliases": [
+        "A.D. INDAIATUBA"
+      ]
+    },
+    {
+      "eventId": 910,
+      "teamId": "12255",
+      "clubKey": "se-palmeiras-iniciacao",
+      "aliases": [
+        "SE PALMEIRAS"
+      ]
+    },
+    {
+      "eventId": 910,
+      "teamId": "12350",
+      "clubKey": "associacao-desportiva-do-abcd-mesc-sao-bernardo",
+      "aliases": [
+        "ASSOCIAÇÃO DESPORTIVA DO ABCD - MESC SÃO BERNARDO"
+      ]
+    },
+    {
+      "eventId": 910,
+      "teamId": "12263",
+      "clubKey": "sc-corinthians-paulista-pta-iniciacao",
+      "aliases": [
+        "S.C. CORINTHIANS PAULISTA PTA."
+      ]
+    },
+    {
+      "eventId": 910,
+      "teamId": "12315",
+      "clubKey": "fae-osasco-audax-iniciacao",
+      "aliases": [
+        "FAE/OSASCO/AUDAX"
+      ]
+    },
+    {
+      "eventId": 910,
+      "teamId": "12377",
+      "clubKey": "taubate-futsal-iniciacao",
+      "aliases": [
+        "TAUBATÉ FUTSAL"
+      ]
+    },
+    {
+      "eventId": 910,
+      "teamId": "12392",
+      "clubKey": "associacao-desportiva-olimpik-ativo",
+      "aliases": [
+        "ASSOCIAÇÃO DESPORTIVA OLIMPIK | ATIVO"
+      ]
+    },
+    {
+      "eventId": 910,
+      "teamId": "12323",
+      "clubKey": "ad-batebola",
+      "aliases": [
+        "A.D. BATEBOLA"
+      ]
+    },
+    {
+      "eventId": 910,
+      "teamId": "12225",
+      "clubKey": "pulo-futsal-campinas",
+      "aliases": [
+        "PULO FUTSAL CAMPINAS"
+      ]
+    },
+    {
+      "eventId": 910,
+      "teamId": "12335",
+      "clubKey": "associacao-portuguesa-de-desportos",
+      "aliases": [
+        "ASSOCIAÇÃO PORTUGUESA DE DESPORTOS"
+      ]
+    },
+    {
+      "eventId": 910,
+      "teamId": "12366",
+      "clubKey": "clube-atletico-ypiranga-ca-ypiranga",
+      "aliases": [
+        "CLUBE ATLÉTICO YPIRANGA | C.A. YPIRANGA"
+      ]
+    },
+    {
+      "eventId": 910,
+      "teamId": "12341",
+      "clubKey": "prospere-hortolandia-iniciacao",
+      "aliases": [
+        "PROSPERE / HORTOLANDIA"
+      ]
+    },
+    {
+      "eventId": 910,
+      "teamId": "12297",
+      "clubKey": "ca-juventus-iniciacao",
+      "aliases": [
+        "C.A. JUVENTUS"
+      ]
+    },
+    {
+      "eventId": 911,
+      "teamId": "12351",
+      "clubKey": "associacao-desportiva-do-abcd-mesc-sao-bernardo",
+      "aliases": [
+        "ASSOCIAÇÃO DESPORTIVA DO ABCD - MESC SÃO BERNARDO"
+      ]
+    },
+    {
+      "eventId": 911,
+      "teamId": "12264",
+      "clubKey": "sc-corinthians-paulista-pta-iniciacao",
+      "aliases": [
+        "S.C. CORINTHIANS PAULISTA PTA."
+      ]
+    },
+    {
+      "eventId": 911,
+      "teamId": "12861",
+      "clubKey": "santos-fc-iniciacao",
+      "aliases": [
+        "SANTOS FC"
+      ]
+    },
+    {
+      "eventId": 911,
+      "teamId": "12170",
+      "clubKey": "ad-indaiatuba-iniciacao",
+      "aliases": [
+        "A.D. INDAIATUBA"
+      ]
+    },
+    {
+      "eventId": 911,
+      "teamId": "12226",
+      "clubKey": "pulo-futsal-campinas",
+      "aliases": [
+        "PULO FUTSAL CAMPINAS"
+      ]
+    },
+    {
+      "eventId": 911,
+      "teamId": "12298",
+      "clubKey": "ca-juventus-iniciacao",
+      "aliases": [
+        "C.A. JUVENTUS"
+      ]
+    },
+    {
+      "eventId": 911,
+      "teamId": "12256",
+      "clubKey": "se-palmeiras-iniciacao",
+      "aliases": [
+        "SE PALMEIRAS"
+      ]
+    },
+    {
+      "eventId": 911,
+      "teamId": "12342",
+      "clubKey": "prospere-hortolandia-iniciacao",
+      "aliases": [
+        "PROSPERE / HORTOLANDIA"
+      ]
+    },
+    {
+      "eventId": 911,
+      "teamId": "12378",
+      "clubKey": "taubate-futsal-iniciacao",
+      "aliases": [
+        "TAUBATÉ FUTSAL"
+      ]
+    },
+    {
+      "eventId": 911,
+      "teamId": "12189",
+      "clubKey": "lausanne-paulista-fc-a-iniciacao",
+      "aliases": [
+        "LAUSANNE PAULISTA FC - A"
+      ]
+    },
+    {
+      "eventId": 911,
+      "teamId": "12316",
+      "clubKey": "fae-osasco-audax-iniciacao",
+      "aliases": [
+        "FAE/OSASCO/AUDAX"
+      ]
+    },
+    {
+      "eventId": 911,
+      "teamId": "12336",
+      "clubKey": "associacao-portuguesa-de-desportos",
+      "aliases": [
+        "ASSOCIAÇÃO PORTUGUESA DE DESPORTOS"
+      ]
+    },
+    {
+      "eventId": 911,
+      "teamId": "12393",
+      "clubKey": "associacao-desportiva-olimpik-ativo",
+      "aliases": [
+        "ASSOCIAÇÃO DESPORTIVA OLIMPIK | ATIVO"
+      ]
+    },
+    {
+      "eventId": 911,
+      "teamId": "12367",
+      "clubKey": "clube-atletico-ypiranga-ca-ypiranga",
+      "aliases": [
+        "CLUBE ATLÉTICO YPIRANGA | C.A. YPIRANGA"
+      ]
+    },
+    {
+      "eventId": 911,
+      "teamId": "12236",
+      "clubKey": "uniao-rd",
+      "aliases": [
+        "UNIÃO RD"
+      ]
+    },
+    {
+      "eventId": 911,
+      "teamId": "12324",
+      "clubKey": "ad-batebola",
+      "aliases": [
+        "A.D. BATEBOLA"
+      ]
+    },
+    {
+      "eventId": 907,
+      "teamId": "12257",
+      "clubKey": "se-palmeiras-base",
+      "aliases": [
+        "SE PALMEIRAS"
+      ]
+    },
+    {
+      "eventId": 907,
+      "teamId": "12265",
+      "clubKey": "sc-corinthians-paulista-pta-base",
+      "aliases": [
+        "S.C. CORINTHIANS PAULISTA PTA."
+      ]
+    },
+    {
+      "eventId": 907,
+      "teamId": "12154",
+      "clubKey": "associacao-atletica-botucatuense",
+      "aliases": [
+        "ASSOCIAÇÃO ATLÉTICA BOTUCATUENSE"
+      ]
+    },
+    {
+      "eventId": 907,
+      "teamId": "12664",
+      "clubKey": "clube-esportivo-da-penha-ce-penha",
+      "aliases": [
+        "CLUBE ESPORTIVO DA PENHA - CE PENHA"
+      ]
+    },
+    {
+      "eventId": 907,
+      "teamId": "12283",
+      "clubKey": "santos-fc-base",
+      "aliases": [
+        "SANTOS FC"
+      ]
+    },
+    {
+      "eventId": 907,
+      "teamId": "12317",
+      "clubKey": "fae-osasco-audax-base",
+      "aliases": [
+        "FAE/OSASCO/AUDAX"
+      ]
+    },
+    {
+      "eventId": 907,
+      "teamId": "12299",
+      "clubKey": "ca-juventus-base",
+      "aliases": [
+        "C.A. JUVENTUS"
+      ]
+    },
+    {
+      "eventId": 907,
+      "teamId": "12710",
+      "clubKey": "colorado-caieiras",
+      "aliases": [
+        "COLORADO CAIEIRAS FUTEBOL CLUBE LTDA - COLORADO CAIEIRAS FC"
+      ]
+    },
+    {
+      "eventId": 907,
+      "teamId": "12171",
+      "clubKey": "ad-indaiatuba-base",
+      "aliases": [
+        "A.D. INDAIATUBA"
+      ]
+    },
+    {
+      "eventId": 907,
+      "teamId": "12690",
+      "clubKey": "sao-jose-futsal",
+      "aliases": [
+        "SÃO JOSÉ FUTSAL"
+      ]
+    },
+    {
+      "eventId": 907,
+      "teamId": "12291",
+      "clubKey": "sao-caetano-fc-rsfc",
+      "aliases": [
+        "SÃO CAETANO FC - RSFC"
+      ]
+    },
+    {
+      "eventId": 907,
+      "teamId": "12190",
+      "clubKey": "lausanne-paulista-fc-a-base",
+      "aliases": [
+        "LAUSANNE PAULISTA FC - A"
+      ]
+    },
+    {
+      "eventId": 905,
+      "teamId": "12318",
+      "clubKey": "fae-osasco-audax-base",
+      "aliases": [
+        "FAE/OSASCO/AUDAX"
+      ]
+    },
+    {
+      "eventId": 905,
+      "teamId": "12292",
+      "clubKey": "sao-caetano-fc-rsfc",
+      "aliases": [
+        "SÃO CAETANO FC - RSFC"
+      ]
+    },
+    {
+      "eventId": 905,
+      "teamId": "12258",
+      "clubKey": "se-palmeiras-base",
+      "aliases": [
+        "SE PALMEIRAS"
+      ]
+    },
+    {
+      "eventId": 905,
+      "teamId": "12155",
+      "clubKey": "associacao-atletica-botucatuense",
+      "aliases": [
+        "ASSOCIAÇÃO ATLÉTICA BOTUCATUENSE"
+      ]
+    },
+    {
+      "eventId": 905,
+      "teamId": "12665",
+      "clubKey": "clube-esportivo-da-penha-ce-penha",
+      "aliases": [
+        "CLUBE ESPORTIVO DA PENHA - CE PENHA"
+      ]
+    },
+    {
+      "eventId": 905,
+      "teamId": "12191",
+      "clubKey": "lausanne-paulista-fc-a-base",
+      "aliases": [
+        "LAUSANNE PAULISTA FC - A"
+      ]
+    },
+    {
+      "eventId": 905,
+      "teamId": "12300",
+      "clubKey": "ca-juventus-base",
+      "aliases": [
+        "C.A. JUVENTUS"
+      ]
+    },
+    {
+      "eventId": 905,
+      "teamId": "12284",
+      "clubKey": "santos-fc-base",
+      "aliases": [
+        "SANTOS FC"
+      ]
+    },
+    {
+      "eventId": 905,
+      "teamId": "12692",
+      "clubKey": "sao-jose-futsal",
+      "aliases": [
+        "SÃO JOSÉ FUTSAL"
+      ]
+    },
+    {
+      "eventId": 905,
+      "teamId": "12266",
+      "clubKey": "sc-corinthians-paulista-pta-base",
+      "aliases": [
+        "S.C. CORINTHIANS PAULISTA PTA."
+      ]
+    },
+    {
+      "eventId": 905,
+      "teamId": "12172",
+      "clubKey": "ad-indaiatuba-base",
+      "aliases": [
+        "A.D. INDAIATUBA"
+      ]
+    },
+    {
+      "eventId": 906,
+      "teamId": "12693",
+      "clubKey": "sao-jose-futsal",
+      "aliases": [
+        "SÃO JOSÉ FUTSAL"
+      ]
+    },
+    {
+      "eventId": 906,
+      "teamId": "12301",
+      "clubKey": "ca-juventus-base",
+      "aliases": [
+        "C.A. JUVENTUS"
+      ]
+    },
+    {
+      "eventId": 906,
+      "teamId": "12259",
+      "clubKey": "se-palmeiras-base",
+      "aliases": [
+        "SE PALMEIRAS"
+      ]
+    },
+    {
+      "eventId": 906,
+      "teamId": "12285",
+      "clubKey": "santos-fc-base",
+      "aliases": [
+        "SANTOS FC"
+      ]
+    },
+    {
+      "eventId": 906,
+      "teamId": "12319",
+      "clubKey": "fae-osasco-audax-base",
+      "aliases": [
+        "FAE/OSASCO/AUDAX"
+      ]
+    },
+    {
+      "eventId": 906,
+      "teamId": "12173",
+      "clubKey": "ad-indaiatuba-base",
+      "aliases": [
+        "A.D. INDAIATUBA"
+      ]
+    },
+    {
+      "eventId": 906,
+      "teamId": "12192",
+      "clubKey": "lausanne-paulista-fc-a-base",
+      "aliases": [
+        "LAUSANNE PAULISTA FC - A"
+      ]
+    },
+    {
+      "eventId": 906,
+      "teamId": "12267",
+      "clubKey": "sc-corinthians-paulista-pta-base",
+      "aliases": [
+        "S.C. CORINTHIANS PAULISTA PTA."
+      ]
+    },
+    {
+      "eventId": 906,
+      "teamId": "12293",
+      "clubKey": "sao-caetano-fc-rsfc",
+      "aliases": [
+        "SÃO CAETANO FC - RSFC"
+      ]
+    },
+    {
+      "eventId": 906,
+      "teamId": "12666",
+      "clubKey": "clube-esportivo-da-penha-ce-penha",
+      "aliases": [
+        "CLUBE ESPORTIVO DA PENHA - CE PENHA"
+      ]
+    },
+    {
+      "eventId": 906,
+      "teamId": "12156",
+      "clubKey": "associacao-atletica-botucatuense",
+      "aliases": [
+        "ASSOCIAÇÃO ATLÉTICA BOTUCATUENSE"
+      ]
+    },
+    {
+      "eventId": 904,
+      "teamId": "12320",
+      "clubKey": "fae-osasco-audax-base",
+      "aliases": [
+        "FAE/OSASCO/AUDAX"
+      ]
+    },
+    {
+      "eventId": 904,
+      "teamId": "12268",
+      "clubKey": "sc-corinthians-paulista-pta-base",
+      "aliases": [
+        "S.C. CORINTHIANS PAULISTA PTA."
+      ]
+    },
+    {
+      "eventId": 904,
+      "teamId": "12667",
+      "clubKey": "clube-esportivo-da-penha-ce-penha",
+      "aliases": [
+        "CLUBE ESPORTIVO DA PENHA - CE PENHA"
+      ]
+    },
+    {
+      "eventId": 904,
+      "teamId": "12294",
+      "clubKey": "sao-caetano-fc-rsfc",
+      "aliases": [
+        "SÃO CAETANO FC - RSFC"
+      ]
+    },
+    {
+      "eventId": 904,
+      "teamId": "12260",
+      "clubKey": "se-palmeiras-base",
+      "aliases": [
+        "SE PALMEIRAS"
+      ]
+    },
+    {
+      "eventId": 904,
+      "teamId": "12157",
+      "clubKey": "associacao-atletica-botucatuense",
+      "aliases": [
+        "ASSOCIAÇÃO ATLÉTICA BOTUCATUENSE"
+      ]
+    },
+    {
+      "eventId": 904,
+      "teamId": "12193",
+      "clubKey": "lausanne-paulista-fc-a-base",
+      "aliases": [
+        "LAUSANNE PAULISTA FC - A"
+      ]
+    },
+    {
+      "eventId": 904,
+      "teamId": "12694",
+      "clubKey": "sao-jose-futsal",
+      "aliases": [
+        "SÃO JOSÉ FUTSAL"
+      ]
+    },
+    {
+      "eventId": 904,
+      "teamId": "12174",
+      "clubKey": "ad-indaiatuba-base",
+      "aliases": [
+        "A.D. INDAIATUBA"
+      ]
+    },
+    {
+      "eventId": 904,
+      "teamId": "12286",
+      "clubKey": "santos-fc-base",
+      "aliases": [
+        "SANTOS FC"
+      ]
+    },
+    {
+      "eventId": 904,
+      "teamId": "12302",
+      "clubKey": "ca-juventus-base",
+      "aliases": [
+        "C.A. JUVENTUS"
+      ]
+    },
+    {
+      "eventId": 912,
+      "teamId": "12862",
+      "clubKey": "santos-fc-base",
+      "aliases": [
+        "SANTOS FC"
+      ]
+    },
+    {
+      "eventId": 912,
+      "teamId": "12175",
+      "clubKey": "ad-indaiatuba-base",
+      "aliases": [
+        "A.D. INDAIATUBA"
+      ]
+    },
+    {
+      "eventId": 912,
+      "teamId": "12269",
+      "clubKey": "sc-corinthians-paulista-pta-base",
+      "aliases": [
+        "S.C. CORINTHIANS PAULISTA PTA."
+      ]
+    },
+    {
+      "eventId": 912,
+      "teamId": "12865",
+      "clubKey": "mogi-das-cruzes",
+      "aliases": [
+        "MOGI DAS CRUZES ESPORTE CLUBE - MOGI DAS CRUZES EC"
+      ]
+    },
+    {
+      "eventId": 912,
+      "teamId": "12714",
+      "clubKey": "associacao-atletica-botucatuense",
+      "aliases": [
+        "ASSOCIAÇÃO ATLÉTICA BOTUCATUENSE"
+      ]
+    },
+    {
+      "eventId": 912,
+      "teamId": "12695",
+      "clubKey": "sao-jose-futsal",
+      "aliases": [
+        "SÃO JOSÉ FUTSAL"
+      ]
+    },
+    {
+      "eventId": 917,
+      "teamId": "12696",
+      "clubKey": "sao-jose-futsal",
+      "aliases": [
+        "SÃO JOSÉ FUTSAL"
+      ]
+    },
+    {
+      "eventId": 917,
+      "teamId": "12176",
+      "clubKey": "ad-indaiatuba-base",
+      "aliases": [
+        "A.D. INDAIATUBA"
+      ]
+    },
+    {
+      "eventId": 917,
+      "teamId": "12270",
+      "clubKey": "sc-corinthians-paulista-pta-base",
+      "aliases": [
+        "S.C. CORINTHIANS PAULISTA PTA."
+      ]
+    },
+    {
+      "eventId": 900,
+      "teamId": "12431",
+      "clubKey": "aa-wimpro-guarulhos-iniciacao",
+      "aliases": [
+        "AA WIMPRO GUARULHOS"
+      ]
+    },
+    {
+      "eventId": 900,
+      "teamId": "12427",
+      "clubKey": "ae-friburgo",
+      "aliases": [
+        "AE FRIBURGO"
+      ]
+    },
+    {
+      "eventId": 900,
+      "teamId": "12403",
+      "clubKey": "a-uniao-maua",
+      "aliases": [
+        "A. UNIÃO MAUÁ"
+      ]
+    },
+    {
+      "eventId": 900,
+      "teamId": "12566",
+      "clubKey": "associacao-desportiva-nando-grana",
+      "aliases": [
+        "ASSOCIAÇÃO DESPORTIVA NANDO GRANA"
+      ]
+    },
+    {
+      "eventId": 900,
+      "teamId": "12249",
+      "clubKey": "ctc-vila-ema",
+      "aliases": [
+        "CTC VILA EMA"
+      ]
+    },
+    {
+      "eventId": 900,
+      "teamId": "12202",
+      "clubKey": "metalurgicos-de-jundiai",
+      "aliases": [
+        "METALÚRGICOS DE JUNDIAÍ"
+      ]
+    },
+    {
+      "eventId": 900,
+      "teamId": "12530",
+      "clubKey": "sport-benfica-de-mogi-das-cruzes",
+      "aliases": [
+        "SPORT BENFICA DE MOGI DAS CRUZES"
+      ]
+    },
+    {
+      "eventId": 900,
+      "teamId": "12419",
+      "clubKey": "mx7-diadema",
+      "aliases": [
+        "MX7 DIADEMA"
+      ]
+    },
+    {
+      "eventId": 900,
+      "teamId": "12399",
+      "clubKey": "ad-suzano",
+      "aliases": [
+        "A.D. SUZANO"
+      ]
+    },
+    {
+      "eventId": 900,
+      "teamId": "12407",
+      "clubKey": "ser-caieiras",
+      "aliases": [
+        "S.E.R. CAIEIRAS"
+      ]
+    },
+    {
+      "eventId": 900,
+      "teamId": "12912",
+      "clubKey": "clube-mooca",
+      "aliases": [
+        "ASSOCIAÇÃO PAULISTA FUTEBOL CLUBE MOOCA"
+      ]
+    },
+    {
+      "eventId": 900,
+      "teamId": "12241",
+      "clubKey": "adc-marvel",
+      "aliases": [
+        "ADC MARVEL"
+      ]
+    },
+    {
+      "eventId": 900,
+      "teamId": "12435",
+      "clubKey": "clube-batalha",
+      "aliases": [
+        "CLUBE BATALHA"
+      ]
+    },
+    {
+      "eventId": 900,
+      "teamId": "12538",
+      "clubKey": "river-do-belem",
+      "aliases": [
+        "ASSOCIAÇÃO ESPORTIVA RIVER DO BELÉM | RIVER DO BELÉM"
+      ]
+    },
+    {
+      "eventId": 900,
+      "teamId": "12245",
+      "clubKey": "gr-gremetal",
+      "aliases": [
+        "GR GREMETAL"
+      ]
+    },
+    {
+      "eventId": 900,
+      "teamId": "12415",
+      "clubKey": "adc-mercedes-benz",
+      "aliases": [
+        "ADC MERCEDES BENZ"
+      ]
+    },
+    {
+      "eventId": 900,
+      "teamId": "12461",
+      "clubKey": "adef-cotia",
+      "aliases": [
+        "ADEF/COTIA"
+      ]
+    },
+    {
+      "eventId": 900,
+      "teamId": "12558",
+      "clubKey": "chute-futsal",
+      "aliases": [
+        "CHUTE FUTSAL"
+      ]
+    },
+    {
+      "eventId": 901,
+      "teamId": "12203",
+      "clubKey": "metalurgicos-de-jundiai",
+      "aliases": [
+        "METALÚRGICOS DE JUNDIAÍ"
+      ]
+    },
+    {
+      "eventId": 901,
+      "teamId": "12913",
+      "clubKey": "associacao-paulista-futebol-clube-mooca",
+      "aliases": [
+        "ASSOCIAÇÃO PAULISTA FUTEBOL CLUBE MOOCA"
+      ]
+    },
+    {
+      "eventId": 901,
+      "teamId": "12400",
+      "clubKey": "ad-suzano",
+      "aliases": [
+        "A.D. SUZANO"
+      ]
+    },
+    {
+      "eventId": 901,
+      "teamId": "12416",
+      "clubKey": "adc-mercedes-benz",
+      "aliases": [
+        "ADC MERCEDES BENZ"
+      ]
+    },
+    {
+      "eventId": 901,
+      "teamId": "12246",
+      "clubKey": "gr-gremetal",
+      "aliases": [
+        "GR GREMETAL"
+      ]
+    },
+    {
+      "eventId": 901,
+      "teamId": "12559",
+      "clubKey": "chute-futsal",
+      "aliases": [
+        "CHUTE FUTSAL"
+      ]
+    },
+    {
+      "eventId": 901,
+      "teamId": "12531",
+      "clubKey": "sport-benfica-de-mogi-das-cruzes",
+      "aliases": [
+        "SPORT BENFICA DE MOGI DAS CRUZES"
+      ]
+    },
+    {
+      "eventId": 901,
+      "teamId": "12250",
+      "clubKey": "ctc-vila-ema",
+      "aliases": [
+        "CTC VILA EMA"
+      ]
+    },
+    {
+      "eventId": 901,
+      "teamId": "12404",
+      "clubKey": "a-uniao-maua",
+      "aliases": [
+        "A. UNIÃO MAUÁ"
+      ]
+    },
+    {
+      "eventId": 901,
+      "teamId": "12428",
+      "clubKey": "ae-friburgo",
+      "aliases": [
+        "AE FRIBURGO"
+      ]
+    },
+    {
+      "eventId": 901,
+      "teamId": "12408",
+      "clubKey": "ser-caieiras",
+      "aliases": [
+        "S.E.R. CAIEIRAS"
+      ]
+    },
+    {
+      "eventId": 901,
+      "teamId": "12462",
+      "clubKey": "adef-cotia",
+      "aliases": [
+        "ADEF/COTIA"
+      ]
+    },
+    {
+      "eventId": 901,
+      "teamId": "12567",
+      "clubKey": "associacao-desportiva-nando-grana",
+      "aliases": [
+        "ASSOCIAÇÃO DESPORTIVA NANDO GRANA"
+      ]
+    },
+    {
+      "eventId": 901,
+      "teamId": "12420",
+      "clubKey": "mx7-diadema",
+      "aliases": [
+        "MX7 DIADEMA"
+      ]
+    },
+    {
+      "eventId": 901,
+      "teamId": "12436",
+      "clubKey": "clube-batalha",
+      "aliases": [
+        "CLUBE BATALHA"
+      ]
+    },
+    {
+      "eventId": 901,
+      "teamId": "12242",
+      "clubKey": "adc-marvel",
+      "aliases": [
+        "ADC MARVEL"
+      ]
+    },
+    {
+      "eventId": 901,
+      "teamId": "12432",
+      "clubKey": "aa-wimpro-guarulhos-iniciacao",
+      "aliases": [
+        "AA WIMPRO GUARULHOS"
+      ]
+    },
+    {
+      "eventId": 902,
+      "teamId": "12463",
+      "clubKey": "adef-cotia",
+      "aliases": [
+        "ADEF/COTIA"
+      ]
+    },
+    {
+      "eventId": 902,
+      "teamId": "12568",
+      "clubKey": "associacao-desportiva-nando-grana",
+      "aliases": [
+        "ASSOCIAÇÃO DESPORTIVA NANDO GRANA"
+      ]
+    },
+    {
+      "eventId": 902,
+      "teamId": "12914",
+      "clubKey": "associacao-paulista-futebol-clube-mooca",
+      "aliases": [
+        "ASSOCIAÇÃO PAULISTA FUTEBOL CLUBE MOOCA"
+      ]
+    },
+    {
+      "eventId": 902,
+      "teamId": "12243",
+      "clubKey": "adc-marvel",
+      "aliases": [
+        "ADC MARVEL"
+      ]
+    },
+    {
+      "eventId": 902,
+      "teamId": "12247",
+      "clubKey": "gr-gremetal",
+      "aliases": [
+        "GR GREMETAL"
+      ]
+    },
+    {
+      "eventId": 902,
+      "teamId": "12421",
+      "clubKey": "mx7-diadema",
+      "aliases": [
+        "MX7 DIADEMA"
+      ]
+    },
+    {
+      "eventId": 902,
+      "teamId": "12433",
+      "clubKey": "aa-wimpro-guarulhos-iniciacao",
+      "aliases": [
+        "AA WIMPRO GUARULHOS"
+      ]
+    },
+    {
+      "eventId": 902,
+      "teamId": "12409",
+      "clubKey": "ser-caieiras",
+      "aliases": [
+        "S.E.R. CAIEIRAS"
+      ]
+    },
+    {
+      "eventId": 902,
+      "teamId": "12429",
+      "clubKey": "ae-friburgo",
+      "aliases": [
+        "AE FRIBURGO"
+      ]
+    },
+    {
+      "eventId": 902,
+      "teamId": "12251",
+      "clubKey": "ctc-vila-ema",
+      "aliases": [
+        "CTC VILA EMA"
+      ]
+    },
+    {
+      "eventId": 902,
+      "teamId": "12405",
+      "clubKey": "a-uniao-maua",
+      "aliases": [
+        "A. UNIÃO MAUÁ"
+      ]
+    },
+    {
+      "eventId": 902,
+      "teamId": "12401",
+      "clubKey": "ad-suzano",
+      "aliases": [
+        "A.D. SUZANO"
+      ]
+    },
+    {
+      "eventId": 902,
+      "teamId": "12560",
+      "clubKey": "chute-futsal",
+      "aliases": [
+        "CHUTE FUTSAL"
+      ]
+    },
+    {
+      "eventId": 902,
+      "teamId": "12437",
+      "clubKey": "clube-batalha",
+      "aliases": [
+        "CLUBE BATALHA"
+      ]
+    },
+    {
+      "eventId": 902,
+      "teamId": "12417",
+      "clubKey": "adc-mercedes-benz",
+      "aliases": [
+        "ADC MERCEDES BENZ"
+      ]
+    },
+    {
+      "eventId": 902,
+      "teamId": "12204",
+      "clubKey": "metalurgicos-de-jundiai",
+      "aliases": [
+        "METALÚRGICOS DE JUNDIAÍ"
+      ]
+    },
+    {
+      "eventId": 902,
+      "teamId": "12532",
+      "clubKey": "sport-benfica-de-mogi-das-cruzes",
+      "aliases": [
+        "SPORT BENFICA DE MOGI DAS CRUZES"
+      ]
+    },
+    {
+      "eventId": 903,
+      "teamId": "12252",
+      "clubKey": "ctc-vila-ema",
+      "aliases": [
+        "CTC VILA EMA"
+      ]
+    },
+    {
+      "eventId": 903,
+      "teamId": "12402",
+      "clubKey": "ad-suzano",
+      "aliases": [
+        "A.D. SUZANO"
+      ]
+    },
+    {
+      "eventId": 903,
+      "teamId": "12205",
+      "clubKey": "metalurgicos-de-jundiai",
+      "aliases": [
+        "METALÚRGICOS DE JUNDIAÍ"
+      ]
+    },
+    {
+      "eventId": 903,
+      "teamId": "12915",
+      "clubKey": "associacao-paulista-futebol-clube-mooca",
+      "aliases": [
+        "ASSOCIAÇÃO PAULISTA FUTEBOL CLUBE MOOCA"
+      ]
+    },
+    {
+      "eventId": 903,
+      "teamId": "12248",
+      "clubKey": "gr-gremetal",
+      "aliases": [
+        "GR GREMETAL"
+      ]
+    },
+    {
+      "eventId": 903,
+      "teamId": "12434",
+      "clubKey": "aa-wimpro-guarulhos-iniciacao",
+      "aliases": [
+        "AA WIMPRO GUARULHOS"
+      ]
+    },
+    {
+      "eventId": 903,
+      "teamId": "12438",
+      "clubKey": "clube-batalha",
+      "aliases": [
+        "CLUBE BATALHA"
+      ]
+    },
+    {
+      "eventId": 903,
+      "teamId": "12418",
+      "clubKey": "adc-mercedes-benz",
+      "aliases": [
+        "ADC MERCEDES BENZ"
+      ]
+    },
+    {
+      "eventId": 903,
+      "teamId": "12533",
+      "clubKey": "sport-benfica-de-mogi-das-cruzes",
+      "aliases": [
+        "SPORT BENFICA DE MOGI DAS CRUZES"
+      ]
+    },
+    {
+      "eventId": 903,
+      "teamId": "12410",
+      "clubKey": "ser-caieiras",
+      "aliases": [
+        "S.E.R. CAIEIRAS"
+      ]
+    },
+    {
+      "eventId": 903,
+      "teamId": "12422",
+      "clubKey": "mx7-diadema",
+      "aliases": [
+        "MX7 DIADEMA"
+      ]
+    },
+    {
+      "eventId": 903,
+      "teamId": "12430",
+      "clubKey": "ae-friburgo",
+      "aliases": [
+        "AE FRIBURGO"
+      ]
+    },
+    {
+      "eventId": 903,
+      "teamId": "12244",
+      "clubKey": "adc-marvel",
+      "aliases": [
+        "ADC MARVEL"
+      ]
+    },
+    {
+      "eventId": 903,
+      "teamId": "12406",
+      "clubKey": "a-uniao-maua",
+      "aliases": [
+        "A. UNIÃO MAUÁ"
+      ]
+    },
+    {
+      "eventId": 903,
+      "teamId": "12569",
+      "clubKey": "associacao-desportiva-nando-grana",
+      "aliases": [
+        "ASSOCIAÇÃO DESPORTIVA NANDO GRANA"
+      ]
+    },
+    {
+      "eventId": 903,
+      "teamId": "12464",
+      "clubKey": "adef-cotia",
+      "aliases": [
+        "ADEF/COTIA"
+      ]
+    },
+    {
+      "eventId": 903,
+      "teamId": "12561",
+      "clubKey": "chute-futsal",
+      "aliases": [
+        "CHUTE FUTSAL"
+      ]
+    },
+    {
+      "eventId": 899,
+      "teamId": "12394",
+      "clubKey": "stadium-futsal",
+      "aliases": [
+        "STADIUM FUTSAL"
+      ]
+    },
+    {
+      "eventId": 899,
+      "teamId": "12163",
+      "clubKey": "impacto-fc",
+      "aliases": [
+        "IMPACTO F.C."
+      ]
+    },
+    {
+      "eventId": 899,
+      "teamId": "12482",
+      "clubKey": "ad-prudente",
+      "aliases": [
+        "ASSOCIAÇÃO DESPORTIVA PRUDENTE | A.D. PRUDENTE"
+      ]
+    },
+    {
+      "eventId": 899,
+      "teamId": "12736",
+      "clubKey": "liga-sebastianense-de-futsal-lisfuts-sao-sebastiao",
+      "aliases": [
+        "LIGA SEBASTIANENSE DE FUTSAL | LISFUTS/SÃO SEBASTIÃO"
+      ]
+    },
+    {
+      "eventId": 899,
+      "teamId": "12211",
+      "clubKey": "selecionados-futsal",
+      "aliases": [
+        "SELECIONADOS FUTSAL"
+      ]
+    },
+    {
+      "eventId": 899,
+      "teamId": "12279",
+      "clubKey": "sao-paulo-fc-b",
+      "aliases": [
+        "SÃO PAULO FC - B"
+      ]
+    },
+    {
+      "eventId": 899,
+      "teamId": "12343",
+      "clubKey": "prospera-hortolandia",
+      "aliases": [
+        "PROSPERE / HORTOLANDIA"
+      ]
+    },
+    {
+      "eventId": 899,
+      "teamId": "12379",
+      "clubKey": "taubate-futsal-base",
+      "aliases": [
+        "TAUBATÉ FUTSAL"
+      ]
+    },
+    {
+      "eventId": 899,
+      "teamId": "12730",
+      "clubKey": "aa-wimpro-guarulhos-base",
+      "aliases": [
+        "AA WIMPRO GUARULHOS"
+      ]
+    },
+    {
+      "eventId": 897,
+      "teamId": "12164",
+      "clubKey": "impacto-fc",
+      "aliases": [
+        "IMPACTO F.C."
+      ]
+    },
+    {
+      "eventId": 897,
+      "teamId": "12345",
+      "clubKey": "prospere-hortolandia-base",
+      "aliases": [
+        "PROSPERE / HORTOLANDIA"
+      ]
+    },
+    {
+      "eventId": 897,
+      "teamId": "12731",
+      "clubKey": "aa-wimpro-guarulhos-base",
+      "aliases": [
+        "AA WIMPRO GUARULHOS"
+      ]
+    },
+    {
+      "eventId": 897,
+      "teamId": "12395",
+      "clubKey": "stadium-futsal",
+      "aliases": [
+        "STADIUM FUTSAL"
+      ]
+    },
+    {
+      "eventId": 897,
+      "teamId": "12737",
+      "clubKey": "liga-sebastianense-de-futsal-lisfuts-sao-sebastiao",
+      "aliases": [
+        "LIGA SEBASTIANENSE DE FUTSAL | LISFUTS/SÃO SEBASTIÃO"
+      ]
+    },
+    {
+      "eventId": 897,
+      "teamId": "12212",
+      "clubKey": "selecionados-futsal",
+      "aliases": [
+        "SELECIONADOS FUTSAL"
+      ]
+    },
+    {
+      "eventId": 897,
+      "teamId": "12381",
+      "clubKey": "taubate-futsal-base",
+      "aliases": [
+        "TAUBATÉ FUTSAL"
+      ]
+    },
+    {
+      "eventId": 898,
+      "teamId": "12396",
+      "clubKey": "stadium-futsal",
+      "aliases": [
+        "STADIUM FUTSAL"
+      ]
+    },
+    {
+      "eventId": 898,
+      "teamId": "12165",
+      "clubKey": "impacto-fc",
+      "aliases": [
+        "IMPACTO F.C."
+      ]
+    },
+    {
+      "eventId": 898,
+      "teamId": "12382",
+      "clubKey": "taubate-futsal-base",
+      "aliases": [
+        "TAUBATÉ FUTSAL"
+      ]
+    },
+    {
+      "eventId": 898,
+      "teamId": "12346",
+      "clubKey": "prospere-hortolandia-base",
+      "aliases": [
+        "PROSPERE / HORTOLANDIA"
+      ]
+    },
+    {
+      "eventId": 898,
+      "teamId": "12738",
+      "clubKey": "liga-sebastianense-de-futsal-lisfuts-sao-sebastiao",
+      "aliases": [
+        "LIGA SEBASTIANENSE DE FUTSAL | LISFUTS/SÃO SEBASTIÃO"
+      ]
+    },
+    {
+      "eventId": 898,
+      "teamId": "12213",
+      "clubKey": "selecionados-futsal",
+      "aliases": [
+        "SELECIONADOS FUTSAL"
+      ]
+    },
+    {
+      "eventId": 898,
+      "teamId": "12732",
+      "clubKey": "aa-wimpro-guarulhos-base",
+      "aliases": [
+        "AA WIMPRO GUARULHOS"
+      ]
+    },
+    {
+      "eventId": 896,
+      "teamId": "12166",
+      "clubKey": "impacto-fc",
+      "aliases": [
+        "IMPACTO F.C."
+      ]
+    },
+    {
+      "eventId": 896,
+      "teamId": "12214",
+      "clubKey": "selecionados-futsal",
+      "aliases": [
+        "SELECIONADOS FUTSAL"
+      ]
+    },
+    {
+      "eventId": 896,
+      "teamId": "12397",
+      "clubKey": "stadium-futsal",
+      "aliases": [
+        "STADIUM FUTSAL"
+      ]
+    },
+    {
+      "eventId": 896,
+      "teamId": "12347",
+      "clubKey": "prospere-hortolandia-base",
+      "aliases": [
+        "PROSPERE / HORTOLANDIA"
+      ]
+    },
+    {
+      "eventId": 896,
+      "teamId": "12733",
+      "clubKey": "aa-wimpro-guarulhos-base",
+      "aliases": [
+        "AA WIMPRO GUARULHOS"
+      ]
+    },
+    {
+      "eventId": 896,
+      "teamId": "12739",
+      "clubKey": "liga-sebastianense-de-futsal-lisfuts-sao-sebastiao",
+      "aliases": [
+        "LIGA SEBASTIANENSE DE FUTSAL | LISFUTS/SÃO SEBASTIÃO"
+      ]
+    },
+    {
+      "eventId": 896,
+      "teamId": "12383",
+      "clubKey": "taubate-futsal-base",
+      "aliases": [
+        "TAUBATÉ FUTSAL"
+      ]
+    },
+    {
+      "eventId": 918,
+      "teamId": "12582",
+      "clubKey": "acissa-astros-futsal",
+      "aliases": [
+        "ACISSA ASTROS FUTSAL"
+      ]
+    },
+    {
+      "eventId": 918,
+      "teamId": "12570",
+      "clubKey": "r7-futsal",
+      "aliases": [
+        "R7 FUTSAL"
+      ]
+    },
+    {
+      "eventId": 918,
+      "teamId": "12606",
+      "clubKey": "jabaquara-atletico-clube",
+      "aliases": [
+        "JABAQUARA ATLÉTICO CLUBE"
+      ]
+    },
+    {
+      "eventId": 918,
+      "teamId": "12875",
+      "clubKey": "napole-sports",
+      "aliases": [
+        "NAPOLE SPORTS"
+      ]
+    },
+    {
+      "eventId": 918,
+      "teamId": "12916",
+      "clubKey": "atibaiaense-de-futsal",
+      "aliases": [
+        "LIGA ATIBAIAENSE DE FUITSAL - LAFS"
+      ]
+    },
+    {
+      "eventId": 918,
+      "teamId": "12632",
+      "clubKey": "rosa-negra-ipasure-futsal",
+      "aliases": [
+        "ROSA NEGRA/IPASURE FUTSAL"
+      ]
+    },
+    {
+      "eventId": 918,
+      "teamId": "12891",
+      "clubKey": "prospere-hortolandia-b",
+      "aliases": [
+        "PROSPERE / HORTOLANDIA - B"
+      ]
+    },
+    {
+      "eventId": 918,
+      "teamId": "12975",
+      "clubKey": "cc-de-tatui",
+      "aliases": [
+        "C.C. DE TATUí"
+      ]
+    },
+    {
+      "eventId": 918,
+      "teamId": "12648",
+      "clubKey": "sporting-club-paulinense",
+      "aliases": [
+        "SPORTING CLUB PAULINENSE"
+      ]
+    },
+    {
+      "eventId": 918,
+      "teamId": "12628",
+      "clubKey": "pequeninos-de-perus",
+      "aliases": [
+        "PEQUENINOS DE PERUS"
+      ]
+    },
+    {
+      "eventId": 918,
+      "teamId": "12925",
+      "clubKey": "itaquerense-futsal",
+      "aliases": [
+        "ITAQUERENSE FUTSAL"
+      ]
+    },
+    {
+      "eventId": 918,
+      "teamId": "12574",
+      "clubKey": "vem-comigo-gerando-frutos-cfaf",
+      "aliases": [
+        "VEM COMIGO GERANDO FRUTOS - CFAF"
+      ]
+    },
+    {
+      "eventId": 918,
+      "teamId": "12440",
+      "clubKey": "guarulhense-tbc-tranportes",
+      "aliases": [
+        "GUARULHENSE/TBC TRANPORTES"
+      ]
+    },
+    {
+      "eventId": 918,
+      "teamId": "12895",
+      "clubKey": "ae-company-sports",
+      "aliases": [
+        "A.E. COMPANY SPORTS"
+      ]
+    },
+    {
+      "eventId": 918,
+      "teamId": "12614",
+      "clubKey": "liga-amadora-de-itapevi-de-futsal",
+      "aliases": [
+        "LIGA AMADORA DE ITAPEVI DE FUTSAL"
+      ]
+    },
+    {
+      "eventId": 919,
+      "teamId": "12896",
+      "clubKey": "ae-company-sports",
+      "aliases": [
+        "A.E. COMPANY SPORTS"
+      ]
+    },
+    {
+      "eventId": 919,
+      "teamId": "12441",
+      "clubKey": "guarulhense-tbc-tranportes",
+      "aliases": [
+        "GUARULHENSE/TBC TRANPORTES"
+      ]
+    },
+    {
+      "eventId": 919,
+      "teamId": "12575",
+      "clubKey": "vem-comigo-gerando-frutos-cfaf",
+      "aliases": [
+        "VEM COMIGO GERANDO FRUTOS - CFAF"
+      ]
+    },
+    {
+      "eventId": 919,
+      "teamId": "12583",
+      "clubKey": "acissa-astros-futsal",
+      "aliases": [
+        "ACISSA ASTROS FUTSAL"
+      ]
+    },
+    {
+      "eventId": 919,
+      "teamId": "12629",
+      "clubKey": "pequeninos-de-perus",
+      "aliases": [
+        "PEQUENINOS DE PERUS"
+      ]
+    },
+    {
+      "eventId": 919,
+      "teamId": "12876",
+      "clubKey": "napole-sports",
+      "aliases": [
+        "NAPOLE SPORTS"
+      ]
+    },
+    {
+      "eventId": 919,
+      "teamId": "12607",
+      "clubKey": "jabaquara-atletico-clube",
+      "aliases": [
+        "JABAQUARA ATLÉTICO CLUBE"
+      ]
+    },
+    {
+      "eventId": 919,
+      "teamId": "12926",
+      "clubKey": "itaquerense-futsal",
+      "aliases": [
+        "ITAQUERENSE FUTSAL"
+      ]
+    },
+    {
+      "eventId": 919,
+      "teamId": "12649",
+      "clubKey": "sporting-club-paulinense",
+      "aliases": [
+        "SPORTING CLUB PAULINENSE"
+      ]
+    },
+    {
+      "eventId": 919,
+      "teamId": "12633",
+      "clubKey": "rosa-negra-ipasure-futsal",
+      "aliases": [
+        "ROSA NEGRA/IPASURE FUTSAL"
+      ]
+    },
+    {
+      "eventId": 919,
+      "teamId": "12571",
+      "clubKey": "r7-futsal",
+      "aliases": [
+        "R7 FUTSAL"
+      ]
+    },
+    {
+      "eventId": 919,
+      "teamId": "12617",
+      "clubKey": "liga-amadora-de-itapevi-de-futsal",
+      "aliases": [
+        "LIGA AMADORA DE ITAPEVI DE FUTSAL"
+      ]
+    },
+    {
+      "eventId": 919,
+      "teamId": "12976",
+      "clubKey": "cc-de-tatui",
+      "aliases": [
+        "C.C. DE TATUí"
+      ]
+    },
+    {
+      "eventId": 919,
+      "teamId": "12892",
+      "clubKey": "prospere-hortolandia-b",
+      "aliases": [
+        "PROSPERE / HORTOLANDIA - B"
+      ]
+    },
+    {
+      "eventId": 920,
+      "teamId": "12572",
+      "clubKey": "r7-futsal",
+      "aliases": [
+        "R7 FUTSAL"
+      ]
+    },
+    {
+      "eventId": 920,
+      "teamId": "12893",
+      "clubKey": "prospere-hortolandia-b",
+      "aliases": [
+        "PROSPERE / HORTOLANDIA - B"
+      ]
+    },
+    {
+      "eventId": 920,
+      "teamId": "12877",
+      "clubKey": "napole-sports",
+      "aliases": [
+        "NAPOLE SPORTS"
+      ]
+    },
+    {
+      "eventId": 920,
+      "teamId": "12444",
+      "clubKey": "guarulhense-tbc-tranportes",
+      "aliases": [
+        "GUARULHENSE/TBC TRANPORTES"
+      ]
+    },
+    {
+      "eventId": 920,
+      "teamId": "12619",
+      "clubKey": "liga-amadora-de-itapevi-de-futsal",
+      "aliases": [
+        "LIGA AMADORA DE ITAPEVI DE FUTSAL"
+      ]
+    },
+    {
+      "eventId": 920,
+      "teamId": "12977",
+      "clubKey": "cc-de-tatui",
+      "aliases": [
+        "C.C. DE TATUí"
+      ]
+    },
+    {
+      "eventId": 920,
+      "teamId": "12927",
+      "clubKey": "itaquerense-futsal",
+      "aliases": [
+        "ITAQUERENSE FUTSAL"
+      ]
+    },
+    {
+      "eventId": 920,
+      "teamId": "12630",
+      "clubKey": "pequeninos-de-perus",
+      "aliases": [
+        "PEQUENINOS DE PERUS"
+      ]
+    },
+    {
+      "eventId": 920,
+      "teamId": "12634",
+      "clubKey": "rosa-negra-ipasure-futsal",
+      "aliases": [
+        "ROSA NEGRA/IPASURE FUTSAL"
+      ]
+    },
+    {
+      "eventId": 920,
+      "teamId": "12650",
+      "clubKey": "sporting-club-paulinense",
+      "aliases": [
+        "SPORTING CLUB PAULINENSE"
+      ]
+    },
+    {
+      "eventId": 920,
+      "teamId": "12608",
+      "clubKey": "jabaquara-atletico-clube",
+      "aliases": [
+        "JABAQUARA ATLÉTICO CLUBE"
+      ]
+    },
+    {
+      "eventId": 920,
+      "teamId": "12576",
+      "clubKey": "vem-comigo-gerando-frutos-cfaf",
+      "aliases": [
+        "VEM COMIGO GERANDO FRUTOS - CFAF"
+      ]
+    },
+    {
+      "eventId": 920,
+      "teamId": "12897",
+      "clubKey": "ae-company-sports",
+      "aliases": [
+        "A.E. COMPANY SPORTS"
+      ]
+    },
+    {
+      "eventId": 920,
+      "teamId": "12584",
+      "clubKey": "acissa-astros-futsal",
+      "aliases": [
+        "ACISSA ASTROS FUTSAL"
+      ]
+    },
+    {
+      "eventId": 921,
+      "teamId": "12577",
+      "clubKey": "vem-comigo-gerando-frutos-cfaf",
+      "aliases": [
+        "VEM COMIGO GERANDO FRUTOS - CFAF"
+      ]
+    },
+    {
+      "eventId": 921,
+      "teamId": "12978",
+      "clubKey": "cc-de-tatui",
+      "aliases": [
+        "C.C. DE TATUí"
+      ]
+    },
+    {
+      "eventId": 921,
+      "teamId": "12620",
+      "clubKey": "liga-amadora-de-itapevi-de-futsal",
+      "aliases": [
+        "LIGA AMADORA DE ITAPEVI DE FUTSAL"
+      ]
+    },
+    {
+      "eventId": 921,
+      "teamId": "12635",
+      "clubKey": "rosa-negra-ipasure-futsal",
+      "aliases": [
+        "ROSA NEGRA/IPASURE FUTSAL"
+      ]
+    },
+    {
+      "eventId": 921,
+      "teamId": "12631",
+      "clubKey": "pequeninos-de-perus",
+      "aliases": [
+        "PEQUENINOS DE PERUS"
+      ]
+    },
+    {
+      "eventId": 921,
+      "teamId": "12894",
+      "clubKey": "prospere-hortolandia-b",
+      "aliases": [
+        "PROSPERE / HORTOLANDIA - B"
+      ]
+    },
+    {
+      "eventId": 921,
+      "teamId": "12609",
+      "clubKey": "jabaquara-atletico-clube",
+      "aliases": [
+        "JABAQUARA ATLÉTICO CLUBE"
+      ]
+    },
+    {
+      "eventId": 921,
+      "teamId": "12878",
+      "clubKey": "napole-sports",
+      "aliases": [
+        "NAPOLE SPORTS"
+      ]
+    },
+    {
+      "eventId": 921,
+      "teamId": "12651",
+      "clubKey": "sporting-club-paulinense",
+      "aliases": [
+        "SPORTING CLUB PAULINENSE"
+      ]
+    },
+    {
+      "eventId": 921,
+      "teamId": "12898",
+      "clubKey": "ae-company-sports",
+      "aliases": [
+        "A.E. COMPANY SPORTS"
+      ]
+    },
+    {
+      "eventId": 921,
+      "teamId": "12573",
+      "clubKey": "r7-futsal",
+      "aliases": [
+        "R7 FUTSAL"
+      ]
+    },
+    {
+      "eventId": 921,
+      "teamId": "12928",
+      "clubKey": "itaquerense-futsal",
+      "aliases": [
+        "ITAQUERENSE FUTSAL"
+      ]
+    },
+    {
+      "eventId": 921,
+      "teamId": "12585",
+      "clubKey": "acissa-astros-futsal",
+      "aliases": [
+        "ACISSA ASTROS FUTSAL"
+      ]
+    },
+    {
+      "eventId": 921,
+      "teamId": "12446",
+      "clubKey": "guarulhense-tbc-tranportes",
+      "aliases": [
+        "GUARULHENSE/TBC TRANPORTES"
+      ]
+    },
+    {
+      "eventId": 925,
+      "teamId": "12636",
+      "clubKey": "rosa-negra-ipasure-futsal",
+      "aliases": [
+        "ROSA NEGRA/IPASURE FUTSAL"
+      ]
+    },
+    {
+      "eventId": 925,
+      "teamId": "12774",
+      "clubKey": "jacarei-alianca-futsal-ser",
+      "aliases": [
+        "JACAREÍ/ALIANÇA FUTSAL/SER"
+      ]
+    },
+    {
+      "eventId": 925,
+      "teamId": "12724",
+      "clubKey": "ferroviaria-pinda-futsal-semelp",
+      "aliases": [
+        "FERROVIÁRIA/PINDA FUTSAL/SEMELP"
+      ]
+    },
+    {
+      "eventId": 925,
+      "teamId": "12740",
+      "clubKey": "a-uniao-maua",
+      "aliases": [
+        "A. UNIÃO MAUÁ"
+      ]
+    },
+    {
+      "eventId": 925,
+      "teamId": "12782",
+      "clubKey": "aec-incriveis-cidade-tiradentes-incriveis-futsal",
+      "aliases": [
+        "A. E. C. INCRÍVEIS CIDADE TIRADENTES | INCRÍVEIS FUTSAL"
+      ]
+    },
+    {
+      "eventId": 925,
+      "teamId": "12794",
+      "clubKey": "associacao-esportiva-discipulos-do-futebol",
+      "aliases": [
+        "ASSOCIAÇÃO ESPORTIVA DISCIPULOS DO FUTEBOL"
+      ]
+    },
+    {
+      "eventId": 925,
+      "teamId": "12748",
+      "clubKey": "associacao-desportiva-e-cultural-lazuli-adc-lazuli",
+      "aliases": [
+        "ASSOCIACAO DESPORTIVA E CULTURAL LAZULI | A.D.C. LAZULI"
+      ]
+    },
+    {
+      "eventId": 925,
+      "teamId": "13033",
+      "clubKey": "associacao-desportiva-olimpik-ativo",
+      "aliases": [
+        "ASSOCIAÇÃO DESPORTIVA OLIMPIK | ATIVO"
+      ]
+    },
+    {
+      "eventId": 925,
+      "teamId": "12760",
+      "clubKey": "capao-bonito",
+      "aliases": [
+        "ASSOCIAÇÃO ESPORTIVA CAPÃO BONITO | A.E. CAPÃO BONITO"
+      ]
+    },
+    {
+      "eventId": 925,
+      "teamId": "13001",
+      "clubKey": "associacao-esportiva-metropole",
+      "aliases": [
+        "ASSOCIAÇÃO ESPORTIVA METROPoLE"
+      ]
+    },
+    {
+      "eventId": 925,
+      "teamId": "12586",
+      "clubKey": "acissa-astros-futsal",
+      "aliases": [
+        "ACISSA ASTROS FUTSAL"
+      ]
+    },
+    {
+      "eventId": 925,
+      "teamId": "13021",
+      "clubKey": "ctc-vila-ema",
+      "aliases": [
+        "CTC VILA EMA"
+      ]
+    },
+    {
+      "eventId": 925,
+      "teamId": "12145",
+      "clubKey": "abesc-cacapava",
+      "aliases": [
+        "ABESC/CAÇAPAVA"
+      ]
+    },
+    {
+      "eventId": 925,
+      "teamId": "12494",
+      "clubKey": "associacao-esportiva-friburgo-ae-friburgo",
+      "aliases": [
+        "ASSOCIAÇÃO ESPORTIVA FRIBURGO | AE FRIBURGO"
+      ]
+    },
+    {
+      "eventId": 925,
+      "teamId": "13025",
+      "clubKey": "sporting-club-paulinense",
+      "aliases": [
+        "SPORTING CLUB PAULINENSE"
+      ]
+    },
+    {
+      "eventId": 925,
+      "teamId": "12237",
+      "clubKey": "selecionados-futsal-a3",
+      "aliases": [
+        "SELECIONADOS FUTSAL - A3"
+      ]
+    },
+    {
+      "eventId": 925,
+      "teamId": "12644",
+      "clubKey": "associacao-contra-ataque-paulista-acap",
+      "aliases": [
+        "ASSOCIAÇÃO CONTRA ATAQUE PAULISTA - ACAP"
+      ]
+    },
+    {
+      "eventId": 925,
+      "teamId": "12798",
+      "clubKey": "associacao-amigos-de-camilopolis-camilopolis-futsal",
+      "aliases": [
+        "ASSOCIAÇÃO AMIGOS DE CAMILOPOLIS | CAMILÓPOLIS FUTSAL"
+      ]
+    },
+    {
+      "eventId": 925,
+      "teamId": "12770",
+      "clubKey": "escola-de-futsal-atletico-mangalot-ltda-ef-atletico-mangalot",
+      "aliases": [
+        "ESCOLA DE FUTSAL ATLÉTICO MANGALOT LTDA | EF ATLÉTICO MANGALOT"
+      ]
+    },
+    {
+      "eventId": 925,
+      "teamId": "12474",
+      "clubKey": "unileste-ponto-de-encontro",
+      "aliases": [
+        "UNILESTE / PONTO DE ENCONTRO"
+      ]
+    },
+    {
+      "eventId": 925,
+      "teamId": "12752",
+      "clubKey": "desportivo-sorocaba",
+      "aliases": [
+        "DESPORTIVO SOROCABA"
+      ]
+    },
+    {
+      "eventId": 925,
+      "teamId": "13037",
+      "clubKey": "clube-da-comunidade-faria-lima-kiloukura-vila-industrial",
+      "aliases": [
+        "CLUBE DA COMUNIDADE FARIA LIMA - KILOUKURA VILA INDUSTRIAL"
+      ]
+    },
+    {
+      "eventId": 925,
+      "teamId": "12448",
+      "clubKey": "guarulhense-tbc-tranportes",
+      "aliases": [
+        "GUARULHENSE/TBC TRANPORTES"
+      ]
+    },
+    {
+      "eventId": 925,
+      "teamId": "12622",
+      "clubKey": "liga-amadora-de-itapevi-de-futsal",
+      "aliases": [
+        "LIGA AMADORA DE ITAPEVI DE FUTSAL"
+      ]
+    },
+    {
+      "eventId": 925,
+      "teamId": "12810",
+      "clubKey": "liga-lest",
+      "aliases": [
+        "LIGA LESTE/VIKS ELEVADORES"
+      ]
+    },
+    {
+      "eventId": 925,
+      "teamId": "13005",
+      "clubKey": "prospere-hortolandia-b",
+      "aliases": [
+        "PROSPERE / HORTOLANDIA - B"
+      ]
+    },
+    {
+      "eventId": 923,
+      "teamId": "12238",
+      "clubKey": "selecionados-futsal-a3",
+      "aliases": [
+        "SELECIONADOS FUTSAL - A3"
+      ]
+    },
+    {
+      "eventId": 923,
+      "teamId": "12753",
+      "clubKey": "desportivo-sorocaba",
+      "aliases": [
+        "DESPORTIVO SOROCABA"
+      ]
+    },
+    {
+      "eventId": 923,
+      "teamId": "12624",
+      "clubKey": "liga-amadora-de-itapevi-de-futsal",
+      "aliases": [
+        "LIGA AMADORA DE ITAPEVI DE FUTSAL"
+      ]
+    },
+    {
+      "eventId": 923,
+      "teamId": "12725",
+      "clubKey": "ferroviaria-pinda-futsal-semelp",
+      "aliases": [
+        "FERROVIÁRIA/PINDA FUTSAL/SEMELP"
+      ]
+    },
+    {
+      "eventId": 923,
+      "teamId": "12645",
+      "clubKey": "associacao-contra-ataque-paulista-acap",
+      "aliases": [
+        "ASSOCIAÇÃO CONTRA ATAQUE PAULISTA - ACAP"
+      ]
+    },
+    {
+      "eventId": 923,
+      "teamId": "13022",
+      "clubKey": "ctc-vila-ema",
+      "aliases": [
+        "CTC VILA EMA"
+      ]
+    },
+    {
+      "eventId": 923,
+      "teamId": "13038",
+      "clubKey": "clube-da-comunidade-faria-lima-kiloukura-vila-industrial",
+      "aliases": [
+        "CLUBE DA COMUNIDADE FARIA LIMA - KILOUKURA VILA INDUSTRIAL"
+      ]
+    },
+    {
+      "eventId": 923,
+      "teamId": "12146",
+      "clubKey": "abesc-cacapava",
+      "aliases": [
+        "ABESC/CAÇAPAVA"
+      ]
+    },
+    {
+      "eventId": 923,
+      "teamId": "12450",
+      "clubKey": "guarulhense-tbc-tranportes",
+      "aliases": [
+        "GUARULHENSE/TBC TRANPORTES"
+      ]
+    },
+    {
+      "eventId": 923,
+      "teamId": "12811",
+      "clubKey": "liga-leste-viks-elevadores",
+      "aliases": [
+        "LIGA LESTE/VIKS ELEVADORES"
+      ]
+    },
+    {
+      "eventId": 923,
+      "teamId": "12783",
+      "clubKey": "aec-incriveis-cidade-tiradentes-incriveis-futsal",
+      "aliases": [
+        "A. E. C. INCRÍVEIS CIDADE TIRADENTES | INCRÍVEIS FUTSAL"
+      ]
+    },
+    {
+      "eventId": 923,
+      "teamId": "13002",
+      "clubKey": "associacao-esportiva-metropole",
+      "aliases": [
+        "ASSOCIAÇÃO ESPORTIVA METROPoLE"
+      ]
+    },
+    {
+      "eventId": 923,
+      "teamId": "12799",
+      "clubKey": "associacao-amigos-de-camilopolis-camilopolis-futsal",
+      "aliases": [
+        "ASSOCIAÇÃO AMIGOS DE CAMILOPOLIS | CAMILÓPOLIS FUTSAL"
+      ]
+    },
+    {
+      "eventId": 923,
+      "teamId": "12795",
+      "clubKey": "associacao-esportiva-discipulos-do-futebol",
+      "aliases": [
+        "ASSOCIAÇÃO ESPORTIVA DISCIPULOS DO FUTEBOL"
+      ]
+    },
+    {
+      "eventId": 923,
+      "teamId": "12495",
+      "clubKey": "associacao-esportiva-friburgo-ae-friburgo",
+      "aliases": [
+        "ASSOCIAÇÃO ESPORTIVA FRIBURGO | AE FRIBURGO"
+      ]
+    },
+    {
+      "eventId": 923,
+      "teamId": "12475",
+      "clubKey": "unileste-ponto-de-encontro",
+      "aliases": [
+        "UNILESTE / PONTO DE ENCONTRO"
+      ]
+    },
+    {
+      "eventId": 923,
+      "teamId": "12761",
+      "clubKey": "associacao-esportiva-capao-bonito-ae-capao-bonito",
+      "aliases": [
+        "ASSOCIAÇÃO ESPORTIVA CAPÃO BONITO | A.E. CAPÃO BONITO"
+      ]
+    },
+    {
+      "eventId": 923,
+      "teamId": "12587",
+      "clubKey": "acissa-astros-futsal",
+      "aliases": [
+        "ACISSA ASTROS FUTSAL"
+      ]
+    },
+    {
+      "eventId": 923,
+      "teamId": "13006",
+      "clubKey": "prospere-hortolandia-b",
+      "aliases": [
+        "PROSPERE / HORTOLANDIA - B"
+      ]
+    },
+    {
+      "eventId": 923,
+      "teamId": "12771",
+      "clubKey": "escola-de-futsal-atletico-mangalot-ltda-ef-atletico-mangalot",
+      "aliases": [
+        "ESCOLA DE FUTSAL ATLÉTICO MANGALOT LTDA | EF ATLÉTICO MANGALOT"
+      ]
+    },
+    {
+      "eventId": 923,
+      "teamId": "13034",
+      "clubKey": "associacao-desportiva-olimpik-ativo",
+      "aliases": [
+        "ASSOCIAÇÃO DESPORTIVA OLIMPIK | ATIVO"
+      ]
+    },
+    {
+      "eventId": 923,
+      "teamId": "12775",
+      "clubKey": "jacarei-alianca-futsal-ser",
+      "aliases": [
+        "JACAREÍ/ALIANÇA FUTSAL/SER"
+      ]
+    },
+    {
+      "eventId": 923,
+      "teamId": "12749",
+      "clubKey": "associacao-desportiva-e-cultural-lazuli-adc-lazuli",
+      "aliases": [
+        "ASSOCIACAO DESPORTIVA E CULTURAL LAZULI | A.D.C. LAZULI"
+      ]
+    },
+    {
+      "eventId": 923,
+      "teamId": "12637",
+      "clubKey": "rosa-negra-ipasure-futsal",
+      "aliases": [
+        "ROSA NEGRA/IPASURE FUTSAL"
+      ]
+    },
+    {
+      "eventId": 923,
+      "teamId": "13026",
+      "clubKey": "sporting-club-paulinense",
+      "aliases": [
+        "SPORTING CLUB PAULINENSE"
+      ]
+    },
+    {
+      "eventId": 923,
+      "teamId": "12741",
+      "clubKey": "a-uniao-maua",
+      "aliases": [
+        "A. UNIÃO MAUÁ"
+      ]
+    },
+    {
+      "eventId": 924,
+      "teamId": "12784",
+      "clubKey": "aec-incriveis-cidade-tiradentes-incriveis-futsal",
+      "aliases": [
+        "A. E. C. INCRÍVEIS CIDADE TIRADENTES | INCRÍVEIS FUTSAL"
+      ]
+    },
+    {
+      "eventId": 924,
+      "teamId": "12726",
+      "clubKey": "ferroviaria-pinda-futsal-semelp",
+      "aliases": [
+        "FERROVIÁRIA/PINDA FUTSAL/SEMELP"
+      ]
+    },
+    {
+      "eventId": 924,
+      "teamId": "13003",
+      "clubKey": "associacao-esportiva-metropole",
+      "aliases": [
+        "ASSOCIAÇÃO ESPORTIVA METROPoLE"
+      ]
+    },
+    {
+      "eventId": 924,
+      "teamId": "13039",
+      "clubKey": "clube-da-comunidade-faria-lima-kiloukura-vila-industrial",
+      "aliases": [
+        "CLUBE DA COMUNIDADE FARIA LIMA - KILOUKURA VILA INDUSTRIAL"
+      ]
+    },
+    {
+      "eventId": 924,
+      "teamId": "12239",
+      "clubKey": "selecionados-futsal-a3",
+      "aliases": [
+        "SELECIONADOS FUTSAL - A3"
+      ]
+    },
+    {
+      "eventId": 924,
+      "teamId": "12451",
+      "clubKey": "guarulhense-tbc-tranportes",
+      "aliases": [
+        "GUARULHENSE/TBC TRANPORTES"
+      ]
+    },
+    {
+      "eventId": 924,
+      "teamId": "12476",
+      "clubKey": "unileste-ponto-de-encontro",
+      "aliases": [
+        "UNILESTE / PONTO DE ENCONTRO"
+      ]
+    },
+    {
+      "eventId": 924,
+      "teamId": "12638",
+      "clubKey": "rosa-negra-ipasure-futsal",
+      "aliases": [
+        "ROSA NEGRA/IPASURE FUTSAL"
+      ]
+    },
+    {
+      "eventId": 924,
+      "teamId": "12750",
+      "clubKey": "associacao-desportiva-e-cultural-lazuli-adc-lazuli",
+      "aliases": [
+        "ASSOCIACAO DESPORTIVA E CULTURAL LAZULI | A.D.C. LAZULI"
+      ]
+    },
+    {
+      "eventId": 924,
+      "teamId": "12772",
+      "clubKey": "escola-de-futsal-atletico-mangalot-ltda-ef-atletico-mangalot",
+      "aliases": [
+        "ESCOLA DE FUTSAL ATLÉTICO MANGALOT LTDA | EF ATLÉTICO MANGALOT"
+      ]
+    },
+    {
+      "eventId": 924,
+      "teamId": "12742",
+      "clubKey": "a-uniao-maua",
+      "aliases": [
+        "A. UNIÃO MAUÁ"
+      ]
+    },
+    {
+      "eventId": 924,
+      "teamId": "12625",
+      "clubKey": "liga-amadora-de-itapevi-de-futsal",
+      "aliases": [
+        "LIGA AMADORA DE ITAPEVI DE FUTSAL"
+      ]
+    },
+    {
+      "eventId": 924,
+      "teamId": "13007",
+      "clubKey": "prospere-hortolandia-b",
+      "aliases": [
+        "PROSPERE / HORTOLANDIA - B"
+      ]
+    },
+    {
+      "eventId": 924,
+      "teamId": "12800",
+      "clubKey": "associacao-amigos-de-camilopolis-camilopolis-futsal",
+      "aliases": [
+        "ASSOCIAÇÃO AMIGOS DE CAMILOPOLIS | CAMILÓPOLIS FUTSAL"
+      ]
+    },
+    {
+      "eventId": 924,
+      "teamId": "12754",
+      "clubKey": "desportivo-sorocaba",
+      "aliases": [
+        "DESPORTIVO SOROCABA"
+      ]
+    },
+    {
+      "eventId": 924,
+      "teamId": "12646",
+      "clubKey": "associacao-contra-ataque-paulista-acap",
+      "aliases": [
+        "ASSOCIAÇÃO CONTRA ATAQUE PAULISTA - ACAP"
+      ]
+    },
+    {
+      "eventId": 924,
+      "teamId": "12812",
+      "clubKey": "liga-leste-viks-elevadores",
+      "aliases": [
+        "LIGA LESTE/VIKS ELEVADORES"
+      ]
+    },
+    {
+      "eventId": 924,
+      "teamId": "12147",
+      "clubKey": "abesc-cacapava",
+      "aliases": [
+        "ABESC/CAÇAPAVA"
+      ]
+    },
+    {
+      "eventId": 924,
+      "teamId": "12762",
+      "clubKey": "associacao-esportiva-capao-bonito-ae-capao-bonito",
+      "aliases": [
+        "ASSOCIAÇÃO ESPORTIVA CAPÃO BONITO | A.E. CAPÃO BONITO"
+      ]
+    },
+    {
+      "eventId": 924,
+      "teamId": "13027",
+      "clubKey": "sporting-club-paulinense",
+      "aliases": [
+        "SPORTING CLUB PAULINENSE"
+      ]
+    },
+    {
+      "eventId": 924,
+      "teamId": "12496",
+      "clubKey": "associacao-esportiva-friburgo-ae-friburgo",
+      "aliases": [
+        "ASSOCIAÇÃO ESPORTIVA FRIBURGO | AE FRIBURGO"
+      ]
+    },
+    {
+      "eventId": 924,
+      "teamId": "13035",
+      "clubKey": "associacao-desportiva-olimpik-ativo",
+      "aliases": [
+        "ASSOCIAÇÃO DESPORTIVA OLIMPIK | ATIVO"
+      ]
+    },
+    {
+      "eventId": 924,
+      "teamId": "12588",
+      "clubKey": "acissa-astros-futsal",
+      "aliases": [
+        "ACISSA ASTROS FUTSAL"
+      ]
+    },
+    {
+      "eventId": 924,
+      "teamId": "12796",
+      "clubKey": "associacao-esportiva-discipulos-do-futebol",
+      "aliases": [
+        "ASSOCIAÇÃO ESPORTIVA DISCIPULOS DO FUTEBOL"
+      ]
+    },
+    {
+      "eventId": 924,
+      "teamId": "12776",
+      "clubKey": "jacarei-alianca-futsal-ser",
+      "aliases": [
+        "JACAREÍ/ALIANÇA FUTSAL/SER"
+      ]
+    },
+    {
+      "eventId": 924,
+      "teamId": "13023",
+      "clubKey": "ctc-vila-ema",
+      "aliases": [
+        "CTC VILA EMA"
+      ]
+    },
+    {
+      "eventId": 922,
+      "teamId": "13004",
+      "clubKey": "associacao-esportiva-metropole",
+      "aliases": [
+        "ASSOCIAÇÃO ESPORTIVA METROPoLE"
+      ]
+    },
+    {
+      "eventId": 922,
+      "teamId": "12773",
+      "clubKey": "escola-de-futsal-atletico-mangalot-ltda-ef-atletico-mangalot",
+      "aliases": [
+        "ESCOLA DE FUTSAL ATLÉTICO MANGALOT LTDA | EF ATLÉTICO MANGALOT"
+      ]
+    },
+    {
+      "eventId": 922,
+      "teamId": "12148",
+      "clubKey": "abesc-cacapava",
+      "aliases": [
+        "ABESC/CAÇAPAVA"
+      ]
+    },
+    {
+      "eventId": 922,
+      "teamId": "12743",
+      "clubKey": "a-uniao-maua",
+      "aliases": [
+        "A. UNIÃO MAUÁ"
+      ]
+    },
+    {
+      "eventId": 922,
+      "teamId": "12647",
+      "clubKey": "associacao-contra-ataque-paulista-acap",
+      "aliases": [
+        "ASSOCIAÇÃO CONTRA ATAQUE PAULISTA - ACAP"
+      ]
+    },
+    {
+      "eventId": 922,
+      "teamId": "12240",
+      "clubKey": "selecionados-futsal-a3",
+      "aliases": [
+        "SELECIONADOS FUTSAL - A3"
+      ]
+    },
+    {
+      "eventId": 922,
+      "teamId": "12813",
+      "clubKey": "liga-leste-viks-elevadores",
+      "aliases": [
+        "LIGA LESTE/VIKS ELEVADORES"
+      ]
+    },
+    {
+      "eventId": 922,
+      "teamId": "12497",
+      "clubKey": "associacao-esportiva-friburgo-ae-friburgo",
+      "aliases": [
+        "ASSOCIAÇÃO ESPORTIVA FRIBURGO | AE FRIBURGO"
+      ]
+    },
+    {
+      "eventId": 922,
+      "teamId": "12639",
+      "clubKey": "rosa-negra-ipasure-futsal",
+      "aliases": [
+        "ROSA NEGRA/IPASURE FUTSAL"
+      ]
+    },
+    {
+      "eventId": 922,
+      "teamId": "12626",
+      "clubKey": "liga-amadora-de-itapevi-de-futsal",
+      "aliases": [
+        "LIGA AMADORA DE ITAPEVI DE FUTSAL"
+      ]
+    },
+    {
+      "eventId": 922,
+      "teamId": "12777",
+      "clubKey": "jacarei-alianca-futsal-ser",
+      "aliases": [
+        "JACAREÍ/ALIANÇA FUTSAL/SER"
+      ]
+    },
+    {
+      "eventId": 922,
+      "teamId": "12452",
+      "clubKey": "guarulhense-tbc-tranportes",
+      "aliases": [
+        "GUARULHENSE/TBC TRANPORTES"
+      ]
+    },
+    {
+      "eventId": 922,
+      "teamId": "13008",
+      "clubKey": "prospere-hortolandia-b",
+      "aliases": [
+        "PROSPERE / HORTOLANDIA - B"
+      ]
+    },
+    {
+      "eventId": 922,
+      "teamId": "12589",
+      "clubKey": "acissa-astros-futsal",
+      "aliases": [
+        "ACISSA ASTROS FUTSAL"
+      ]
+    },
+    {
+      "eventId": 922,
+      "teamId": "12755",
+      "clubKey": "desportivo-sorocaba",
+      "aliases": [
+        "DESPORTIVO SOROCABA"
+      ]
+    },
+    {
+      "eventId": 922,
+      "teamId": "13036",
+      "clubKey": "associacao-desportiva-olimpik-ativo",
+      "aliases": [
+        "ASSOCIAÇÃO DESPORTIVA OLIMPIK | ATIVO"
+      ]
+    },
+    {
+      "eventId": 922,
+      "teamId": "12801",
+      "clubKey": "associacao-amigos-de-camilopolis-camilopolis-futsal",
+      "aliases": [
+        "ASSOCIAÇÃO AMIGOS DE CAMILOPOLIS | CAMILÓPOLIS FUTSAL"
+      ]
+    },
+    {
+      "eventId": 922,
+      "teamId": "12797",
+      "clubKey": "associacao-esportiva-discipulos-do-futebol",
+      "aliases": [
+        "ASSOCIAÇÃO ESPORTIVA DISCIPULOS DO FUTEBOL"
+      ]
+    },
+    {
+      "eventId": 922,
+      "teamId": "13040",
+      "clubKey": "clube-da-comunidade-faria-lima-kiloukura-vila-industrial",
+      "aliases": [
+        "CLUBE DA COMUNIDADE FARIA LIMA - KILOUKURA VILA INDUSTRIAL"
+      ]
+    },
+    {
+      "eventId": 922,
+      "teamId": "12763",
+      "clubKey": "associacao-esportiva-capao-bonito-ae-capao-bonito",
+      "aliases": [
+        "ASSOCIAÇÃO ESPORTIVA CAPÃO BONITO | A.E. CAPÃO BONITO"
+      ]
+    },
+    {
+      "eventId": 922,
+      "teamId": "13024",
+      "clubKey": "ctc-vila-ema",
+      "aliases": [
+        "CTC VILA EMA"
+      ]
+    },
+    {
+      "eventId": 922,
+      "teamId": "13028",
+      "clubKey": "sporting-club-paulinense",
+      "aliases": [
+        "SPORTING CLUB PAULINENSE"
+      ]
+    },
+    {
+      "eventId": 922,
+      "teamId": "12727",
+      "clubKey": "ferroviaria-pinda-futsal-semelp",
+      "aliases": [
+        "FERROVIÁRIA/PINDA FUTSAL/SEMELP"
+      ]
+    },
+    {
+      "eventId": 922,
+      "teamId": "12785",
+      "clubKey": "aec-incriveis-cidade-tiradentes-incriveis-futsal",
+      "aliases": [
+        "A. E. C. INCRÍVEIS CIDADE TIRADENTES | INCRÍVEIS FUTSAL"
+      ]
+    },
+    {
+      "eventId": 922,
+      "teamId": "12751",
+      "clubKey": "associacao-desportiva-e-cultural-lazuli-adc-lazuli",
+      "aliases": [
+        "ASSOCIACAO DESPORTIVA E CULTURAL LAZULI | A.D.C. LAZULI"
+      ]
+    },
+    {
+      "eventId": 922,
+      "teamId": "12477",
+      "clubKey": "unileste-ponto-de-encontro",
+      "aliases": [
+        "UNILESTE / PONTO DE ENCONTRO"
+      ]
+    }
+  ]
+}
