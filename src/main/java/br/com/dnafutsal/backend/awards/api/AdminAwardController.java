@@ -47,6 +47,28 @@ public class AdminAwardController {
         );
     }
 
+    @PostMapping("/editions/{editionId}/open")
+    AwardEditionAdminResponse open(
+            @PathVariable UUID editionId,
+            @Valid
+            @RequestBody
+            OpenAwardEditionRequest request
+    ) {
+        return editions.open(
+                editionId,
+                request
+        );
+    }
+
+    @PostMapping("/editions/{editionId}/close")
+    AwardEditionAdminResponse close(
+            @PathVariable UUID editionId
+    ) {
+        return editions.close(
+                editionId
+        );
+    }
+
     @PostMapping("/candidates/import-team")
     ImportAwardTeamResponse importTeam(
             @Valid

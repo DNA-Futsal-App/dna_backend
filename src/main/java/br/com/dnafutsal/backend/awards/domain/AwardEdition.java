@@ -71,6 +71,42 @@ public class AwardEdition {
         return status == AwardEditionStatus.CLOSED;
     }
 
+    public boolean isVotingOpenAt(
+            Instant now
+    ) {
+        if (status != AwardEditionStatus.OPEN) {
+            return false;
+        }
+
+        if (votingOpensAt != null
+                && now.isBefore(votingOpensAt)) {
+            return false;
+        }
+
+        return votingClosesAt == null
+                || now.isBefore(votingClosesAt);
+    }
+
+    public void openVoting(
+            Instant opensAt,
+            Instant closesAt
+    ) {
+        this.status = AwardEditionStatus.OPEN;
+        this.votingOpensAt = opensAt;
+        this.votingClosesAt = closesAt;
+    }
+
+    public void closeVoting(
+            Instant closedAt
+    ) {
+        this.status = AwardEditionStatus.CLOSED;
+
+        if (votingClosesAt == null
+                || votingClosesAt.isAfter(closedAt)) {
+            votingClosesAt = closedAt;
+        }
+    }
+
     public UUID getId() {
         return id;
     }

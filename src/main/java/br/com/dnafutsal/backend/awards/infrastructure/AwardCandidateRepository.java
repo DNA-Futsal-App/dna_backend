@@ -26,4 +26,27 @@ public interface AwardCandidateRepository
     List<AwardCandidate> findByEditionIdOrderByTeamNameAscNameAsc(
             UUID editionId
     );
+
+    List<AwardCandidate> findByEditionIdAndEventIdAndDivisionIdAndCategoryIdAndActiveTrueOrderByTeamNameAscNameAsc(
+            UUID editionId,
+            long eventId,
+            long divisionId,
+            long categoryId
+    );
+
+    List<AwardCandidate> findByEditionIdAndEventIdAndDivisionIdAndCategoryIdAndTeamIdAndActiveTrueOrderByNameAsc(
+            UUID editionId,
+            long eventId,
+            long divisionId,
+            long categoryId,
+            String teamId
+    );
+
+    boolean existsByEditionIdAndEventIdAndDivisionIdAndCategoryIdAndTeamIdAndActiveTrue(
+            UUID editionId,
+            long eventId,
+            long divisionId,
+            long categoryId,
+            String teamId
+    );
 }

@@ -46,6 +46,25 @@ public class AwardVoteCategory {
     protected AwardVoteCategory() {
     }
 
+    public AwardVoteCategory(
+            UUID editionId,
+            String code,
+            String label,
+            AwardCandidateType targetType,
+            String positionCode,
+            int displayOrder,
+            boolean required
+    ) {
+        this.id = UUID.randomUUID();
+        this.editionId = editionId;
+        this.code = code;
+        this.label = label;
+        this.targetType = targetType;
+        this.positionCode = positionCode;
+        this.displayOrder = displayOrder;
+        this.required = required;
+    }
+
     @PrePersist
     void onCreate() {
         if (createdAt == null) {
