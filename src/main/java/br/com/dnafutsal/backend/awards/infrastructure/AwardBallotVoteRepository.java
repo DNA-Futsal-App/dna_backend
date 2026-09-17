@@ -12,4 +12,8 @@ public interface AwardBallotVoteRepository
     List<AwardBallotVote> findByBallotId(
             UUID ballotId
     );
+
+    List<AwardBallotVote> findByBallotIdIn(
+            List<UUID> ballotIds
+    );
 }

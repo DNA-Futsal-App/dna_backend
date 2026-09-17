@@ -4,6 +4,7 @@ import br.com.dnafutsal.backend.awards.application.AwardAdminDashboardService;
 import br.com.dnafutsal.backend.awards.application.AwardCandidateAdminService;
 import br.com.dnafutsal.backend.awards.application.AwardCandidateImportService;
 import br.com.dnafutsal.backend.awards.application.AwardEditionAdminService;
+import br.com.dnafutsal.backend.awards.application.AwardResultsService;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -24,17 +25,20 @@ public class AdminAwardController {
     private final AwardCandidateImportService importer;
     private final AwardCandidateAdminService candidates;
     private final AwardAdminDashboardService dashboard;
+    private final AwardResultsService results;
 
     public AdminAwardController(
             AwardEditionAdminService editions,
             AwardCandidateImportService importer,
             AwardCandidateAdminService candidates,
-            AwardAdminDashboardService dashboard
+            AwardAdminDashboardService dashboard,
+            AwardResultsService results
     ) {
         this.editions = editions;
         this.importer = importer;
         this.candidates = candidates;
         this.dashboard = dashboard;
+        this.results = results;
     }
 
     @GetMapping("/editions")
@@ -54,6 +58,21 @@ public class AdminAwardController {
             @PathVariable UUID editionId
     ) {
         return dashboard.coaches(editionId);
+    }
+
+
+    @GetMapping("/editions/{editionId}/audit")
+    AwardAdminAuditResponse audit(
+            @PathVariable UUID editionId
+    ) {
+        return results.audit(editionId);
+    }
+
+    @GetMapping("/editions/{editionId}/results")
+    AwardAdminResultsResponse results(
+            @PathVariable UUID editionId
+    ) {
+        return results.results(editionId);
     }
 
     @GetMapping("/editions/{editionId}/vote-categories")
