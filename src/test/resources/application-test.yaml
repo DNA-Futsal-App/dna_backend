@@ -44,6 +44,9 @@ app:
     email-verification-ttl: PT24H
     password-reset-ttl: PT30M
 
+  awards:
+    coach-invite-ttl: P30D
+
   integrations:
     sports:
       base-url: http://localhost:8082

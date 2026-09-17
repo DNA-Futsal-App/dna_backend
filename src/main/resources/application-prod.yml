@@ -77,6 +77,8 @@ app:
     refresh-token-ttl: ${REFRESH_TOKEN_TTL:P30D}
     email-verification-ttl: ${EMAIL_VERIFICATION_TTL:PT24H}
     password-reset-ttl: ${PASSWORD_RESET_TTL:PT30M}
+  awards:
+    coach-invite-ttl: ${AWARD_COACH_INVITE_TTL:P30D}
   integrations:
     sports:
       base-url: ${SPORTS_API_BASE_URL}
