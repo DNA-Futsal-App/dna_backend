@@ -48,6 +48,10 @@ public class UserAccount {
     private String followedTeamId;
 
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private UserRole role;
+
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 40)
     private UserStatus status;
 
@@ -82,12 +86,16 @@ public class UserAccount {
         this.followedCategoryId = followedCategoryId;
         this.followedDivisionId = followedDivisionId;
         this.followedTeamId = followedTeamId;
+        this.role = UserRole.USER;
         this.status = UserStatus.PENDING_EMAIL_VERIFICATION;
     }
 
     @PrePersist
     void onCreate() {
         Instant now = Instant.now();
+        if (role == null) {
+            role = UserRole.USER;
+        }
         createdAt = now;
         updatedAt = now;
     }
@@ -163,6 +171,10 @@ public class UserAccount {
 
     public String getFollowedTeamId() {
         return followedTeamId;
+    }
+
+    public UserRole getRole() {
+        return role;
     }
 
     public UserStatus getStatus() {

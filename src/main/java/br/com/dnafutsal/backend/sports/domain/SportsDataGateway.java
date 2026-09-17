@@ -25,6 +25,11 @@ public interface SportsDataGateway {
             long eventId
     );
 
+    SportsTeamDetailsView teamDetails(
+            long eventId,
+            long teamId
+    );
+
     SportsSnapshot snapshot(
             long eventId
     );

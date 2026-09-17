@@ -6,7 +6,9 @@ import br.com.dnafutsal.backend.config.IntegrationProperties;
 import br.com.dnafutsal.backend.sports.domain.SportsDataGateway;
 import br.com.dnafutsal.backend.sports.domain.SportsEventSearch;
 import br.com.dnafutsal.backend.sports.domain.SportsEventView;
+import br.com.dnafutsal.backend.sports.domain.SportsPersonView;
 import br.com.dnafutsal.backend.sports.domain.SportsSnapshot;
+import br.com.dnafutsal.backend.sports.domain.SportsTeamDetailsView;
 import br.com.dnafutsal.backend.sports.domain.TeamView;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -204,6 +206,90 @@ public class HttpSportsDataGateway implements SportsDataGateway {
                 uri -> uri.path("/api/v1/events/{eventId}/teams").build(eventId),
                 new ParameterizedTypeReference<>() {});
         return mapResponse(diagnostics, () -> mapper.teams(eventId, response));
+    }
+
+    @Override
+    public SportsTeamDetailsView teamDetails(long eventId, long teamId) {
+        Map<String, Object> diagnostics =
+                diagnostics(
+                        "get-team-details",
+                        "eventId",
+                        eventId,
+                        "teamId",
+                        teamId
+                );
+
+        ScraperTeamDetails response =
+                get(
+                        diagnostics,
+                        uri -> uri
+                                .path("/api/v1/events/{eventId}/teams/{teamId}")
+                                .queryParam("includePersonalData", includePersonalData)
+                                .build(eventId, teamId),
+                        new ParameterizedTypeReference<>() {
+                        }
+                );
+
+        return mapResponse(
+                diagnostics,
+                () -> {
+                    validateEventId(
+                            eventId,
+                            response.eventId(),
+                            diagnostics
+                    );
+
+                    if (response.teamId() != teamId) {
+                        throw invalidResponse(
+                                diagnostics,
+                                null
+                        );
+                    }
+
+                    List<SportsPersonView> athletes =
+                            response.athletes() == null
+                                    ? List.of()
+                                    : response.athletes()
+                                    .stream()
+                                    .map(person ->
+                                            new SportsPersonView(
+                                                    person.name(),
+                                                    person.secondaryName(),
+                                                    person.role(),
+                                                    person.imageUrl()
+                                            )
+                                    )
+                                    .toList();
+
+                    List<SportsPersonView> staff =
+                            response.staff() == null
+                                    ? List.of()
+                                    : response.staff()
+                                    .stream()
+                                    .map(person ->
+                                            new SportsPersonView(
+                                                    person.name(),
+                                                    person.secondaryName(),
+                                                    person.role(),
+                                                    person.imageUrl()
+                                            )
+                                    )
+                                    .toList();
+
+                    return new SportsTeamDetailsView(
+                            response.eventId(),
+                            Long.toString(
+                                    response.teamId()
+                            ),
+                            response.name(),
+                            response.logoUrl(),
+                            athletes,
+                            staff,
+                            response.personalDataSuppressed(),
+                            response.sourceUrl()
+                    );
+                }
+        );
     }
 
     @Override

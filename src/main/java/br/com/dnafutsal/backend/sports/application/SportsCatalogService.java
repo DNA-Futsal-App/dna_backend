@@ -6,6 +6,7 @@ import br.com.dnafutsal.backend.sports.domain.CatalogItemView;
 import br.com.dnafutsal.backend.sports.domain.SportsDataGateway;
 import br.com.dnafutsal.backend.sports.domain.SportsEventSearch;
 import br.com.dnafutsal.backend.sports.domain.SportsEventView;
+import br.com.dnafutsal.backend.sports.domain.SportsTeamDetailsView;
 import br.com.dnafutsal.backend.sports.domain.TeamView;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
@@ -93,6 +94,16 @@ public class SportsCatalogService {
     ) {
         return List.copyOf(
                 gateway.teams(eventId)
+        );
+    }
+
+    public SportsTeamDetailsView teamDetails(
+            long eventId,
+            long teamId
+    ) {
+        return gateway.teamDetails(
+                eventId,
+                teamId
         );
     }
 

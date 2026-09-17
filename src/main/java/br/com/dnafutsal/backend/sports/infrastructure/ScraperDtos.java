@@ -61,6 +61,28 @@ record ScraperTeam(
 ) {
 }
 
+record ScraperPerson(
+        String name,
+        String secondaryName,
+        String role,
+        String imageUrl
+) {
+}
+
+record ScraperTeamDetails(
+        long eventId,
+        long teamId,
+        String name,
+        String logoUrl,
+        String address,
+        String phone,
+        List<ScraperPerson> athletes,
+        List<ScraperPerson> staff,
+        boolean personalDataSuppressed,
+        String sourceUrl
+) {
+}
+
 record ScraperScorer(
         String phase,
         String player,

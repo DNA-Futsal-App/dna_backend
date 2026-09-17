@@ -2,6 +2,7 @@ package br.com.dnafutsal.backend.identity.application;
 
 import br.com.dnafutsal.backend.config.SecurityProperties;
 import br.com.dnafutsal.backend.identity.domain.UserAccount;
+import br.com.dnafutsal.backend.identity.domain.UserRole;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.JwsHeader;
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;
@@ -28,13 +29,18 @@ public class JwtTokenService {
 
     public String createAccessToken(UserAccount user) {
         Instant now = clock.instant();
+        String scope =
+                user.getRole() == UserRole.ADMIN
+                        ? "USER ADMIN"
+                        : "USER";
+
         JwtClaimsSet claims = JwtClaimsSet.builder()
                 .issuer("dna-futsal")
                 .issuedAt(now)
                 .expiresAt(now.plus(properties.accessTokenTtl()))
                 .subject(user.getId().toString())
                 .id(UUID.randomUUID().toString())
-                .claim("scope", "USER")
+                .claim("scope", scope)
                 .claim("ver", user.getTokenVersion())
                 .build();
         JwsHeader header = JwsHeader.with(MacAlgorithm.HS256).build();
