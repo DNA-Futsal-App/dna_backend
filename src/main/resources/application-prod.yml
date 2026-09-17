@@ -79,6 +79,7 @@ app:
     password-reset-ttl: ${PASSWORD_RESET_TTL:PT30M}
   awards:
     coach-invite-ttl: ${AWARD_COACH_INVITE_TTL:P30D}
+    coach-invite-reservation-ttl: ${AWARD_COACH_INVITE_RESERVATION_TTL:P2D}
   integrations:
     sports:
       base-url: ${SPORTS_API_BASE_URL}

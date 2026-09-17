@@ -40,6 +40,15 @@ public class AwardCoachInvite {
     @Column(name = "claimed_at")
     private Instant claimedAt;
 
+    @Column(name = "reserved_by_user_id")
+    private UUID reservedByUserId;
+
+    @Column(name = "reserved_at")
+    private Instant reservedAt;
+
+    @Column(name = "reservation_expires_at")
+    private Instant reservationExpiresAt;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -75,15 +84,55 @@ public class AwardCoachInvite {
         return status == AwardCoachInviteStatus.PENDING && !isExpiredAt(now);
     }
 
+    public void reserve(
+            UUID userId,
+            Instant now,
+            Instant reservationExpiresAt
+    ) {
+        this.reservedByUserId = userId;
+        this.reservedAt = now;
+        this.reservationExpiresAt = reservationExpiresAt;
+    }
+
+    public boolean hasActiveReservationAt(
+            Instant now
+    ) {
+        return reservedByUserId != null
+                && reservationExpiresAt != null
+                && now.isBefore(
+                        reservationExpiresAt
+                );
+    }
+
+    public boolean hasExpiredReservationAt(
+            Instant now
+    ) {
+        return reservedByUserId != null
+                && (
+                reservationExpiresAt == null
+                        || !now.isBefore(
+                        reservationExpiresAt
+                )
+        );
+    }
+
+    public void clearReservation() {
+        this.reservedByUserId = null;
+        this.reservedAt = null;
+        this.reservationExpiresAt = null;
+    }
+
     public void claim(UUID userId, Instant now) {
         this.status = AwardCoachInviteStatus.CLAIMED;
         this.claimedByUserId = userId;
         this.claimedAt = now;
+        clearReservation();
     }
 
     public void revoke() {
         if (status == AwardCoachInviteStatus.PENDING) {
             status = AwardCoachInviteStatus.REVOKED;
+            clearReservation();
         }
     }
 
@@ -117,5 +166,21 @@ public class AwardCoachInvite {
 
     public Instant getClaimedAt() {
         return claimedAt;
+    }
+
+    public UUID getReservedByUserId() {
+        return reservedByUserId;
+    }
+
+    public Instant getReservedAt() {
+        return reservedAt;
+    }
+
+    public Instant getReservationExpiresAt() {
+        return reservationExpiresAt;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
     }
 }

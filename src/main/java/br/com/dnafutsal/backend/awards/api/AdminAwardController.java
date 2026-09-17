@@ -1,5 +1,6 @@
 package br.com.dnafutsal.backend.awards.api;
 
+import br.com.dnafutsal.backend.awards.application.AwardAdminDashboardService;
 import br.com.dnafutsal.backend.awards.application.AwardCandidateAdminService;
 import br.com.dnafutsal.backend.awards.application.AwardCandidateImportService;
 import br.com.dnafutsal.backend.awards.application.AwardEditionAdminService;
@@ -22,20 +23,37 @@ public class AdminAwardController {
     private final AwardEditionAdminService editions;
     private final AwardCandidateImportService importer;
     private final AwardCandidateAdminService candidates;
+    private final AwardAdminDashboardService dashboard;
 
     public AdminAwardController(
             AwardEditionAdminService editions,
             AwardCandidateImportService importer,
-            AwardCandidateAdminService candidates
+            AwardCandidateAdminService candidates,
+            AwardAdminDashboardService dashboard
     ) {
         this.editions = editions;
         this.importer = importer;
         this.candidates = candidates;
+        this.dashboard = dashboard;
     }
 
     @GetMapping("/editions")
     List<AwardEditionAdminResponse> editions() {
         return editions.editions();
+    }
+
+    @GetMapping("/editions/{editionId}/overview")
+    AwardAdminOverviewResponse overview(
+            @PathVariable UUID editionId
+    ) {
+        return dashboard.overview(editionId);
+    }
+
+    @GetMapping("/editions/{editionId}/coaches")
+    List<AwardAdminCoachResponse> coaches(
+            @PathVariable UUID editionId
+    ) {
+        return dashboard.coaches(editionId);
     }
 
     @GetMapping("/editions/{editionId}/vote-categories")

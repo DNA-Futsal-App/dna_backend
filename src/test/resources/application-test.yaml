@@ -46,6 +46,7 @@ app:
 
   awards:
     coach-invite-ttl: P30D
+    coach-invite-reservation-ttl: P2D
 
   integrations:
     sports:

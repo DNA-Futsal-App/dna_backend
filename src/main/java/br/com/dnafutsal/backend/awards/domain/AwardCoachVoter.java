@@ -109,4 +109,8 @@ public class AwardCoachVoter {
     public String getTeamId() {
         return teamId;
     }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
 }

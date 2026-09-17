@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -33,6 +34,7 @@ public class RegistrationService {
     private final MailTemplateFactory mailTemplates;
     private final MailOutboxService mailOutbox;
     private final Clock clock;
+    private final List<RegistrationLifecycleHook> lifecycleHooks;
 
     public RegistrationService(UserAccountRepository users,
                                EmailVerificationTokenRepository verificationTokens,
@@ -43,7 +45,8 @@ public class RegistrationService {
                                AppProperties appProperties,
                                MailTemplateFactory mailTemplates,
                                MailOutboxService mailOutbox,
-                               Clock clock) {
+                               Clock clock,
+                               List<RegistrationLifecycleHook> lifecycleHooks) {
         this.users = users;
         this.verificationTokens = verificationTokens;
         this.passwordEncoder = passwordEncoder;
@@ -54,6 +57,7 @@ public class RegistrationService {
         this.mailTemplates = mailTemplates;
         this.mailOutbox = mailOutbox;
         this.clock = clock;
+        this.lifecycleHooks = List.copyOf(lifecycleHooks);
     }
 
     @Transactional
@@ -71,6 +75,14 @@ public class RegistrationService {
                 request.eventId(), normalizer.optionalId(request.categoryId()), normalizer.optionalId(request.divisionId()),
                 normalizer.optionalId(request.teamId()));
         users.save(user);
+
+        lifecycleHooks.forEach(
+                hook -> hook.afterRegistration(
+                        user,
+                        request
+                )
+        );
+
         enqueueVerification(user);
     }
 
@@ -87,6 +99,13 @@ public class RegistrationService {
                 .orElseThrow(() -> Errors.notFound("USER_NOT_FOUND", "Usuário não encontrado."));
         token.use(now);
         user.activate(now);
+
+        lifecycleHooks.forEach(
+                hook -> hook.afterEmailVerified(
+                        user
+                )
+        );
+
         return user.getId();
     }
 

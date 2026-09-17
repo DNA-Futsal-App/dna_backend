@@ -79,6 +79,23 @@ public class CoachInviteService {
                 request.editionId()
         );
 
+        if (!coach.isActive()) {
+            throw Errors.conflict(
+                    "COACH_CANDIDATE_INACTIVE",
+                    "O cadastro deste treinador não está ativo."
+            );
+        }
+
+        if (voters.existsByEditionIdAndSelfCoachCandidateId(
+                edition.getId(),
+                coach.getId()
+        )) {
+            throw Errors.conflict(
+                    "COACH_ALREADY_CLAIMED",
+                    "Este treinador já está vinculado a uma conta."
+            );
+        }
+
         Instant now = clock.instant();
 
         invites.findByEditionIdAndCoachCandidateIdAndStatus(
@@ -86,7 +103,15 @@ public class CoachInviteService {
                 coach.getId(),
                 AwardCoachInviteStatus.PENDING
         ).ifPresent(existing -> {
-            if (!existing.isExpiredAt(now)) {
+            if (existing.hasActiveReservationAt(now)) {
+                throw Errors.conflict(
+                        "COACH_INVITE_RESERVED",
+                        "Já existe um cadastro em andamento para este treinador."
+                );
+            }
+
+            if (!existing.isExpiredAt(now)
+                    && !existing.hasExpiredReservationAt(now)) {
                 throw Errors.conflict(
                         "COACH_INVITE_ALREADY_EXISTS",
                         "Já existe um convite válido para este treinador."
@@ -127,6 +152,28 @@ public class CoachInviteService {
                 inviteUrl,
                 expiresAt
         );
+    }
+
+    @Transactional
+    public void revoke(
+            UUID inviteId
+    ) {
+        AwardCoachInvite invite =
+                invites.findById(inviteId)
+                        .orElseThrow(() -> Errors.notFound(
+                                "COACH_INVITE_NOT_FOUND",
+                                "Convite de treinador não encontrado."
+                        ));
+
+        if (invite.getStatus() == AwardCoachInviteStatus.CLAIMED) {
+            throw Errors.conflict(
+                    "COACH_INVITE_ALREADY_CLAIMED",
+                    "Um convite já utilizado não pode ser revogado."
+            );
+        }
+
+        invite.revoke();
+        invites.saveAndFlush(invite);
     }
 
     @Transactional(readOnly = true)
@@ -211,7 +258,26 @@ public class CoachInviteService {
             );
         }
 
-        if (!invite.isUsableAt(now)) {
+        boolean ownReservation =
+                userId.equals(
+                        invite.getReservedByUserId()
+                )
+                        && invite.hasActiveReservationAt(now);
+
+        if (invite.hasActiveReservationAt(now)
+                && !ownReservation) {
+            throw Errors.conflict(
+                    "COACH_INVITE_RESERVED",
+                    "Este convite está reservado para outro cadastro."
+            );
+        }
+
+        if (invite.hasExpiredReservationAt(now)) {
+            invite.clearReservation();
+        }
+
+        if (!ownReservation
+                && !invite.isUsableAt(now)) {
             throw Errors.conflict(
                     "COACH_INVITE_UNAVAILABLE",
                     "Este convite expirou ou não está mais disponível."
@@ -335,6 +401,14 @@ public class CoachInviteService {
     ) {
         if (invite.getStatus() == AwardCoachInviteStatus.CLAIMED) {
             return "CLAIMED";
+        }
+
+        if (invite.hasActiveReservationAt(now)) {
+            return "RESERVED";
+        }
+
+        if (invite.hasExpiredReservationAt(now)) {
+            return "RESERVATION_EXPIRED";
         }
 
         if (invite.getStatus() == AwardCoachInviteStatus.REVOKED) {

@@ -9,6 +9,16 @@ import java.time.Duration;
 @Validated
 @ConfigurationProperties(prefix = "app.awards")
 public record AwardProperties(
-        @NotNull Duration coachInviteTtl
+        @NotNull Duration coachInviteTtl,
+        @NotNull Duration coachInviteReservationTtl
 ) {
+
+    public AwardProperties(
+            Duration coachInviteTtl
+    ) {
+        this(
+                coachInviteTtl,
+                Duration.ofDays(2)
+        );
+    }
 }
