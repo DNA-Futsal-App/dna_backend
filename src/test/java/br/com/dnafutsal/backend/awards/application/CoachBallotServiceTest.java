@@ -26,6 +26,7 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
@@ -68,6 +69,124 @@ class CoachBallotServiceTest {
                         ZoneOffset.UTC
                 )
         );
+    }
+
+    @Test
+    void acceptsAthleteWithoutPredefinedPosition() {
+        AwardEdition edition =
+                new AwardEdition(
+                        "premio-dna-2026",
+                        "Prêmio DNA Futsal 2026",
+                        2026,
+                        AwardEditionStatus.OPEN,
+                        now.minusSeconds(60),
+                        now.plusSeconds(3600)
+                );
+
+        AwardCandidate selfCoach =
+                new AwardCandidate(
+                        edition.getId(),
+                        AwardCandidateType.COACH,
+                        "coach-1",
+                        "Treinador Um",
+                        null,
+                        904,
+                        3,
+                        7,
+                        "123",
+                        "Time A",
+                        null,
+                        null
+                );
+
+        AwardCandidate athlete =
+                new AwardCandidate(
+                        edition.getId(),
+                        AwardCandidateType.ATHLETE,
+                        "athlete-1",
+                        "Atleta Um",
+                        null,
+                        904,
+                        3,
+                        7,
+                        "456",
+                        "Time B",
+                        null,
+                        null
+                );
+
+        AwardCandidate ownTeamVote =
+                AwardCandidate.imported(
+                        edition.getId(),
+                        AwardCandidateType.COACH,
+                        null,
+                        "Time A",
+                        null,
+                        AwardCandidate.TEAM_COACH_VOTE_ROLE,
+                        UUID.randomUUID().toString(),
+                        904,
+                        3,
+                        7,
+                        "123",
+                        "Time A",
+                        null,
+                        null,
+                        now
+                );
+
+        AwardCoachVoter voter =
+                new AwardCoachVoter(
+                        edition.getId(),
+                        UUID.randomUUID(),
+                        UUID.randomUUID(),
+                        selfCoach.getId(),
+                        904,
+                        3,
+                        7,
+                        "123"
+                );
+
+        AwardVoteCategory goalkeeper =
+                new AwardVoteCategory(
+                        edition.getId(),
+                        "GOLEIRO",
+                        "Goleiro",
+                        AwardCandidateType.ATHLETE,
+                        "GOLEIRO",
+                        10,
+                        true
+                );
+
+        when(access.requireOpenForVoting()).thenReturn(
+                new CoachVotingAccessService.Access(
+                        voter.getUserId(),
+                        voter,
+                        edition,
+                        selfCoach,
+                        false,
+                        CoachVotingState.OPEN,
+                        now
+                )
+        );
+        when(voteCategories.findByEditionIdOrderByDisplayOrderAsc(edition.getId()))
+                .thenReturn(List.of(goalkeeper));
+        when(candidates.findAllById(any()))
+                .thenReturn(List.of(athlete));
+
+        var result = service.submit(
+                new SubmitCoachBallotRequest(
+                        List.of(
+                                new CoachBallotVoteRequest(
+                                        goalkeeper.getId(),
+                                        athlete.getId()
+                                )
+                        )
+                )
+        );
+
+        assertThat(result.votes()).hasSize(1);
+        assertThat(result.votes().get(0).candidateName())
+                .isEqualTo("Atleta Um");
     }
 
     @Test
@@ -153,7 +272,7 @@ class CoachBallotServiceTest {
                 any()
         )).thenReturn(
                 List.of(
-                        selfCoach
+                        ownTeamVote
                 )
         );
 
@@ -162,7 +281,7 @@ class CoachBallotServiceTest {
                         List.of(
                                 new CoachBallotVoteRequest(
                                         coachCategory.getId(),
-                                        selfCoach.getId()
+                                        ownTeamVote.getId()
                                 )
                         )
                 );
@@ -176,7 +295,7 @@ class CoachBallotServiceTest {
                         BusinessException.class
                 )
                 .hasMessageContaining(
-                        "não pode votar em si mesmo"
+                        "própria equipe"
                 );
     }
 }

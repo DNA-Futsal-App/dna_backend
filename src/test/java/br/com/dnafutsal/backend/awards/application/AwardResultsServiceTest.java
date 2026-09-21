@@ -8,7 +8,6 @@ import br.com.dnafutsal.backend.awards.domain.AwardCandidateType;
 import br.com.dnafutsal.backend.awards.domain.AwardCoachVoter;
 import br.com.dnafutsal.backend.awards.domain.AwardEdition;
 import br.com.dnafutsal.backend.awards.domain.AwardEditionStatus;
-import br.com.dnafutsal.backend.awards.domain.AwardPlayerPosition;
 import br.com.dnafutsal.backend.awards.domain.AwardVoteCategory;
 import br.com.dnafutsal.backend.awards.infrastructure.AwardBallotRepository;
 import br.com.dnafutsal.backend.awards.infrastructure.AwardBallotVoteRepository;
@@ -237,8 +236,6 @@ class AwardResultsServiceTest {
                         null,
                         null
                 );
-        wrongContext.assignPosition(AwardPlayerPosition.GOLEIRO);
-
         AwardCoachVoter voter = voter(edition, coach, "10");
         AwardBallot ballot = ballot(edition, voter);
         AwardBallotVote vote =
@@ -304,7 +301,6 @@ class AwardResultsServiceTest {
                 null,
                 null
         );
-        candidate.assignPosition(AwardPlayerPosition.GOLEIRO);
         return candidate;
     }
 

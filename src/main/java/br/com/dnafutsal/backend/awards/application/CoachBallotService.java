@@ -26,7 +26,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
@@ -281,28 +280,24 @@ public class CoachBallotService {
         }
 
         if (category.getTargetType()
-                == AwardCandidateType.ATHLETE
-                && !Objects.equals(
-                        category.getPositionCode(),
-                        candidate.getPositionCode()
-                )) {
-            throw Errors.badRequest(
-                    "AWARD_CANDIDATE_POSITION_MISMATCH",
-                    "O atleta selecionado não joga na posição exigida por esta categoria."
-            );
-        }
+                == AwardCandidateType.COACH) {
+            if (!candidate.isTeamCoachVoteCandidate()) {
+                throw Errors.badRequest(
+                        "AWARD_COACH_TEAM_SELECTION_REQUIRED",
+                        "Na categoria Técnico, selecione uma equipe válida."
+                );
+            }
 
-        if (category.getTargetType()
-                == AwardCandidateType.COACH
-                && candidate.getId()
-                .equals(
-                        current.voter()
-                                .getSelfCoachCandidateId()
-                )) {
-            throw Errors.badRequest(
-                    "AWARD_SELF_COACH_VOTE_FORBIDDEN",
-                    "O treinador não pode votar em si mesmo."
-            );
+            if (candidate.getTeamId()
+                    .equals(
+                            current.voter()
+                                    .getTeamId()
+                    )) {
+                throw Errors.badRequest(
+                        "AWARD_SELF_COACH_VOTE_FORBIDDEN",
+                        "O treinador não pode votar na própria equipe para a categoria Técnico."
+                );
+            }
         }
     }
 }

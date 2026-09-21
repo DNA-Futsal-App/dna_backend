@@ -19,10 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.Instant;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Objects;
-import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -136,51 +133,28 @@ public class AwardEditionAdminService {
             );
         }
 
-        List<AwardCandidate> activeCandidates =
+        List<AwardCandidate> activeCoaches =
                 candidates.findByEditionIdOrderByTeamNameAscNameAsc(
                                 editionId
                         )
                         .stream()
-                        .filter(
-                                AwardCandidate::isActive
+                        .filter(AwardCandidate::isActive)
+                        .filter(candidate ->
+                                candidate.getCandidateType()
+                                        == AwardCandidateType.COACH
                         )
                         .toList();
 
-        if (activeCandidates.isEmpty()) {
+        if (activeCoaches.isEmpty()) {
             throw Errors.conflict(
-                    "AWARD_CANDIDATES_EMPTY",
-                    "Importe os candidatos antes de abrir a votação."
+                    "AWARD_COACHES_EMPTY",
+                    "Sincronize os treinadores da divisão e categoria antes de abrir a votação."
             );
         }
-
-        boolean pendingPositions =
-                activeCandidates.stream()
-                        .anyMatch(candidate ->
-                                candidate.getCandidateType()
-                                        == AwardCandidateType.ATHLETE
-                                        && (
-                                        candidate.getPositionCode()
-                                                == null
-                                                || candidate.getPositionCode()
-                                                .isBlank()
-                                )
-                        );
-
-        if (pendingPositions) {
-            throw Errors.conflict(
-                    "AWARD_POSITIONS_PENDING",
-                    "Existem atletas sem posição definida. Finalize o snapshot antes de abrir a votação."
-            );
-        }
-
-        validateCoverage(
-                categories,
-                activeCandidates
-        );
 
         validateCoachBindings(
                 editionId,
-                activeCandidates
+                activeCoaches
         );
 
         edition.openVoting(
@@ -228,79 +202,6 @@ public class AwardEditionAdminService {
                         edition
                 )
         );
-    }
-
-    private void validateCoverage(
-            List<AwardVoteCategory> categories,
-            List<AwardCandidate> activeCandidates
-    ) {
-        List<AwardVoteCategory> required =
-                categories.stream()
-                        .filter(
-                                AwardVoteCategory::isRequired
-                        )
-                        .toList();
-
-        Set<ContextKey> contexts =
-                new LinkedHashSet<>();
-
-        for (AwardCandidate candidate
-                : activeCandidates) {
-            contexts.add(
-                    new ContextKey(
-                            candidate.getEventId(),
-                            candidate.getDivisionId(),
-                            candidate.getCategoryId()
-                    )
-            );
-        }
-
-        for (ContextKey context
-                : contexts) {
-            for (AwardVoteCategory category
-                    : required) {
-                boolean covered =
-                        activeCandidates.stream()
-                                .filter(candidate ->
-                                        candidate.getEventId()
-                                                == context.eventId()
-                                                && candidate.getDivisionId()
-                                                == context.divisionId()
-                                                && candidate.getCategoryId()
-                                                == context.categoryId()
-                                )
-                                .anyMatch(candidate ->
-                                        matches(
-                                                category,
-                                                candidate
-                                        )
-                                );
-
-                if (!covered) {
-                    throw Errors.conflict(
-                            "AWARD_CANDIDATE_COVERAGE_INCOMPLETE",
-                            "Existe divisão/categoria sem candidatos suficientes para todas as categorias obrigatórias."
-                    );
-                }
-            }
-        }
-    }
-
-    private boolean matches(
-            AwardVoteCategory category,
-            AwardCandidate candidate
-    ) {
-        if (candidate.getCandidateType()
-                != category.getTargetType()) {
-            return false;
-        }
-
-        return category.getTargetType()
-                != AwardCandidateType.ATHLETE
-                || Objects.equals(
-                        category.getPositionCode(),
-                        candidate.getPositionCode()
-                );
     }
 
     private void validateCoachBindings(
@@ -361,12 +262,5 @@ public class AwardEditionAdminService {
                         "AWARD_EDITION_NOT_FOUND",
                         "Edição do prêmio não encontrada."
                 ));
-    }
-
-    private record ContextKey(
-            long eventId,
-            long divisionId,
-            long categoryId
-    ) {
     }
 }

@@ -20,10 +20,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Comparator;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -34,19 +32,22 @@ public class CoachVotingQueryService {
     private final AwardCandidateRepository candidates;
     private final AwardBallotRepository ballots;
     private final AwardBallotVoteRepository ballotVotes;
+    private final AwardLiveRosterService liveRoster;
 
     public CoachVotingQueryService(
             CoachVotingAccessService access,
             AwardVoteCategoryRepository voteCategories,
             AwardCandidateRepository candidates,
             AwardBallotRepository ballots,
-            AwardBallotVoteRepository ballotVotes
+            AwardBallotVoteRepository ballotVotes,
+            AwardLiveRosterService liveRoster
     ) {
         this.access = access;
         this.voteCategories = voteCategories;
         this.candidates = candidates;
         this.ballots = ballots;
         this.ballotVotes = ballotVotes;
+        this.liveRoster = liveRoster;
     }
 
     @Transactional(readOnly = true)
@@ -60,32 +61,20 @@ public class CoachVotingQueryService {
                                 .getId()
                 );
 
-        List<AwardCandidate> contextCandidates =
-                candidates.findByEditionIdAndEventIdAndDivisionIdAndCategoryIdAndActiveTrueOrderByTeamNameAscNameAsc(
-                        current.edition()
-                                .getId(),
-                        current.voter()
-                                .getEventId(),
-                        current.voter()
-                                .getDivisionId(),
-                        current.voter()
-                                .getCategoryId()
-                );
-
-        Map<String, CoachVotingTeamResponse> teams =
-                new LinkedHashMap<>();
-
-        for (AwardCandidate candidate
-                : contextCandidates) {
-            teams.putIfAbsent(
-                    candidate.getTeamId(),
-                    new CoachVotingTeamResponse(
-                            candidate.getTeamId(),
-                            candidate.getTeamName(),
-                            candidate.getTeamLogoUrl()
-                    )
-            );
-        }
+        List<CoachVotingTeamResponse> teams =
+                liveRoster.teams(
+                                current.voter()
+                                        .getEventId()
+                        )
+                        .stream()
+                        .map(team ->
+                                new CoachVotingTeamResponse(
+                                        team.id(),
+                                        team.name(),
+                                        team.logoUrl()
+                                )
+                        )
+                        .toList();
 
         return new CoachVotingContextResponse(
                 current.edition()
@@ -122,13 +111,10 @@ public class CoachVotingQueryService {
                                 CoachVotingCategoryResponse::from
                         )
                         .toList(),
-                List.copyOf(
-                        teams.values()
-                )
+                teams
         );
     }
 
-    @Transactional(readOnly = true)
     public List<CoachVotingCandidateResponse> candidates(
             UUID voteCategoryId,
             String teamId
@@ -156,53 +142,47 @@ public class CoachVotingQueryService {
             );
         }
 
-        String normalizedTeamId =
-                teamId == null
-                        ? ""
-                        : teamId.trim();
+        List<AwardCandidate> available;
 
-        if (normalizedTeamId.isBlank()
-                || !candidates.existsByEditionIdAndEventIdAndDivisionIdAndCategoryIdAndTeamIdAndActiveTrue(
-                        current.edition()
-                                .getId(),
-                        current.voter()
-                                .getEventId(),
-                        current.voter()
-                                .getDivisionId(),
-                        current.voter()
-                                .getCategoryId(),
-                        normalizedTeamId
-                )) {
-            throw Errors.badRequest(
-                    "AWARD_TEAM_INVALID",
-                    "O time informado não pertence ao contexto desta votação."
+        if (category.getTargetType()
+                == AwardCandidateType.ATHLETE) {
+            available = liveRoster.athletes(
+                    current.edition().getId(),
+                    current.voter().getEventId(),
+                    current.voter().getDivisionId(),
+                    current.voter().getCategoryId(),
+                    teamId
+            );
+        } else {
+            String normalizedTeamId =
+                    teamId == null
+                            ? ""
+                            : teamId.trim();
+
+            if (normalizedTeamId.equals(
+                    current.voter().getTeamId()
+            )) {
+                throw Errors.badRequest(
+                        "AWARD_SELF_COACH_VOTE_FORBIDDEN",
+                        "O treinador não pode votar na própria equipe para a categoria Técnico."
+                );
+            }
+
+            available = List.of(
+                    liveRoster.coachTeamVote(
+                            current.edition().getId(),
+                            current.voter().getEventId(),
+                            current.voter().getDivisionId(),
+                            current.voter().getCategoryId(),
+                            normalizedTeamId
+                    )
             );
         }
 
-        return candidates
-                .findByEditionIdAndEventIdAndDivisionIdAndCategoryIdAndTeamIdAndActiveTrueOrderByNameAsc(
-                        current.edition()
-                                .getId(),
-                        current.voter()
-                                .getEventId(),
-                        current.voter()
-                                .getDivisionId(),
-                        current.voter()
-                                .getCategoryId(),
-                        normalizedTeamId
-                )
-                .stream()
+        return available.stream()
                 .filter(candidate ->
                         candidate.getCandidateType()
                                 == category.getTargetType()
-                )
-                .filter(candidate ->
-                        category.getTargetType()
-                                != AwardCandidateType.ATHLETE
-                                || Objects.equals(
-                                        category.getPositionCode(),
-                                        candidate.getPositionCode()
-                                )
                 )
                 .filter(candidate ->
                         category.getTargetType()

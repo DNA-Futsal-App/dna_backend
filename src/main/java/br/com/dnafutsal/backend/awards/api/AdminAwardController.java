@@ -3,6 +3,7 @@ package br.com.dnafutsal.backend.awards.api;
 import br.com.dnafutsal.backend.awards.application.AwardAdminDashboardService;
 import br.com.dnafutsal.backend.awards.application.AwardCandidateAdminService;
 import br.com.dnafutsal.backend.awards.application.AwardCandidateImportService;
+import br.com.dnafutsal.backend.awards.application.AwardCoachSyncService;
 import br.com.dnafutsal.backend.awards.application.AwardEditionAdminService;
 import br.com.dnafutsal.backend.awards.application.AwardResultsService;
 import jakarta.validation.Valid;
@@ -23,6 +24,7 @@ public class AdminAwardController {
 
     private final AwardEditionAdminService editions;
     private final AwardCandidateImportService importer;
+    private final AwardCoachSyncService coachSync;
     private final AwardCandidateAdminService candidates;
     private final AwardAdminDashboardService dashboard;
     private final AwardResultsService results;
@@ -30,12 +32,14 @@ public class AdminAwardController {
     public AdminAwardController(
             AwardEditionAdminService editions,
             AwardCandidateImportService importer,
+            AwardCoachSyncService coachSync,
             AwardCandidateAdminService candidates,
             AwardAdminDashboardService dashboard,
             AwardResultsService results
     ) {
         this.editions = editions;
         this.importer = importer;
+        this.coachSync = coachSync;
         this.candidates = candidates;
         this.dashboard = dashboard;
         this.results = results;
@@ -103,6 +107,19 @@ public class AdminAwardController {
     ) {
         return editions.close(
                 editionId
+        );
+    }
+
+    @PostMapping("/editions/{editionId}/coaches/sync")
+    SyncAwardCoachesResponse syncCoaches(
+            @PathVariable UUID editionId,
+            @Valid
+            @RequestBody
+            SyncAwardCoachesRequest request
+    ) {
+        return coachSync.sync(
+                editionId,
+                request
         );
     }
 

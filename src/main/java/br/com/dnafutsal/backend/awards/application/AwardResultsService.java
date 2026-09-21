@@ -359,27 +359,25 @@ public class AwardResultsService {
             ));
         }
 
-        if (category.getTargetType() == AwardCandidateType.ATHLETE
-                && !Objects.equals(
-                category.getPositionCode(),
-                candidate.getPositionCode()
-        )) {
-            issues.add(issue(
-                    ballot,
-                    "CANDIDATE_POSITION_MISMATCH",
-                    "Um voto referencia atleta de posição incompatível."
-            ));
-        }
+        if (category.getTargetType() == AwardCandidateType.COACH) {
+            if (!candidate.isTeamCoachVoteCandidate()) {
+                issues.add(issue(
+                        ballot,
+                        "COACH_TEAM_SELECTION_INVALID",
+                        "Um voto de Técnico não referencia uma equipe válida."
+                ));
+            }
 
-        if (category.getTargetType() == AwardCandidateType.COACH
-                && candidate.getId().equals(
-                voter.getSelfCoachCandidateId()
-        )) {
-            issues.add(issue(
-                    ballot,
-                    "SELF_COACH_VOTE",
-                    "Foi encontrado voto de treinador nele próprio."
-            ));
+            if (candidate.getTeamId()
+                    .equals(
+                            voter.getTeamId()
+                    )) {
+                issues.add(issue(
+                        ballot,
+                        "SELF_COACH_VOTE",
+                        "Foi encontrado voto do treinador na própria equipe para a categoria Técnico."
+                ));
+            }
         }
     }
 
@@ -538,12 +536,11 @@ public class AwardResultsService {
             return false;
         }
 
-        return category.getTargetType()
-                != AwardCandidateType.ATHLETE
-                || Objects.equals(
-                category.getPositionCode(),
-                candidate.getPositionCode()
-        );
+        if (category.getTargetType() == AwardCandidateType.COACH) {
+            return candidate.isTeamCoachVoteCandidate();
+        }
+
+        return true;
     }
 
     private Snapshot snapshot(

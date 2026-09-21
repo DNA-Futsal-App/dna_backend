@@ -72,6 +72,9 @@ public class AwardAdminDashboardService {
                         )
                         .stream()
                         .filter(AwardCandidate::isActive)
+                        .filter(candidate ->
+                                !candidate.isTeamCoachVoteCandidate()
+                        )
                         .toList();
 
         List<AwardAdminCoachResponse> coaches =
@@ -160,6 +163,8 @@ public class AwardAdminDashboardService {
                         .filter(candidate ->
                                 candidate.getCandidateType()
                                         == AwardCandidateType.COACH
+                                        && !candidate
+                                        .isTeamCoachVoteCandidate()
                         )
                         .toList();
 

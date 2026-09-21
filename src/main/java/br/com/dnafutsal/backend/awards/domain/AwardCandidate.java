@@ -15,6 +15,8 @@ import java.util.UUID;
 @Table(name = "award_candidates")
 public class AwardCandidate {
 
+    public static final String TEAM_COACH_VOTE_ROLE = "TEAM_VOTE";
+
     @Id
     private UUID id;
 
@@ -301,5 +303,12 @@ public class AwardCandidate {
 
     public Instant getCreatedAt() {
         return createdAt;
+    }
+
+    public boolean isTeamCoachVoteCandidate() {
+        return candidateType == AwardCandidateType.COACH
+                && TEAM_COACH_VOTE_ROLE.equals(
+                        sourceRole
+                );
     }
 }

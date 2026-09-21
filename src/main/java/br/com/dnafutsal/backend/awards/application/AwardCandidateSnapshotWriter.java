@@ -34,6 +34,31 @@ public class AwardCandidateSnapshotWriter {
     public Result write(
             AwardTeamCandidateSnapshot snapshot
     ) {
+        return write(
+                snapshot,
+                null,
+                true
+        );
+    }
+
+    @Transactional
+    public Result write(
+            AwardTeamCandidateSnapshot snapshot,
+            AwardCandidateType managedType
+    ) {
+        return write(
+                snapshot,
+                managedType,
+                true
+        );
+    }
+
+    @Transactional
+    public Result write(
+            AwardTeamCandidateSnapshot snapshot,
+            AwardCandidateType managedType,
+            boolean deactivateMissing
+    ) {
         Instant now = clock.instant();
 
         List<AwardCandidate> existing =
@@ -48,7 +73,9 @@ public class AwardCandidateSnapshotWriter {
                 new LinkedHashMap<>();
 
         for (AwardCandidate candidate : existing) {
-            if (candidate.getSourceKey() != null) {
+            if ((managedType == null
+                    || candidate.getCandidateType() == managedType)
+                    && candidate.getSourceKey() != null) {
                 remaining.put(
                         candidate.getSourceKey(),
                         candidate
@@ -61,6 +88,11 @@ public class AwardCandidateSnapshotWriter {
 
         for (AwardTeamCandidateSnapshot.Candidate candidate
                 : snapshot.candidates()) {
+            if (managedType != null
+                    && candidate.type() != managedType) {
+                continue;
+            }
+
             if (incoming.putIfAbsent(
                     candidate.sourceKey(),
                     candidate
@@ -123,10 +155,12 @@ public class AwardCandidateSnapshotWriter {
 
         int deactivated = 0;
 
-        for (AwardCandidate stale : remaining.values()) {
-            if (stale.isActive()) {
-                stale.deactivate();
-                deactivated++;
+        if (deactivateMissing) {
+            for (AwardCandidate stale : remaining.values()) {
+                if (stale.isActive()) {
+                    stale.deactivate();
+                    deactivated++;
+                }
             }
         }
 
