@@ -1,0 +1,11 @@
+package br.com.dnafutsal.backend.awards.api;
+
+import java.util.UUID;
+
+public record ResetAwardVotingResponse(
+        UUID editionId,
+        int ballotsDeleted,
+        int votesDeleted,
+        AwardEditionAdminResponse edition
+) {
+}

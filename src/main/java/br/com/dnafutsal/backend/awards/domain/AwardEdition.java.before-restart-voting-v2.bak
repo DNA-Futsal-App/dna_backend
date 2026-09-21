@@ -107,11 +107,6 @@ public class AwardEdition {
         }
     }
 
-    public void resetVoting() {
-        this.status = AwardEditionStatus.DRAFT;
-        this.votingOpensAt = null;
-        this.votingClosesAt = null;
-    }
     public UUID getId() {
         return id;
     }

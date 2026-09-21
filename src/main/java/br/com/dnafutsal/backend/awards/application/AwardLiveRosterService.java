@@ -2,6 +2,7 @@ package br.com.dnafutsal.backend.awards.application;
 
 import br.com.dnafutsal.backend.awards.domain.AwardCandidate;
 import br.com.dnafutsal.backend.awards.domain.AwardCandidateType;
+import br.com.dnafutsal.backend.common.BusinessException;
 import br.com.dnafutsal.backend.common.Errors;
 import br.com.dnafutsal.backend.sports.application.SportsCatalogService;
 import br.com.dnafutsal.backend.sports.domain.SportsPersonView;
@@ -158,16 +159,23 @@ public class AwardLiveRosterService {
                 new ArrayList<>();
 
         for (TeamView team : teams) {
-            coaches.addAll(
-                    syncTeam(
-                            editionId,
-                            eventId,
-                            divisionId,
-                            categoryId,
-                            team,
-                            AwardCandidateType.COACH
-                    )
-            );
+            try {
+                coaches.addAll(
+                        syncTeam(
+                                editionId,
+                                eventId,
+                                divisionId,
+                                categoryId,
+                                team,
+                                AwardCandidateType.COACH
+                        )
+                );
+            } catch (BusinessException exception) {
+                if(!exception.status().is5xxServerError()) {
+                    throw exception;
+                }
+                System.out.println(exception.getMessage());
+            }
         }
 
         coaches.sort(

@@ -6,6 +6,7 @@ import br.com.dnafutsal.backend.awards.application.AwardCandidateImportService;
 import br.com.dnafutsal.backend.awards.application.AwardCoachSyncService;
 import br.com.dnafutsal.backend.awards.application.AwardEditionAdminService;
 import br.com.dnafutsal.backend.awards.application.AwardResultsService;
+import br.com.dnafutsal.backend.awards.application.AwardVotingResetService;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -28,6 +29,7 @@ public class AdminAwardController {
     private final AwardCandidateAdminService candidates;
     private final AwardAdminDashboardService dashboard;
     private final AwardResultsService results;
+    private final AwardVotingResetService votingReset;
 
     public AdminAwardController(
             AwardEditionAdminService editions,
@@ -35,7 +37,8 @@ public class AdminAwardController {
             AwardCoachSyncService coachSync,
             AwardCandidateAdminService candidates,
             AwardAdminDashboardService dashboard,
-            AwardResultsService results
+            AwardResultsService results,
+            AwardVotingResetService votingReset
     ) {
         this.editions = editions;
         this.importer = importer;
@@ -43,6 +46,7 @@ public class AdminAwardController {
         this.candidates = candidates;
         this.dashboard = dashboard;
         this.results = results;
+        this.votingReset = votingReset;
     }
 
     @GetMapping("/editions")
@@ -106,6 +110,15 @@ public class AdminAwardController {
             @PathVariable UUID editionId
     ) {
         return editions.close(
+                editionId
+        );
+    }
+
+    @PostMapping("/editions/{editionId}/reset-voting")
+    ResetAwardVotingResponse resetVoting(
+            @PathVariable UUID editionId
+    ) {
+        return votingReset.reset(
                 editionId
         );
     }

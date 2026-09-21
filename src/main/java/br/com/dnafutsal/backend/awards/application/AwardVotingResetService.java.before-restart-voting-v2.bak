@@ -1,0 +1,83 @@
+package br.com.dnafutsal.backend.awards.application;
+
+import br.com.dnafutsal.backend.awards.api.ResetAwardVotingResponse;
+import br.com.dnafutsal.backend.awards.domain.AwardBallot;
+import br.com.dnafutsal.backend.awards.domain.AwardBallotVote;
+import br.com.dnafutsal.backend.awards.domain.AwardEdition;
+import br.com.dnafutsal.backend.awards.domain.AwardEditionStatus;
+import br.com.dnafutsal.backend.awards.infrastructure.AwardBallotRepository;
+import br.com.dnafutsal.backend.awards.infrastructure.AwardBallotVoteRepository;
+import br.com.dnafutsal.backend.awards.infrastructure.AwardEditionRepository;
+import br.com.dnafutsal.backend.common.Errors;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.UUID;
+
+@Service
+public class AwardVotingResetService {
+
+    private final AwardEditionRepository editions;
+    private final AwardBallotRepository ballots;
+    private final AwardBallotVoteRepository ballotVotes;
+
+    public AwardVotingResetService(
+            AwardEditionRepository editions,
+            AwardBallotRepository ballots,
+            AwardBallotVoteRepository ballotVotes
+    ) {
+        this.editions = editions;
+        this.ballots = ballots;
+        this.ballotVotes = ballotVotes;
+    }
+
+    @Transactional
+    public ResetAwardVotingResponse reset(UUID editionId) {
+        AwardEdition edition =
+                editions.findById(editionId)
+                        .orElseThrow(() -> Errors.notFound(
+                                "AWARD_EDITION_NOT_FOUND",
+                                "Edição do prêmio não encontrada."
+                        ));
+
+        if (edition.getStatus() != AwardEditionStatus.OPEN) {
+            throw Errors.conflict(
+                    "AWARD_VOTING_RESET_NOT_ALLOWED",
+                    "A votação só pode ser resetada enquanto a edição estiver aberta."
+            );
+        }
+
+        List<AwardBallot> editionBallots =
+                ballots.findByEditionId(editionId);
+
+        if (editionBallots.isEmpty()) {
+            return new ResetAwardVotingResponse(
+                    editionId,
+                    0,
+                    0
+            );
+        }
+
+        List<UUID> ballotIds =
+                editionBallots.stream()
+                        .map(AwardBallot::getId)
+                        .toList();
+
+        List<AwardBallotVote> editionVotes =
+                ballotVotes.findByBallotIdIn(ballotIds);
+
+        if (!editionVotes.isEmpty()) {
+            ballotVotes.deleteAllInBatch(editionVotes);
+        }
+
+        ballots.deleteAllInBatch(editionBallots);
+        ballots.flush();
+
+        return new ResetAwardVotingResponse(
+                editionId,
+                editionBallots.size(),
+                editionVotes.size()
+        );
+    }
+}
