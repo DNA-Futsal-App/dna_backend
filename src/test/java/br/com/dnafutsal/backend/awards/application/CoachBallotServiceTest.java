@@ -115,25 +115,6 @@ class CoachBallotServiceTest {
                         null
                 );
 
-        AwardCandidate ownTeamVote =
-                AwardCandidate.imported(
-                        edition.getId(),
-                        AwardCandidateType.COACH,
-                        null,
-                        "Time A",
-                        null,
-                        AwardCandidate.TEAM_COACH_VOTE_ROLE,
-                        UUID.randomUUID().toString(),
-                        904,
-                        3,
-                        7,
-                        "123",
-                        "Time A",
-                        null,
-                        null,
-                        now
-                );
-
         AwardCoachVoter voter =
                 new AwardCoachVoter(
                         edition.getId(),
@@ -190,7 +171,7 @@ class CoachBallotServiceTest {
     }
 
     @Test
-    void rejectsVoteForTheCoachHimself() {
+    void rejectsVoteForTheOwnTeamInCoachCategory() {
         AwardEdition edition =
                 new AwardEdition(
                         "premio-dna-2026",
@@ -219,6 +200,25 @@ class CoachBallotServiceTest {
                         "Time A",
                         null,
                         null
+                );
+
+        AwardCandidate ownTeamVote =
+                AwardCandidate.imported(
+                        edition.getId(),
+                        AwardCandidateType.COACH,
+                        null,
+                        "Time A",
+                        null,
+                        AwardCandidate.TEAM_COACH_VOTE_ROLE,
+                        UUID.randomUUID().toString(),
+                        904,
+                        3,
+                        7,
+                        "123",
+                        "Time A",
+                        null,
+                        null,
+                        now
                 );
 
         AwardCoachVoter voter =
