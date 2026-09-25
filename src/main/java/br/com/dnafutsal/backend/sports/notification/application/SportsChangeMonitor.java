@@ -9,11 +9,17 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 
 import java.util.LinkedHashSet;
 import java.util.Set;
 
 @Component
+@ConditionalOnProperty(
+        prefix = "app.sports.monitor",
+        name = "enabled",
+        havingValue = "true"
+)
 public class SportsChangeMonitor {
 
     private static final Logger log =

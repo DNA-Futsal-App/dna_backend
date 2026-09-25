@@ -80,6 +80,11 @@ public class SecurityConfiguration {
                         .requestMatchers("/api/v1/admin/**").hasAuthority("SCOPE_ADMIN")
                         .requestMatchers(HttpMethod.GET, "/actuator/health", "/actuator/health/**").permitAll()
                         .requestMatchers("/actuator/**").hasAuthority("SCOPE_ADMIN")
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/api/v1/integrations/community-score-updates"
+                        )
+                        .permitAll()
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(resource -> resource
                         .jwt(Customizer.withDefaults())
