@@ -80,29 +80,27 @@ app:
   awards:
     coach-invite-ttl: ${AWARD_COACH_INVITE_TTL:P30D}
     coach-invite-reservation-ttl: ${AWARD_COACH_INVITE_RESERVATION_TTL:P2D}
-    app:
-      awards:
-        registration:
-          edition-slug: ${AWARD_REGISTRATION_EDITION_SLUG:premio-dna-2026}
-          upload-ticket-ttl: ${AWARD_UPLOAD_TICKET_TTL:PT15M}
-          max-upload-bytes: ${AWARD_MAX_UPLOAD_BYTES:262144000}
-          max-duration-seconds: ${AWARD_MAX_VIDEO_DURATION_SECONDS:60}
-          max-concurrent-transcodes: ${AWARD_MAX_CONCURRENT_TRANSCODES:1}
-          processing-timeout-seconds: ${AWARD_VIDEO_PROCESSING_TIMEOUT_SECONDS:300}
-          video-crf: ${AWARD_VIDEO_CRF:28}
-          ffmpeg-preset: ${AWARD_VIDEO_FFMPEG_PRESET:slow}
-          ffmpeg-binary: ${AWARD_FFMPEG_BINARY:ffmpeg}
-          ffprobe-binary: ${AWARD_FFPROBE_BINARY:ffprobe}
-          cpf-encryption-key-base64: ${AWARD_REGISTRATION_CPF_KEY_BASE64:}
-          oci-namespace: ${OCI_OBJECT_STORAGE_NAMESPACE:}
-          oci-bucket: ${OCI_OBJECT_STORAGE_BUCKET:}
-          oci-region: ${OCI_REGION:}
-          oci-endpoint: ${OCI_OBJECT_STORAGE_ENDPOINT:}
-          oci-tenancy-ocid: ${OCI_TENANCY_OCID:}
-          oci-user-ocid: ${OCI_USER_OCID:}
-          oci-fingerprint: ${OCI_FINGERPRINT:}
-          oci-private-key-base64: ${OCI_PRIVATE_KEY_BASE64:}
-          oci-private-key-passphrase: ${OCI_PRIVATE_KEY_PASSPHRASE:}
+    registration:
+      edition-slug: ${AWARD_REGISTRATION_EDITION_SLUG:premio-dna-2026}
+      upload-ticket-ttl: ${AWARD_UPLOAD_TICKET_TTL:PT15M}
+      max-upload-bytes: ${AWARD_MAX_UPLOAD_BYTES:262144000}
+      max-duration-seconds: ${AWARD_MAX_VIDEO_DURATION_SECONDS:60}
+      max-concurrent-transcodes: ${AWARD_MAX_CONCURRENT_TRANSCODES:1}
+      processing-timeout-seconds: ${AWARD_VIDEO_PROCESSING_TIMEOUT_SECONDS:300}
+      video-crf: ${AWARD_VIDEO_CRF:28}
+      ffmpeg-preset: ${AWARD_VIDEO_FFMPEG_PRESET:slow}
+      ffmpeg-binary: ${AWARD_FFMPEG_BINARY:ffmpeg}
+      ffprobe-binary: ${AWARD_FFPROBE_BINARY:ffprobe}
+      cpf-encryption-key-base64: ${AWARD_REGISTRATION_CPF_KEY_BASE64:}
+      oci-namespace: ${OCI_OBJECT_STORAGE_NAMESPACE:}
+      oci-bucket: ${OCI_OBJECT_STORAGE_BUCKET:}
+      oci-region: ${OCI_REGION:}
+      oci-endpoint: ${OCI_OBJECT_STORAGE_ENDPOINT:}
+      oci-tenancy-ocid: ${OCI_TENANCY_OCID:}
+      oci-user-ocid: ${OCI_USER_OCID:}
+      oci-fingerprint: ${OCI_FINGERPRINT:}
+      oci-private-key-base64: ${OCI_PRIVATE_KEY_BASE64:}
+      oci-private-key-passphrase: ${OCI_PRIVATE_KEY_PASSPHRASE:}
   integrations:
     sports:
       base-url: ${SPORTS_API_BASE_URL}
