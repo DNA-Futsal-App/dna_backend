@@ -1,0 +1,25 @@
+package br.com.dnafutsal.backend.awards.api;
+
+import br.com.dnafutsal.backend.awards.domain.AwardRegistrationStatus;
+
+import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
+
+public record AwardRegistrationResponse(
+        UUID id,
+        long registrationNumber,
+        AwardRegistrationStatus status,
+        String athleteName,
+        String athleteInstagram,
+        long divisionId,
+        String divisionName,
+        long categoryId,
+        String categoryName,
+        long eventId,
+        String teamId,
+        String teamName,
+        Instant submittedAt,
+        List<AwardRegistrationEntryResponse> entries
+) {
+}
