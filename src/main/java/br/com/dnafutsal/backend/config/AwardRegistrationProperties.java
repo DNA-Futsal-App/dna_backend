@@ -76,7 +76,7 @@ public record AwardRegistrationProperties(
     public String effectiveFfmpegPreset() {
         return hasText(ffmpegPreset)
                 ? ffmpegPreset.trim()
-                : "slow";
+                : "veryfast";
     }
 
     public String effectiveFfmpegBinary() {

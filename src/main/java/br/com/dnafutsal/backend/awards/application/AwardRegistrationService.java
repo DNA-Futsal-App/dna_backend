@@ -546,16 +546,21 @@ public class AwardRegistrationService {
             storage.deleteParQuietly(
                     pendingParId
             );
+            if (processed != null
+                    && processed.path() != null
+                    && !processed.path()
+                    .equals(
+                            raw
+                    )) {
 
-            AwardVideoProcessor.deleteQuietly(
-                    raw
-            );
-
-            if (processed != null) {
                 AwardVideoProcessor.deleteQuietly(
                         processed.path()
                 );
             }
+
+            AwardVideoProcessor.deleteQuietly(
+                    raw
+            );
         }
     }
 

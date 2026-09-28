@@ -88,7 +88,7 @@ app:
       max-concurrent-transcodes: ${AWARD_MAX_CONCURRENT_TRANSCODES:1}
       processing-timeout-seconds: ${AWARD_VIDEO_PROCESSING_TIMEOUT_SECONDS:300}
       video-crf: ${AWARD_VIDEO_CRF:28}
-      ffmpeg-preset: ${AWARD_VIDEO_FFMPEG_PRESET:slow}
+      ffmpeg-preset: ${AWARD_VIDEO_FFMPEG_PRESET:veryfast}
       ffmpeg-binary: ${AWARD_FFMPEG_BINARY:ffmpeg}
       ffprobe-binary: ${AWARD_FFPROBE_BINARY:ffprobe}
       cpf-encryption-key-base64: ${AWARD_REGISTRATION_CPF_KEY_BASE64:}

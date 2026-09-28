@@ -2,6 +2,8 @@ package br.com.dnafutsal.backend.awards.application;
 
 import br.com.dnafutsal.backend.common.Errors;
 import br.com.dnafutsal.backend.config.AwardRegistrationProperties;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -17,6 +19,11 @@ import java.util.concurrent.TimeUnit;
 @Component
 public class AwardVideoProcessor {
 
+    private static final Logger log =
+            LoggerFactory.getLogger(
+                    AwardVideoProcessor.class
+            );
+
     private final AwardRegistrationProperties properties;
     private final Semaphore transcodes;
 
@@ -24,6 +31,7 @@ public class AwardVideoProcessor {
             AwardRegistrationProperties properties
     ) {
         this.properties = properties;
+
         this.transcodes =
                 new Semaphore(
                         properties.effectiveMaxConcurrentTranscodes(),
@@ -39,22 +47,94 @@ public class AwardVideoProcessor {
                         source
                 );
 
-        if (sourceProbe.durationSeconds()
-                > properties.effectiveMaxDurationSeconds()
-                + 0.05d) {
-            throw Errors.badRequest(
-                    "AWARD_VIDEO_TOO_LONG",
-                    "O vídeo deve ter no máximo "
-                            + properties.effectiveMaxDurationSeconds()
-                            + " segundos."
-            );
+        validateDuration(
+                sourceProbe
+        );
+
+        /*
+         * FAST PATH
+         *
+         * Se o arquivo já satisfaz exatamente o formato que
+         * queremos armazenar, não há motivo para decodificá-lo
+         * e codificá-lo novamente.
+         */
+        if (canKeepOriginal(
+                sourceProbe
+        )) {
+            try {
+                long size =
+                        Files.size(
+                                source
+                        );
+
+                log.info(
+                        "Award video already compatible. "
+                                + "Skipping transcode: "
+                                + "durationMs={}, width={}, height={}, "
+                                + "videoCodec={}, pixelFormat={}, "
+                                + "audioCodec={}, format={}, sizeBytes={}",
+                        Math.round(
+                                sourceProbe.durationSeconds()
+                                        * 1000d
+                        ),
+                        sourceProbe.width(),
+                        sourceProbe.height(),
+                        sourceProbe.videoCodec(),
+                        sourceProbe.pixelFormat(),
+                        sourceProbe.audioCodec(),
+                        sourceProbe.formatName(),
+                        size
+                );
+
+                return new ProcessedVideo(
+                        source,
+                        Math.round(
+                                sourceProbe.durationSeconds()
+                                        * 1000d
+                        ),
+                        sourceProbe.width(),
+                        sourceProbe.height(),
+                        size
+                );
+            } catch (IOException exception) {
+                throw Errors.dependencyUnavailable(
+                        "AWARD_VIDEO_PROCESSOR_UNAVAILABLE",
+                        "O servidor não conseguiu preparar o vídeo para armazenamento.",
+                        exception,
+                        Map.of()
+                );
+            }
         }
 
+        /*
+         * SLOW PATH
+         *
+         * O arquivo precisa ser normalizado.
+         */
         Dimensions target =
                 targetDimensions(
                         sourceProbe.width(),
                         sourceProbe.height()
                 );
+
+        log.info(
+                "Award video requires transcode: "
+                        + "durationMs={}, source={}x{}, target={}x{}, "
+                        + "videoCodec={}, pixelFormat={}, "
+                        + "audioCodec={}, format={}",
+                Math.round(
+                        sourceProbe.durationSeconds()
+                                * 1000d
+                ),
+                sourceProbe.width(),
+                sourceProbe.height(),
+                target.width(),
+                target.height(),
+                sourceProbe.videoCodec(),
+                sourceProbe.pixelFormat(),
+                sourceProbe.audioCodec(),
+                sourceProbe.formatName()
+        );
 
         Path output = null;
         boolean acquired = false;
@@ -72,17 +152,33 @@ public class AwardVideoProcessor {
             List<String> command =
                     List.of(
                             properties.effectiveFfmpegBinary(),
+
                             "-hide_banner",
+
                             "-loglevel",
                             "error",
+
                             "-y",
+
                             "-i",
                             source.toAbsolutePath()
                                     .toString(),
+
+                            /*
+                             * Primeiro stream de vídeo.
+                             */
                             "-map",
                             "0:v:0",
+
+                            /*
+                             * Áudio opcional.
+                             */
                             "-map",
                             "0:a?",
+
+                            /*
+                             * Redimensionamento sem upscale.
+                             */
                             "-vf",
                             "scale="
                                     + target.width()
@@ -90,24 +186,44 @@ public class AwardVideoProcessor {
                                     + target.height(),
                             "-c:v",
                             "libx264",
+
                             "-preset",
                             properties.effectiveFfmpegPreset(),
+
                             "-crf",
                             String.valueOf(
                                     properties.effectiveVideoCrf()
                             ),
+
                             "-pix_fmt",
                             "yuv420p",
+
+                            /*
+                             * Padronização do áudio.
+                             */
                             "-c:a",
                             "aac",
+
                             "-b:a",
                             "96k",
+
                             "-ac",
                             "2",
+
+                            /*
+                             * Não carregar metadata do arquivo
+                             * original para o definitivo.
+                             */
                             "-map_metadata",
                             "-1",
+
+                            /*
+                             * Move o índice MP4 para o começo
+                             * do arquivo.
+                             */
                             "-movflags",
                             "+faststart",
+
                             output.toAbsolutePath()
                                     .toString()
                     );
@@ -120,13 +236,15 @@ public class AwardVideoProcessor {
 
             if (transcode.exitCode()
                     != 0) {
+
                 deleteQuietly(
                         output
                 );
 
                 throw Errors.badRequest(
                         "AWARD_VIDEO_PROCESSING_FAILED",
-                        "Não foi possível processar este vídeo. Envie um arquivo de vídeo válido."
+                        "Não foi possível processar este vídeo. "
+                                + "Envie um arquivo de vídeo válido."
                 );
             }
 
@@ -140,6 +258,24 @@ public class AwardVideoProcessor {
                     processed.height()
             );
 
+            long processedSize =
+                    Files.size(
+                            output
+                    );
+
+            log.info(
+                    "Award video transcode completed: "
+                            + "durationMs={}, width={}, height={}, "
+                            + "sizeBytes={}",
+                    Math.round(
+                            processed.durationSeconds()
+                                    * 1000d
+                    ),
+                    processed.width(),
+                    processed.height(),
+                    processedSize
+            );
+
             return new ProcessedVideo(
                     output,
                     Math.round(
@@ -148,22 +284,22 @@ public class AwardVideoProcessor {
                     ),
                     processed.width(),
                     processed.height(),
-                    Files.size(
-                            output
-                    )
+                    processedSize
             );
+
         } catch (InterruptedException exception) {
             Thread.currentThread()
                     .interrupt();
 
             deleteQuietly(
-                    output
+                    null
             );
 
             throw Errors.dependencyUnavailable(
                     "AWARD_VIDEO_PROCESSOR_INTERRUPTED",
                     "O processamento do vídeo foi interrompido."
             );
+
         } catch (IOException exception) {
             deleteQuietly(
                     output
@@ -175,11 +311,106 @@ public class AwardVideoProcessor {
                     exception,
                     Map.of()
             );
+
         } finally {
             if (acquired) {
                 transcodes.release();
             }
         }
+    }
+
+    private void validateDuration(
+            Probe probe
+    ) {
+        if (probe.durationSeconds()
+                > properties.effectiveMaxDurationSeconds()
+                + 0.05d) {
+
+            throw Errors.badRequest(
+                    "AWARD_VIDEO_TOO_LONG",
+                    "O vídeo deve ter no máximo "
+                            + properties.effectiveMaxDurationSeconds()
+                            + " segundos."
+            );
+        }
+    }
+
+    /**
+     * Decide se o arquivo já pode ser armazenado sem
+     * transcodificação.
+     * Requisitos:
+     * - até 1280x720 landscape
+     * - até 720x1280 portrait
+     * - dimensões pares
+     * - H.264
+     * - yuv420p
+     * - container MP4
+     * - AAC ou ausência de áudio
+     */
+    boolean canKeepOriginal(
+            Probe probe
+    ) {
+        boolean dimensionsOk =
+                isWithinMaximumDimensions(
+                        probe.width(),
+                        probe.height()
+                );
+
+        boolean evenDimensions =
+                probe.width() % 2 == 0
+                        && probe.height() % 2 == 0;
+
+        boolean videoCodecOk =
+                "h264".equalsIgnoreCase(
+                        probe.videoCodec()
+                );
+
+        boolean pixelFormatOk =
+                "yuv420p".equalsIgnoreCase(
+                        probe.pixelFormat()
+                );
+
+        boolean containerOk =
+                isMp4Format(
+                        probe.formatName()
+                );
+
+        boolean audioCodecOk =
+                probe.audioCodec() == null
+                        || "aac".equalsIgnoreCase(
+                        probe.audioCodec()
+                );
+
+        return dimensionsOk
+                && evenDimensions
+                && videoCodecOk
+                && pixelFormatOk
+                && containerOk
+                && audioCodecOk;
+    }
+
+    private boolean isMp4Format(
+            String formatName
+    ) {
+        if (formatName == null
+                || formatName.isBlank()) {
+            return false;
+        }
+
+        String[] formats =
+                formatName.split(
+                        ","
+                );
+
+        for (String format : formats) {
+            if ("mp4".equalsIgnoreCase(
+                    format.trim()
+            )) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     Probe probe(
@@ -189,62 +420,59 @@ public class AwardVideoProcessor {
                 runCapturingOutput(
                         List.of(
                                 properties.effectiveFfprobeBinary(),
+
                                 "-v",
                                 "error",
+
                                 "-select_streams",
                                 "v:0",
+
                                 "-show_entries",
-                                "stream=codec_type,width,height",
+                                "stream="
+                                        + "codec_type,"
+                                        + "codec_name,"
+                                        + "pix_fmt,"
+                                        + "width,"
+                                        + "height",
+
                                 "-show_entries",
-                                "format=duration",
+                                "format="
+                                        + "duration,"
+                                        + "format_name",
+
                                 "-of",
                                 "default=noprint_wrappers=1",
+
                                 source.toAbsolutePath()
                                         .toString()
-                        ),
-                        30
+                        )
                 );
 
         if (result.exitCode()
                 != 0) {
+
             throw Errors.badRequest(
                     "AWARD_UPLOAD_NOT_VIDEO",
-                    "O arquivo enviado não é um vídeo válido. Faça o upload de um vídeo."
+                    "O arquivo enviado não é um vídeo válido. "
+                            + "Faça o upload de um vídeo."
             );
         }
 
         Map<String, String> values =
-                new HashMap<>();
-
-        result.output()
-                .lines()
-                .forEach(line -> {
-                    int separator =
-                            line.indexOf(
-                                    '='
-                            );
-
-                    if (separator > 0) {
-                        values.put(
-                                line.substring(
-                                        0,
-                                        separator
-                                ),
-                                line.substring(
-                                        separator + 1
-                                )
-                        );
-                    }
-                });
+                parseKeyValueOutput(
+                        result.output()
+                );
 
         if (!"video".equals(
                 values.get(
                         "codec_type"
                 )
         )) {
+
             throw Errors.badRequest(
                     "AWARD_UPLOAD_NOT_VIDEO",
-                    "O arquivo enviado não é um vídeo válido. Faça o upload de um vídeo."
+                    "O arquivo enviado não é um vídeo válido. "
+                            + "Faça o upload de um vídeo."
             );
         }
 
@@ -279,48 +507,139 @@ public class AwardVideoProcessor {
                     || !Double.isFinite(
                     duration
             )) {
+
                 throw new NumberFormatException(
                         "Invalid video metadata."
                 );
             }
 
+            String audioCodec =
+                    probeAudioCodec(
+                            source
+                    );
+
             return new Probe(
                     duration,
                     width,
-                    height
+                    height,
+                    values.get(
+                            "codec_name"
+                    ),
+                    values.get(
+                            "pix_fmt"
+                    ),
+                    values.get(
+                            "format_name"
+                    ),
+                    audioCodec
             );
+
         } catch (NumberFormatException exception) {
+
             throw Errors.badRequest(
                     "AWARD_UPLOAD_NOT_VIDEO",
-                    "Não foi possível identificar corretamente duração e resolução do vídeo."
+                    "Não foi possível identificar corretamente "
+                            + "duração e resolução do vídeo."
             );
         }
+    }
+    private String probeAudioCodec(
+            Path source
+    ) {
+        ProcessResult result =
+                runCapturingOutput(
+                        List.of(
+                                properties.effectiveFfprobeBinary(),
+
+                                "-v",
+                                "error",
+
+                                "-select_streams",
+                                "a:0",
+
+                                "-show_entries",
+                                "stream=codec_name",
+
+                                "-of",
+                                "default="
+                                        + "noprint_wrappers=1:"
+                                        + "nokey=1",
+
+                                source.toAbsolutePath()
+                                        .toString()
+                        )
+                );
+
+        if (result.exitCode()
+                != 0) {
+            return "unknown";
+        }
+
+        String output =
+                result.output()
+                        .trim();
+
+        if (output.isBlank()) {
+            return null;
+        }
+
+        return output
+                .lines()
+                .findFirst()
+                .map(String::trim)
+                .filter(value ->
+                        !value.isBlank()
+                )
+                .orElse(
+                        null
+                );
+    }
+
+    private Map<String, String> parseKeyValueOutput(
+            String output
+    ) {
+        Map<String, String> values =
+                new HashMap<>();
+
+        output.lines()
+                .forEach(line -> {
+
+                    int separator =
+                            line.indexOf(
+                                    '='
+                            );
+
+                    if (separator <= 0) {
+                        return;
+                    }
+
+                    String key =
+                            line.substring(
+                                            0,
+                                            separator
+                                    )
+                                    .trim();
+
+                    String value =
+                            line.substring(
+                                            separator + 1
+                                    )
+                                    .trim();
+
+                    values.put(
+                            key,
+                            value
+                    );
+                });
+
+        return values;
     }
 
     Dimensions targetDimensions(
             int sourceWidth,
             int sourceHeight
     ) {
-        int maxWidth =
-                sourceWidth >= sourceHeight
-                        ? 1280
-                        : 720;
-
-        int maxHeight =
-                sourceWidth >= sourceHeight
-                        ? 720
-                        : 1280;
-
-        double factor =
-                Math.min(
-                        1d,
-                        Math.min(
-                                maxWidth
-                                        / (double) sourceWidth,
-                                maxHeight
-                                        / (double) sourceHeight
-                        )
-                );
+        final var factor = getFactor(sourceWidth, sourceHeight);
 
         int width =
                 evenDown(
@@ -350,24 +669,55 @@ public class AwardVideoProcessor {
         );
     }
 
-    private void validateProcessedDimensions(
+    private static double getFactor(int sourceWidth, int sourceHeight) {
+        int maxWidth =
+                sourceWidth >= sourceHeight
+                        ? 1280
+                        : 720;
+
+        int maxHeight =
+                sourceWidth >= sourceHeight
+                        ? 720
+                        : 1280;
+
+        return Math.min(
+                1d,
+                Math.min(
+                        maxWidth
+                                / (double) sourceWidth,
+                        maxHeight
+                                / (double) sourceHeight
+                )
+        );
+    }
+
+    private boolean isWithinMaximumDimensions(
             int width,
             int height
     ) {
         boolean landscape =
                 width >= height;
 
-        boolean valid =
-                landscape
-                        ? width <= 1280
-                        && height <= 720
-                        : width <= 720
-                        && height <= 1280;
+        return landscape
+                ? width <= 1280
+                && height <= 720
+                : width <= 720
+                && height <= 1280;
+    }
 
-        if (!valid) {
+    private void validateProcessedDimensions(
+            int width,
+            int height
+    ) {
+        if (!isWithinMaximumDimensions(
+                width,
+                height
+        )) {
+
             throw Errors.dependencyUnavailable(
                     "AWARD_VIDEO_RESIZE_FAILED",
-                    "O vídeo processado ultrapassou a resolução máxima permitida."
+                    "O vídeo processado ultrapassou "
+                            + "a resolução máxima permitida."
             );
         }
     }
@@ -381,8 +731,7 @@ public class AwardVideoProcessor {
     }
 
     private ProcessResult runCapturingOutput(
-            List<String> command,
-            int timeoutSeconds
+            List<String> command
     ) {
         try {
             Path outputFile =
@@ -393,12 +742,21 @@ public class AwardVideoProcessor {
 
             try {
                 Process process =
-                        new ProcessBuilder(command)
-                                .redirectErrorStream(true)
-                                .redirectOutput(outputFile.toFile())
+                        new ProcessBuilder(
+                                command
+                        )
+                                .redirectErrorStream(
+                                        true
+                                )
+                                .redirectOutput(
+                                        outputFile.toFile()
+                                )
                                 .start();
 
-                waitFor(process, timeoutSeconds);
+                waitFor(
+                        process,
+                        30
+                );
 
                 String output =
                         Files.readString(
@@ -410,11 +768,17 @@ public class AwardVideoProcessor {
                         process.exitValue(),
                         output
                 );
+
             } finally {
-                deleteQuietly(outputFile);
+                deleteQuietly(
+                        outputFile
+                );
             }
+
         } catch (IOException exception) {
-            throw toolUnavailable(exception);
+            throw toolUnavailable(
+                    exception
+            );
         }
     }
 
@@ -424,19 +788,31 @@ public class AwardVideoProcessor {
     ) {
         try {
             Process process =
-                    new ProcessBuilder(command)
-                            .redirectErrorStream(true)
-                            .redirectOutput(ProcessBuilder.Redirect.DISCARD)
+                    new ProcessBuilder(
+                            command
+                    )
+                            .redirectErrorStream(
+                                    true
+                            )
+                            .redirectOutput(
+                                    ProcessBuilder.Redirect.DISCARD
+                            )
                             .start();
 
-            waitFor(process, timeoutSeconds);
+            waitFor(
+                    process,
+                    timeoutSeconds
+            );
 
             return new ProcessResult(
                     process.exitValue(),
                     ""
             );
+
         } catch (IOException exception) {
-            throw toolUnavailable(exception);
+            throw toolUnavailable(
+                    exception
+            );
         }
     }
 
@@ -453,14 +829,21 @@ public class AwardVideoProcessor {
 
             if (!finished) {
                 process.destroyForcibly();
+
                 throw Errors.dependencyUnavailable(
                         "AWARD_VIDEO_PROCESSING_TIMEOUT",
-                        "O processamento do vídeo excedeu o tempo permitido. Tente novamente."
+                        "O processamento do vídeo excedeu "
+                                + "o tempo permitido. Tente novamente."
                 );
             }
+
         } catch (InterruptedException exception) {
-            Thread.currentThread().interrupt();
+
+            Thread.currentThread()
+                    .interrupt();
+
             process.destroyForcibly();
+
             throw Errors.dependencyUnavailable(
                     "AWARD_VIDEO_PROCESSOR_INTERRUPTED",
                     "O processamento do vídeo foi interrompido."
@@ -506,7 +889,11 @@ public class AwardVideoProcessor {
     record Probe(
             double durationSeconds,
             int width,
-            int height
+            int height,
+            String videoCodec,
+            String pixelFormat,
+            String formatName,
+            String audioCodec
     ) {
     }
 
