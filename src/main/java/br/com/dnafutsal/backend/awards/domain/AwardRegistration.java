@@ -214,4 +214,8 @@ public class AwardRegistration {
     public Instant getSubmittedAt() {
         return submittedAt;
     }
+
+    public void cancel(){
+        this.status = AwardRegistrationStatus.CANCELLED;
+    }
 }

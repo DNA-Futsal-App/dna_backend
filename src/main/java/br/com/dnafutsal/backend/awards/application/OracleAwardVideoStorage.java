@@ -1,5 +1,6 @@
 package br.com.dnafutsal.backend.awards.application;
 
+import br.com.dnafutsal.backend.awards.api.AwardMediaTicketResponse;
 import br.com.dnafutsal.backend.common.Errors;
 import br.com.dnafutsal.backend.config.AwardRegistrationProperties;
 import com.oracle.bmc.Region;
@@ -17,6 +18,7 @@ import com.oracle.bmc.objectstorage.responses.CreatePreauthenticatedRequestRespo
 import com.oracle.bmc.objectstorage.responses.GetObjectResponse;
 import com.oracle.bmc.objectstorage.responses.HeadObjectResponse;
 import jakarta.annotation.PreDestroy;
+import org.jspecify.annotations.NonNull;
 import org.springframework.stereotype.Component;
 
 import java.io.ByteArrayInputStream;
@@ -88,24 +90,7 @@ public class OracleAwardVideoStorage {
             PreauthenticatedRequest request =
                     response.getPreauthenticatedRequest();
 
-            String accessUri =
-                    request.getAccessUri();
-
-            String uploadUrl =
-                    accessUri.startsWith(
-                            "http://"
-                    )
-                            || accessUri.startsWith(
-                            "https://"
-                    )
-                            ? accessUri
-                            : properties.effectiveOciEndpoint()
-                            + (accessUri.startsWith(
-                            "/"
-                    )
-                            ? accessUri
-                            : "/"
-                            + accessUri);
+            final var uploadUrl = getString(request);
 
             return new WriteTicket(
                     request.getId(),
@@ -120,6 +105,26 @@ public class OracleAwardVideoStorage {
                     Map.of()
             );
         }
+    }
+
+    private @NonNull String getString(PreauthenticatedRequest request) {
+        String accessUri =
+                request.getAccessUri();
+
+        return accessUri.startsWith(
+                "http://"
+        )
+                || accessUri.startsWith(
+                "https://"
+        )
+                ? accessUri
+                : properties.effectiveOciEndpoint()
+                + (accessUri.startsWith(
+                "/"
+        )
+                ? accessUri
+                : "/"
+                + accessUri);
     }
 
     public long objectSize(
@@ -416,5 +421,83 @@ public class OracleAwardVideoStorage {
             String uploadUrl,
             Instant expiresAt
     ) {
+    }
+
+    public AwardMediaTicketResponse createReadTicket(
+            String objectName,
+            String ticketName,
+            Instant expiresAt
+    ) {
+        try {
+            CreatePreauthenticatedRequestDetails details =
+                    CreatePreauthenticatedRequestDetails.builder()
+                            .name(
+                                    ticketName
+                            )
+                            .bucketListingAction(
+                                    PreauthenticatedRequest.BucketListingAction.Deny
+                            )
+                            .objectName(
+                                    objectName
+                            )
+                            .accessType(
+                                    CreatePreauthenticatedRequestDetails.AccessType.ObjectRead
+                            )
+                            .timeExpires(
+                                    Date.from(
+                                            expiresAt
+                                    )
+                            )
+                            .build();
+
+            CreatePreauthenticatedRequestResponse response =
+                    client()
+                            .createPreauthenticatedRequest(
+                                    CreatePreauthenticatedRequestRequest.builder()
+                                            .namespaceName(
+                                                    properties.ociNamespace()
+                                            )
+                                            .bucketName(
+                                                    properties.ociBucket()
+                                            )
+                                            .createPreauthenticatedRequestDetails(
+                                                    details
+                                            )
+                                            .build()
+                            );
+
+            final var url = getString(response);
+
+            return new AwardMediaTicketResponse(
+                    url,
+                    expiresAt
+            );
+
+        } catch (RuntimeException exception) {
+            throw Errors.dependencyUnavailable(
+                    "AWARD_OBJECT_STORAGE_READ_UNAVAILABLE",
+                    "Não foi possível liberar a visualização do vídeo.",
+                    exception,
+                    Map.of()
+            );
+        }
+    }
+
+    private @NonNull String getString(CreatePreauthenticatedRequestResponse response) {
+        PreauthenticatedRequest request =
+                response.getPreauthenticatedRequest();
+
+        String accessUri =
+                request.getAccessUri();
+
+        return accessUri.startsWith("http://")
+                || accessUri.startsWith("https://")
+                ? accessUri
+                : properties.effectiveOciEndpoint()
+                + (
+                accessUri.startsWith("/")
+                        ? accessUri
+                        : "/" + accessUri
+        );
     }
 }

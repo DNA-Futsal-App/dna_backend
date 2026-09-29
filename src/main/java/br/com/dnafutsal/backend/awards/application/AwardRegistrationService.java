@@ -1,14 +1,6 @@
 package br.com.dnafutsal.backend.awards.application;
 
-import br.com.dnafutsal.backend.awards.api.AwardRegistrationContestCategoryResponse;
-import br.com.dnafutsal.backend.awards.api.AwardRegistrationContextResponse;
-import br.com.dnafutsal.backend.awards.api.AwardRegistrationEntryResponse;
-import br.com.dnafutsal.backend.awards.api.AwardRegistrationResponse;
-import br.com.dnafutsal.backend.awards.api.AwardUploadTicketResponse;
-import br.com.dnafutsal.backend.awards.api.CreateAwardRegistrationEntryRequest;
-import br.com.dnafutsal.backend.awards.api.CreateAwardRegistrationRequest;
-import br.com.dnafutsal.backend.awards.api.CreateAwardUploadTicketRequest;
-import br.com.dnafutsal.backend.awards.api.UpdateAwardRegistrationLinkRequest;
+import br.com.dnafutsal.backend.awards.api.*;
 import br.com.dnafutsal.backend.awards.domain.AwardEdition;
 import br.com.dnafutsal.backend.awards.domain.AwardRegistration;
 import br.com.dnafutsal.backend.awards.domain.AwardRegistrationContestCategory;
@@ -31,6 +23,8 @@ import br.com.dnafutsal.backend.sports.domain.TeamView;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -38,6 +32,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.Normalizer;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
@@ -60,6 +55,7 @@ public class AwardRegistrationService {
     private final AwardVideoProcessor videoProcessor;
     private final AwardRegistrationProperties properties;
     private final Clock clock;
+    private static final Duration MEDIA_READ_TTL = Duration.ofMinutes(30);
 
     public AwardRegistrationService(
             CurrentUserService currentUser,
@@ -517,11 +513,6 @@ public class AwardRegistrationService {
 
             throw exception;
         } catch (Exception exception) {
-            if (newObjectName != null) {
-                storage.deleteObjectQuietly(
-                        newObjectName
-                );
-            }
 
             entry.cancelPendingUpload();
 
@@ -669,6 +660,230 @@ public class AwardRegistrationService {
                 saved,
                 mediaEntries
         );
+    }
+
+    @Transactional(readOnly = true)
+    public AwardMediaTicketResponse createMediaTicket(
+            UUID registrationId,
+            UUID entryId
+    ) {
+        AwardRegistration registration =
+                requireOwnedRegistration(
+                        registrationId
+                );
+
+        if (registration.getStatus()
+                == AwardRegistrationStatus.CANCELLED) {
+            throw Errors.conflict(
+                    "AWARD_REGISTRATION_CANCELLED",
+                    "Esta inscrição foi cancelada."
+            );
+        }
+
+        AwardRegistrationEntry entry =
+                requireEntry(
+                        registrationId,
+                        entryId
+                );
+
+        if (entry.getSourceType()
+                != AwardRegistrationMediaSource.UPLOAD) {
+            throw Errors.badRequest(
+                    "AWARD_ENTRY_NOT_UPLOAD",
+                    "Esta candidatura utiliza um link externo."
+            );
+        }
+
+        if (entry.getMediaStatus()
+                != AwardRegistrationMediaStatus.READY
+                || entry.getObjectName() == null
+                || entry.getObjectName().isBlank()) {
+
+            throw Errors.conflict(
+                    "AWARD_MEDIA_NOT_READY",
+                    "O vídeo desta candidatura ainda não está disponível."
+            );
+        }
+
+        Instant expiresAt =
+                clock.instant()
+                        .plus(
+                                MEDIA_READ_TTL
+                        );
+
+        AwardMediaTicketResponse ticket =
+                storage.createReadTicket(
+                        entry.getObjectName(),
+                        "award-view-"
+                                + entry.getId()
+                                + "-"
+                                + UUID.randomUUID(),
+                        expiresAt
+                );
+
+        return new AwardMediaTicketResponse(
+                ticket.url(),
+                ticket.expiresAt()
+        );
+    }
+
+    @Transactional
+    public AwardRegistrationResponse withdrawEntry(
+            UUID registrationId,
+            UUID entryId
+    ) {
+        AwardRegistration registration =
+                requireOwnedRegistration(
+                        registrationId
+                );
+
+        requireWritable(
+                registration
+        );
+
+        AwardRegistrationEntry entry =
+                requireEntry(
+                        registrationId,
+                        entryId
+                );
+
+        StorageCleanup cleanup =
+                storageCleanup(
+                        entry
+                );
+
+        entries.delete(
+                entry
+        );
+
+        entries.flush();
+
+        List<AwardRegistrationEntry> remaining =
+                entries.findByRegistrationIdOrderByCreatedAtAsc(
+                        registrationId
+                );
+
+        if (remaining.isEmpty()) {
+            registration.cancel();
+
+            registrations.saveAndFlush(
+                    registration
+            );
+        }
+
+        scheduleStorageCleanupAfterCommit(
+                List.of(
+                        cleanup
+                )
+        );
+
+        return response(
+                registration,
+                remaining
+        );
+    }
+
+    @Transactional
+    public AwardRegistrationResponse withdrawAll(
+            UUID registrationId
+    ) {
+        AwardRegistration registration =
+                requireOwnedRegistration(
+                        registrationId
+                );
+
+        requireWritable(
+                registration
+        );
+
+        List<AwardRegistrationEntry> registrationEntries =
+                entries.findByRegistrationIdOrderByCreatedAtAsc(
+                        registrationId
+                );
+
+        List<StorageCleanup> cleanup =
+                registrationEntries.stream()
+                        .map(
+                                this::storageCleanup
+                        )
+                        .toList();
+
+        entries.deleteAll(
+                registrationEntries
+        );
+
+        entries.flush();
+
+        registration.cancel();
+
+        AwardRegistration saved =
+                registrations.saveAndFlush(
+                        registration
+                );
+
+        scheduleStorageCleanupAfterCommit(
+                cleanup
+        );
+
+        return response(
+                saved,
+                List.of()
+        );
+    }
+
+    private StorageCleanup storageCleanup(
+            AwardRegistrationEntry entry
+    ) {
+        return new StorageCleanup(
+                entry.getObjectName(),
+                entry.getPendingObjectName(),
+                entry.getPendingParId()
+        );
+    }
+
+    private void scheduleStorageCleanupAfterCommit(
+            List<StorageCleanup> cleanup
+    ) {
+        if (cleanup == null
+                || cleanup.isEmpty()) {
+            return;
+        }
+
+        Runnable action =
+                () -> cleanup.forEach(
+                        item -> {
+                            storage.deleteObjectQuietly(
+                                    item.objectName()
+                            );
+
+                            storage.deleteObjectQuietly(
+                                    item.pendingObjectName()
+                            );
+
+                            storage.deleteParQuietly(
+                                    item.pendingParId()
+                            );
+                        }
+                );
+
+        if (!TransactionSynchronizationManager
+                .isSynchronizationActive()) {
+
+            action.run();
+
+            return;
+        }
+
+        TransactionSynchronizationManager
+                .registerSynchronization(
+                        new TransactionSynchronization() {
+
+                            @Override
+                            public void afterCommit() {
+                                action.run();
+                            }
+                        }
+                );
     }
 
     private AwardEdition requireEdition() {
@@ -1045,6 +1260,13 @@ public class AwardRegistrationService {
             CatalogItemView division,
             CatalogCategoryView category,
             TeamView team
+    ) {
+    }
+
+    private record StorageCleanup(
+            String objectName,
+            String pendingObjectName,
+            String pendingParId
     ) {
     }
 }
