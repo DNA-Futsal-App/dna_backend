@@ -115,11 +115,34 @@ public class AwardRegistrationEntry {
     ) {
         this.pendingObjectName = pendingObjectName;
         this.pendingParId = pendingParId;
-
-        if (objectName == null) {
-            mediaStatus = AwardRegistrationMediaStatus.PENDING;
-        }
+        this.mediaStatus = AwardRegistrationMediaStatus.PENDING;
     }
+
+    public void beginProcessing() {
+        if (sourceType != AwardRegistrationMediaSource.UPLOAD) {
+            throw new IllegalStateException(
+                    "Only UPLOAD entries can be processed."
+            );
+        }
+
+        if (pendingObjectName == null
+                || pendingObjectName.isBlank()) {
+            throw new IllegalStateException(
+                    "Pending object is required before processing."
+            );
+        }
+
+        this.mediaStatus =
+                AwardRegistrationMediaStatus.PROCESSING;
+    }
+
+    public void failProcessing() {
+        this.pendingObjectName = null;
+        this.pendingParId = null;
+        this.mediaStatus =
+                AwardRegistrationMediaStatus.FAILED;
+    }
+
 
     public void completeUpload(
             String objectName,

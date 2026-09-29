@@ -218,4 +218,9 @@ public class AwardRegistration {
     public void cancel(){
         this.status = AwardRegistrationStatus.CANCELLED;
     }
+
+    public void reopenForEditing() {
+        this.status = AwardRegistrationStatus.DRAFT;
+        this.submittedAt = null;
+    };
 }

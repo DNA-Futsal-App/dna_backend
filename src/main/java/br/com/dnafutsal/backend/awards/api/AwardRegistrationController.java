@@ -72,17 +72,21 @@ public class AwardRegistrationController {
     @PostMapping(
             "/{registrationId}/entries/{entryId}/complete-upload"
     )
-    AwardRegistrationEntryResponse completeUpload(
+    ResponseEntity<AwardRegistrationEntryResponse> completeUpload(
             @PathVariable
             UUID registrationId,
 
             @PathVariable
             UUID entryId
     ) {
-        return registrations.completeUpload(
-                registrationId,
-                entryId
-        );
+        return ResponseEntity
+                .accepted()
+                .body(
+                        registrations.completeUpload(
+                                registrationId,
+                                entryId
+                        )
+                );
     }
 
     @PutMapping(
@@ -130,6 +134,25 @@ public class AwardRegistrationController {
                 registrationId,
                 entryId
         );
+    }
+
+    @PostMapping("/{registrationId}/entries")
+    ResponseEntity<AwardRegistrationEntryResponse> addEntry(
+            @PathVariable
+            UUID registrationId,
+
+            @Valid
+            @RequestBody
+            CreateAwardRegistrationEntryRequest request
+    ) {
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(
+                        registrations.addEntry(
+                                registrationId,
+                                request
+                        )
+                );
     }
 
     @DeleteMapping(
