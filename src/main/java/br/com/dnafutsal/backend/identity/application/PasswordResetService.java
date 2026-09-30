@@ -84,7 +84,7 @@ public class PasswordResetService {
             @CacheEvict(cacheNames = "user-profile", key = "#result"),
             @CacheEvict(cacheNames = "user-security", key = "#result")
     })
-    public java.util.UUID confirm(String rawToken, String newPassword) {
+    public void confirm(String rawToken, String newPassword) {
         Instant now = clock.instant();
         PasswordResetToken token = resetTokens.findByTokenHash(tokenSupport.hash(rawToken))
                 .orElseThrow(() -> Errors.badRequest("INVALID_RESET_TOKEN", "O link de redefinição é inválido."));
@@ -96,10 +96,13 @@ public class PasswordResetService {
         user.changePassword(passwordEncoder.encode(newPassword));
         resetTokens.invalidateAllByUserId(user.getId(), now);
         refreshSessions.revokeAllByUserId(user.getId(), now);
-        return user.getId();
     }
 
     private Optional<UserAccount> findByLogin(String login) {
+        return getUserAccount(login, users, normalizer);
+    }
+
+    static Optional<UserAccount> getUserAccount(String login, UserAccountRepository users, IdentityNormalizer normalizer) {
         String value = login.trim();
         if (value.contains("@")) {
             return users.findByEmail(normalizer.email(value));
