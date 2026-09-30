@@ -21,8 +21,6 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
-import static br.com.dnafutsal.backend.identity.application.PasswordResetService.getUserAccount;
-
 @Service
 public class RegistrationService {
 
@@ -133,6 +131,14 @@ public class RegistrationService {
     }
 
     private Optional<UserAccount> findByLogin(String login) {
-        return getUserAccount(login, users, normalizer);
+        String value = login.trim();
+        if (value.contains("@")) {
+            return users.findByEmail(normalizer.email(value));
+        }
+        try {
+            return users.findByPhone(normalizer.phone(value));
+        } catch (RuntimeException exception) {
+            return Optional.empty();
+        }
     }
 }
