@@ -214,4 +214,13 @@ public class AwardRegistration {
     public Instant getSubmittedAt() {
         return submittedAt;
     }
+
+    public void cancel(){
+        this.status = AwardRegistrationStatus.CANCELLED;
+    }
+
+    public void reopenForEditing() {
+        this.status = AwardRegistrationStatus.DRAFT;
+        this.submittedAt = null;
+    };
 }

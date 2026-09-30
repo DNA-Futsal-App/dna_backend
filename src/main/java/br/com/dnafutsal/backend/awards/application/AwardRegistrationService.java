@@ -1,14 +1,6 @@
 package br.com.dnafutsal.backend.awards.application;
 
-import br.com.dnafutsal.backend.awards.api.AwardRegistrationContestCategoryResponse;
-import br.com.dnafutsal.backend.awards.api.AwardRegistrationContextResponse;
-import br.com.dnafutsal.backend.awards.api.AwardRegistrationEntryResponse;
-import br.com.dnafutsal.backend.awards.api.AwardRegistrationResponse;
-import br.com.dnafutsal.backend.awards.api.AwardUploadTicketResponse;
-import br.com.dnafutsal.backend.awards.api.CreateAwardRegistrationEntryRequest;
-import br.com.dnafutsal.backend.awards.api.CreateAwardRegistrationRequest;
-import br.com.dnafutsal.backend.awards.api.CreateAwardUploadTicketRequest;
-import br.com.dnafutsal.backend.awards.api.UpdateAwardRegistrationLinkRequest;
+import br.com.dnafutsal.backend.awards.api.*;
 import br.com.dnafutsal.backend.awards.domain.AwardEdition;
 import br.com.dnafutsal.backend.awards.domain.AwardRegistration;
 import br.com.dnafutsal.backend.awards.domain.AwardRegistrationContestCategory;
@@ -31,6 +23,8 @@ import br.com.dnafutsal.backend.sports.domain.TeamView;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -38,13 +32,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.Normalizer;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 public class AwardRegistrationService {
@@ -60,6 +50,8 @@ public class AwardRegistrationService {
     private final AwardVideoProcessor videoProcessor;
     private final AwardRegistrationProperties properties;
     private final Clock clock;
+    private static final Duration MEDIA_READ_TTL = Duration.ofMinutes(30);
+    private final AwardVideoProcessingService videoProcessing;
 
     public AwardRegistrationService(
             CurrentUserService currentUser,
@@ -72,7 +64,8 @@ public class AwardRegistrationService {
             OracleAwardVideoStorage storage,
             AwardVideoProcessor videoProcessor,
             AwardRegistrationProperties properties,
-            Clock clock
+            Clock clock,
+            AwardVideoProcessingService videoProcessing
     ) {
         this.currentUser = currentUser;
         this.users = users;
@@ -85,6 +78,7 @@ public class AwardRegistrationService {
         this.videoProcessor = videoProcessor;
         this.properties = properties;
         this.clock = clock;
+        this.videoProcessing = videoProcessing;
     }
 
     @Transactional(readOnly = true)
@@ -196,11 +190,28 @@ public class AwardRegistrationService {
                 request.entries()
         );
 
-        if (registrations
-                .existsByEditionIdAndRepresentativeUserId(
-                        edition.getId(),
-                        userId
-                )) {
+        Optional<AwardRegistration> existingRegistration =
+                registrations
+                        .findByEditionIdAndRepresentativeUserId(
+                                edition.getId(),
+                                userId
+                        );
+
+        if (existingRegistration.isPresent()) {
+
+            AwardRegistration existing =
+                    existingRegistration.get();
+
+            if (existing.getStatus()
+                    == AwardRegistrationStatus.CANCELLED) {
+
+                throw Errors.conflict(
+                        "AWARD_REGISTRATION_REOPEN_REQUIRED",
+                        "Esta conta já possui uma inscrição nesta edição. "
+                                + "Acesse Minha inscrição para reinscrever o atleta."
+                );
+            }
+
             throw Errors.conflict(
                     "AWARD_REGISTRATION_ALREADY_EXISTS",
                     "Esta conta já possui uma inscrição nesta edição."
@@ -378,6 +389,7 @@ public class AwardRegistrationService {
         );
     }
 
+    @Transactional
     public AwardRegistrationEntryResponse completeUpload(
             UUID registrationId,
             UUID entryId
@@ -399,6 +411,7 @@ public class AwardRegistrationService {
 
         if (entry.getSourceType()
                 != AwardRegistrationMediaSource.UPLOAD) {
+
             throw Errors.badRequest(
                     "AWARD_ENTRY_NOT_UPLOAD",
                     "Esta categoria não recebe arquivo de vídeo."
@@ -408,160 +421,73 @@ public class AwardRegistrationService {
         String pendingObjectName =
                 entry.getPendingObjectName();
 
-        String pendingParId =
-                entry.getPendingParId();
-
         if (pendingObjectName == null
                 || pendingObjectName.isBlank()) {
+
             throw Errors.badRequest(
                     "AWARD_UPLOAD_TICKET_REQUIRED",
                     "Solicite um novo upload antes de concluir o processamento."
             );
         }
 
-        Path raw = null;
-        AwardVideoProcessor.ProcessedVideo processed = null;
-        String newObjectName = null;
-        String oldObjectName =
-                entry.getObjectName();
-
-        try {
-            long uploadedSize =
-                    storage.objectSize(
-                            pendingObjectName
-                    );
-
-            if (uploadedSize
-                    > properties.effectiveMaxUploadBytes()) {
-                throw Errors.badRequest(
-                        "AWARD_UPLOAD_TOO_LARGE",
-                        "O vídeo excede o limite permitido antes da compactação."
+        long uploadedSize =
+                storage.objectSize(
+                        pendingObjectName
                 );
-            }
 
-            raw =
-                    Files.createTempFile(
-                            "dna-award-upload-",
-                            ".bin"
-                    );
+        if (uploadedSize
+                > properties.effectiveMaxUploadBytes()) {
 
-            storage.download(
-                    pendingObjectName,
-                    raw
-            );
-
-            processed =
-                    videoProcessor.process(
-                            raw
-                    );
-
-            AwardEdition edition =
-                    requireEdition();
-
-            newObjectName =
-                    processedObjectName(
-                            edition.getSeason(),
-                            registration,
-                            entry
-                    );
-
-            storage.uploadProcessedVideo(
-                    newObjectName,
-                    processed.path()
-            );
-
-            entry.completeUpload(
-                    newObjectName,
-                    displayFilename(
-                            registration,
-                            entry
-                    ),
-                    processed.durationMs(),
-                    processed.width(),
-                    processed.height(),
-                    processed.fileSizeBytes()
-            );
-
-            AwardRegistrationEntry saved =
-                    entries.saveAndFlush(
-                            entry
-                    );
-
-            if (oldObjectName != null
-                    && !oldObjectName.equals(
-                    newObjectName
-            )) {
-                storage.deleteObjectQuietly(
-                        oldObjectName
-                );
-            }
-
-            return entryResponse(
-                    saved
-            );
-        } catch (RuntimeException exception) {
-            if (newObjectName != null) {
-                storage.deleteObjectQuietly(
-                        newObjectName
-                );
-            }
-
-            entry.cancelPendingUpload();
-
-            try {
-                entries.saveAndFlush(
-                        entry
-                );
-            } catch (RuntimeException ignored) {
-            }
-
-            throw exception;
-        } catch (Exception exception) {
-            if (newObjectName != null) {
-                storage.deleteObjectQuietly(
-                        newObjectName
-                );
-            }
-
-            entry.cancelPendingUpload();
-
-            try {
-                entries.saveAndFlush(
-                        entry
-                );
-            } catch (RuntimeException ignored) {
-            }
-
-            throw Errors.dependencyUnavailable(
-                    "AWARD_VIDEO_PROCESSING_FAILED",
-                    "Não foi possível concluir o processamento do vídeo.",
-                    exception,
-                    Map.of()
-            );
-        } finally {
             storage.deleteObjectQuietly(
                     pendingObjectName
             );
 
             storage.deleteParQuietly(
-                    pendingParId
+                    entry.getPendingParId()
             );
-            if (processed != null
-                    && processed.path() != null
-                    && !processed.path()
-                    .equals(
-                            raw
-                    )) {
 
-                AwardVideoProcessor.deleteQuietly(
-                        processed.path()
-                );
-            }
+            entry.cancelPendingUpload();
 
-            AwardVideoProcessor.deleteQuietly(
-                    raw
+            entries.saveAndFlush(
+                    entry
+            );
+
+            throw Errors.badRequest(
+                    "AWARD_UPLOAD_TOO_LARGE",
+                    "O vídeo excede o limite permitido antes da compactação."
             );
         }
+
+        entry.beginProcessing();
+
+        AwardRegistrationEntry saved =
+                entries.saveAndFlush(
+                        entry
+                );
+
+        /*
+         * Só inicia o worker depois do COMMIT.
+         * Isso evita o worker enxergar a entry antes
+         * de PROCESSING estar persistido.
+         */
+        TransactionSynchronizationManager
+                .registerSynchronization(
+                        new TransactionSynchronization() {
+
+                            @Override
+                            public void afterCommit() {
+                                videoProcessing.processAsync(
+                                        registrationId,
+                                        entryId,
+                                        pendingObjectName
+                                );
+                            }
+                        }
+                );
+
+        return entryResponse(
+                saved
+        );
     }
 
     @Transactional
@@ -669,6 +595,323 @@ public class AwardRegistrationService {
                 saved,
                 mediaEntries
         );
+    }
+
+    @Transactional(readOnly = true)
+    public AwardMediaTicketResponse createMediaTicket(
+            UUID registrationId,
+            UUID entryId
+    ) {
+        AwardRegistration registration =
+                requireOwnedRegistration(
+                        registrationId
+                );
+
+        if (registration.getStatus()
+                == AwardRegistrationStatus.CANCELLED) {
+            throw Errors.conflict(
+                    "AWARD_REGISTRATION_CANCELLED",
+                    "Esta inscrição foi cancelada."
+            );
+        }
+
+        AwardRegistrationEntry entry =
+                requireEntry(
+                        registrationId,
+                        entryId
+                );
+
+        if (entry.getSourceType()
+                != AwardRegistrationMediaSource.UPLOAD) {
+            throw Errors.badRequest(
+                    "AWARD_ENTRY_NOT_UPLOAD",
+                    "Esta candidatura utiliza um link externo."
+            );
+        }
+
+        if (entry.getObjectName() == null
+                || entry.getObjectName().isBlank()) {
+
+            throw Errors.conflict(
+                    "AWARD_MEDIA_NOT_READY",
+                    "O vídeo desta candidatura ainda não está disponível."
+            );
+        }
+
+        Instant expiresAt =
+                clock.instant()
+                        .plus(
+                                MEDIA_READ_TTL
+                        );
+
+        AwardMediaTicketResponse ticket =
+                storage.createReadTicket(
+                        entry.getObjectName(),
+                        "award-view-"
+                                + entry.getId()
+                                + "-"
+                                + UUID.randomUUID(),
+                        expiresAt
+                );
+
+        return new AwardMediaTicketResponse(
+                ticket.url(),
+                ticket.expiresAt()
+        );
+    }
+
+    @Transactional
+    public AwardRegistrationResponse withdrawEntry(
+            UUID registrationId,
+            UUID entryId
+    ) {
+        AwardRegistration registration =
+                requireOwnedRegistration(
+                        registrationId
+                );
+
+        requireWritable(
+                registration
+        );
+
+        AwardRegistrationEntry entry =
+                requireEntry(
+                        registrationId,
+                        entryId
+                );
+
+        StorageCleanup cleanup =
+                storageCleanup(
+                        entry
+                );
+
+        entries.delete(
+                entry
+        );
+
+        entries.flush();
+
+        List<AwardRegistrationEntry> remaining =
+                entries.findByRegistrationIdOrderByCreatedAtAsc(
+                        registrationId
+                );
+
+        if (remaining.isEmpty()) {
+            registration.cancel();
+
+            registrations.saveAndFlush(
+                    registration
+            );
+        }
+
+        scheduleStorageCleanupAfterCommit(
+                List.of(
+                        cleanup
+                )
+        );
+
+        return response(
+                registration,
+                remaining
+        );
+    }
+
+    @Transactional
+    public AwardRegistrationResponse withdrawAll(
+            UUID registrationId
+    ) {
+        AwardRegistration registration =
+                requireOwnedRegistration(
+                        registrationId
+                );
+
+        requireWritable(
+                registration
+        );
+
+        List<AwardRegistrationEntry> registrationEntries =
+                entries.findByRegistrationIdOrderByCreatedAtAsc(
+                        registrationId
+                );
+
+        List<StorageCleanup> cleanup =
+                registrationEntries.stream()
+                        .map(
+                                this::storageCleanup
+                        )
+                        .toList();
+
+        entries.deleteAll(
+                registrationEntries
+        );
+
+        entries.flush();
+
+        registration.cancel();
+
+        AwardRegistration saved =
+                registrations.saveAndFlush(
+                        registration
+                );
+
+        scheduleStorageCleanupAfterCommit(
+                cleanup
+        );
+
+        return response(
+                saved,
+                List.of()
+        );
+    }
+
+    @Transactional
+    public AwardRegistrationEntryResponse addEntry(
+            UUID registrationId,
+            CreateAwardRegistrationEntryRequest request
+    ) {
+        AwardRegistration registration =
+                requireOwnedRegistration(
+                        registrationId
+                );
+
+        List<AwardRegistrationEntry> currentEntries =
+                entries.findByRegistrationIdOrderByCreatedAtAsc(
+                        registrationId
+                );
+
+        /*
+         * CANCELLED só pode ser reaberta quando realmente
+         * não existe nenhuma candidatura restante.
+         */
+        if (registration.getStatus()
+                == AwardRegistrationStatus.CANCELLED
+                && !currentEntries.isEmpty()) {
+
+            throw Errors.conflict(
+                    "AWARD_REGISTRATION_REOPEN_INVALID",
+                    "A inscrição cancelada ainda possui candidaturas vinculadas."
+            );
+        }
+
+        if (currentEntries.size() >= 4) {
+            throw Errors.badRequest(
+                    "AWARD_REGISTRATION_ENTRIES_LIMIT",
+                    "A inscrição pode possuir no máximo 4 categorias."
+            );
+        }
+
+        boolean categoryAlreadyExists =
+                currentEntries.stream()
+                        .anyMatch(entry ->
+                                entry.getContestCategory()
+                                        == request.contestCategory()
+                        );
+
+        if (categoryAlreadyExists) {
+            throw Errors.conflict(
+                    "AWARD_REGISTRATION_DUPLICATE_CATEGORY",
+                    "O atleta já está concorrendo nesta categoria."
+            );
+        }
+
+        validateRequestedEntries(
+                List.of(
+                        request
+                )
+        );
+
+        String externalUrl =
+                request.sourceType()
+                        == AwardRegistrationMediaSource.LINK
+                        ? validateExternalUrl(
+                        request.externalUrl()
+                )
+                        : null;
+        registration.reopenForEditing();
+
+        registrations.saveAndFlush(
+                registration
+        );
+
+        AwardRegistrationEntry entry =
+                new AwardRegistrationEntry(
+                        registrationId,
+                        request.contestCategory(),
+                        request.sourceType(),
+                        externalUrl
+                );
+
+        try {
+            AwardRegistrationEntry saved =
+                    entries.saveAndFlush(
+                            entry
+                    );
+
+            return entryResponse(
+                    saved
+            );
+
+        } catch (DataIntegrityViolationException exception) {
+            throw Errors.conflict(
+                    "AWARD_REGISTRATION_DUPLICATE_CATEGORY",
+                    "O atleta já está concorrendo nesta categoria."
+            );
+        }
+    }
+
+    private StorageCleanup storageCleanup(
+            AwardRegistrationEntry entry
+    ) {
+        return new StorageCleanup(
+                entry.getObjectName(),
+                entry.getPendingObjectName(),
+                entry.getPendingParId()
+        );
+    }
+
+    private void scheduleStorageCleanupAfterCommit(
+            List<StorageCleanup> cleanup
+    ) {
+        if (cleanup == null
+                || cleanup.isEmpty()) {
+            return;
+        }
+
+        Runnable action =
+                () -> cleanup.forEach(
+                        item -> {
+                            storage.deleteObjectQuietly(
+                                    item.objectName()
+                            );
+
+                            storage.deleteObjectQuietly(
+                                    item.pendingObjectName()
+                            );
+
+                            storage.deleteParQuietly(
+                                    item.pendingParId()
+                            );
+                        }
+                );
+
+        if (!TransactionSynchronizationManager
+                .isSynchronizationActive()) {
+
+            action.run();
+
+            return;
+        }
+
+        TransactionSynchronizationManager
+                .registerSynchronization(
+                        new TransactionSynchronization() {
+
+                            @Override
+                            public void afterCommit() {
+                                action.run();
+                            }
+                        }
+                );
     }
 
     private AwardEdition requireEdition() {
@@ -1045,6 +1288,13 @@ public class AwardRegistrationService {
             CatalogItemView division,
             CatalogCategoryView category,
             TeamView team
+    ) {
+    }
+
+    private record StorageCleanup(
+            String objectName,
+            String pendingObjectName,
+            String pendingParId
     ) {
     }
 }
