@@ -78,6 +78,14 @@ public class AwardRegistration {
     @Version
     private long version;
 
+    @Enumerated(EnumType.STRING)
+    @Column(
+            name = "gender",
+            nullable = false,
+            length = 20
+    )
+    private AwardRegistrationGender gender;
+
     protected AwardRegistration() {
     }
 
@@ -95,7 +103,8 @@ public class AwardRegistration {
             long categoryId,
             String categoryName,
             String teamId,
-            String teamName
+            String teamName,
+            AwardRegistrationGender gender
     ) {
         this.id = UUID.randomUUID();
         this.registrationNumber = registrationNumber;
@@ -113,6 +122,7 @@ public class AwardRegistration {
         this.teamId = teamId;
         this.teamName = teamName;
         this.status = AwardRegistrationStatus.DRAFT;
+        this.gender = gender;
     }
 
     @PrePersist
@@ -217,5 +227,9 @@ public class AwardRegistration {
 
     public void cancel(){
         this.status = AwardRegistrationStatus.CANCELLED;
+    }
+
+    public AwardRegistrationGender getGender() {
+        return gender;
     }
 }

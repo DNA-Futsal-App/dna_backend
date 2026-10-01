@@ -448,4 +448,99 @@ public class HttpSportsDataGateway implements SportsDataGateway {
         }
         return current;
     }
+
+    @Override
+    public List<CatalogItemView> catalogDivisions(
+            int season,
+            String title
+    ) {
+        Map<String, Object> diagnostics =
+                diagnostics(
+                        "catalog-divisions",
+                        "season",
+                        season,
+                        "title",
+                        title
+                );
+
+        List<ScraperCatalogOption> response =
+                get(
+                        diagnostics,
+                        uri -> uri
+                                .path(
+                                        "/api/v1/catalog/divisions"
+                                )
+                                .queryParam(
+                                        "season",
+                                        season
+                                )
+                                .queryParam(
+                                        "title",
+                                        title
+                                )
+                                .build(),
+                        new ParameterizedTypeReference<>() {
+                        }
+                );
+
+        return mapResponse(
+                diagnostics,
+                () -> response.stream()
+                        .map(
+                                mapper::catalogItem
+                        )
+                        .toList()
+        );
+    }
+
+    @Override
+    public List<CatalogCategoryView> catalogCategories(
+            int season,
+            String title,
+            long divisionId
+    ) {
+        Map<String, Object> diagnostics =
+                diagnostics(
+                        "catalog-categories",
+                        "season",
+                        season,
+                        "title",
+                        title,
+                        "divisionId",
+                        divisionId
+                );
+
+        List<ScraperCatalogCategory> response =
+                get(
+                        diagnostics,
+                        uri -> uri
+                                .path(
+                                        "/api/v1/catalog/categories"
+                                )
+                                .queryParam(
+                                        "season",
+                                        season
+                                )
+                                .queryParam(
+                                        "title",
+                                        title
+                                )
+                                .queryParam(
+                                        "divisionId",
+                                        divisionId
+                                )
+                                .build(),
+                        new ParameterizedTypeReference<>() {
+                        }
+                );
+
+        return mapResponse(
+                diagnostics,
+                () -> response.stream()
+                        .map(
+                                mapper::catalogCategory
+                        )
+                        .toList()
+        );
+    }
 }

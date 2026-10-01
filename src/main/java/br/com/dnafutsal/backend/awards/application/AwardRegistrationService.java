@@ -1,13 +1,7 @@
 package br.com.dnafutsal.backend.awards.application;
 
 import br.com.dnafutsal.backend.awards.api.*;
-import br.com.dnafutsal.backend.awards.domain.AwardEdition;
-import br.com.dnafutsal.backend.awards.domain.AwardRegistration;
-import br.com.dnafutsal.backend.awards.domain.AwardRegistrationContestCategory;
-import br.com.dnafutsal.backend.awards.domain.AwardRegistrationEntry;
-import br.com.dnafutsal.backend.awards.domain.AwardRegistrationMediaSource;
-import br.com.dnafutsal.backend.awards.domain.AwardRegistrationMediaStatus;
-import br.com.dnafutsal.backend.awards.domain.AwardRegistrationStatus;
+import br.com.dnafutsal.backend.awards.domain.*;
 import br.com.dnafutsal.backend.awards.infrastructure.AwardEditionRepository;
 import br.com.dnafutsal.backend.awards.infrastructure.AwardRegistrationEntryRepository;
 import br.com.dnafutsal.backend.awards.infrastructure.AwardRegistrationRepository;
@@ -34,12 +28,7 @@ import java.text.Normalizer;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 public class AwardRegistrationService {
@@ -217,6 +206,7 @@ public class AwardRegistrationService {
         CatalogContext sports =
                 validateSportsContext(
                         edition.getSeason(),
+                        request.gender(),
                         request.divisionId(),
                         request.categoryId(),
                         request.teamId()
@@ -224,31 +214,40 @@ public class AwardRegistrationService {
 
         AwardRegistration registration =
                 new AwardRegistration(
-                        registrations.nextRegistrationNumber(),
-                        edition.getId(),
-                        userId,
-                        cpfCipher.encrypt(
-                                cpf
-                        ),
-                        request.athleteName()
-                                .trim(),
-                        athleteInstagram.trim(),
-                        normalizedInstagram,
+                                        registrations.nextRegistrationNumber(),
+                                        edition.getId(),
+                                        userId,
+                                        cpfCipher.encrypt(
+                                                cpf
+                                        ),
+                                        request.athleteName()
+                                                .trim(),
+                                        athleteInstagram.trim(),
+                                        normalizedInstagram,
+
                         sports.category()
-                                .eventId(),
+                                                .eventId(),
+
                         sports.division()
-                                .id(),
+                                                .id(),
+
                         sports.division()
-                                .name(),
+                                                .name(),
+
                         sports.category()
-                                .id(),
+                                                .id(),
+
                         sports.category()
-                                .name(),
+                                                .name(),
+
                         sports.team()
-                                .id(),
+                                                .id(),
+
                         sports.team()
-                                .name()
-                );
+                                                .name(),
+
+                        request.gender()
+                                );
 
         try {
             registrations.saveAndFlush(
@@ -287,6 +286,34 @@ public class AwardRegistrationService {
                     "O atleta ou esta conta já possuem uma inscrição nesta edição."
             );
         }
+    }
+
+    @Transactional(readOnly = true)
+    public List<CatalogItemView> divisions(
+            AwardRegistrationGender gender
+    ) {
+        AwardEdition edition =
+                requireEdition();
+
+        return catalog.divisions(
+                edition.getSeason(),
+                gender.catalogTitle()
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public List<CatalogCategoryView> categories(
+            AwardRegistrationGender gender,
+            long divisionId
+    ) {
+        AwardEdition edition =
+                requireEdition();
+
+        return catalog.categories(
+                edition.getSeason(),
+                gender.catalogTitle(),
+                divisionId
+        );
     }
 
     @Transactional
@@ -711,7 +738,7 @@ public class AwardRegistrationService {
                                 MEDIA_READ_TTL
                         );
 
-        AwardMediaTicketResponse ticket =
+        OracleAwardVideoStorage.ReadTicket ticket =
                 storage.createReadTicket(
                         entry.getObjectName(),
                         "award-view-"
@@ -959,13 +986,18 @@ public class AwardRegistrationService {
 
     private CatalogContext validateSportsContext(
             int season,
+            AwardRegistrationGender gender,
             long divisionId,
             long categoryId,
             String teamId
     ) {
+        String title =
+                gender.catalogTitle();
+
         CatalogItemView division =
                 catalog.divisions(
-                                season
+                                season,
+                                title
                         )
                         .stream()
                         .filter(item ->
@@ -976,13 +1008,14 @@ public class AwardRegistrationService {
                         .orElseThrow(() ->
                                 Errors.badRequest(
                                         "AWARD_DIVISION_INVALID",
-                                        "A divisão selecionada não pertence ao catálogo da edição."
+                                        "A divisão selecionada não pertence ao gênero informado."
                                 )
                         );
 
         CatalogCategoryView category =
                 catalog.categories(
                                 season,
+                                title,
                                 divisionId
                         )
                         .stream()
@@ -994,7 +1027,7 @@ public class AwardRegistrationService {
                         .orElseThrow(() ->
                                 Errors.badRequest(
                                         "AWARD_CATEGORY_INVALID",
-                                        "A categoria selecionada não pertence à divisão informada."
+                                        "A categoria selecionada não pertence à divisão e ao gênero informados."
                                 )
                         );
 
@@ -1013,7 +1046,7 @@ public class AwardRegistrationService {
                         .orElseThrow(() ->
                                 Errors.badRequest(
                                         "AWARD_TEAM_INVALID",
-                                        "O time selecionado não pertence à divisão e categoria informadas."
+                                        "O time selecionado não pertence ao gênero, divisão e categoria informados."
                                 )
                         );
 
@@ -1220,11 +1253,12 @@ public class AwardRegistrationService {
                         .toList();
 
         return new AwardRegistrationResponse(
-                registration.getId(),
-                registration.getRegistrationNumber(),
-                registration.getStatus(),
-                registration.getAthleteName(),
-                registration.getAthleteInstagram(),
+                        registration.getId(),
+                        registration.getRegistrationNumber(),
+                        registration.getStatus(),
+                        registration.getAthleteName(),
+                        registration.getAthleteInstagram(),
+                registration.getGender(),
                 registration.getDivisionId(),
                 registration.getDivisionName(),
                 registration.getCategoryId(),
@@ -1234,7 +1268,7 @@ public class AwardRegistrationService {
                 registration.getTeamName(),
                 registration.getSubmittedAt(),
                 mappedEntries
-        );
+                );
     }
 
     private AwardRegistrationEntryResponse entryResponse(

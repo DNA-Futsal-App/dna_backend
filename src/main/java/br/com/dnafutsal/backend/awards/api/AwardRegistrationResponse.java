@@ -1,5 +1,6 @@
 package br.com.dnafutsal.backend.awards.api;
 
+import br.com.dnafutsal.backend.awards.domain.AwardRegistrationGender;
 import br.com.dnafutsal.backend.awards.domain.AwardRegistrationStatus;
 
 import java.time.Instant;
@@ -12,6 +13,7 @@ public record AwardRegistrationResponse(
         AwardRegistrationStatus status,
         String athleteName,
         String athleteInstagram,
+        AwardRegistrationGender gender,
         long divisionId,
         String divisionName,
         long categoryId,

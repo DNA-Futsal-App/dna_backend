@@ -120,4 +120,40 @@ public class SportsCatalogService {
             );
         }
     }
+
+    @Cacheable(
+            cacheNames = "sports-catalog-divisions",
+            key = "#season + ':' + #title",
+            sync = true
+    )
+    public List<CatalogItemView> divisions(
+            int season,
+            String title
+    ) {
+        return List.copyOf(
+                gateway.catalogDivisions(
+                        season,
+                        title
+                )
+        );
+    }
+
+    @Cacheable(
+            cacheNames = "sports-catalog-categories",
+            key = "#season + ':' + #title + ':' + #divisionId",
+            sync = true
+    )
+    public List<CatalogCategoryView> categories(
+            int season,
+            String title,
+            long divisionId
+    ) {
+        return List.copyOf(
+                gateway.catalogCategories(
+                        season,
+                        title,
+                        divisionId
+                )
+        );
+    }
 }

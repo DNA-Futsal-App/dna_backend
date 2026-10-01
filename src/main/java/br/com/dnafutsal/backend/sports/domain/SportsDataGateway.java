@@ -33,4 +33,24 @@ public interface SportsDataGateway {
     SportsSnapshot snapshot(
             long eventId
     );
+
+    default List<CatalogItemView> catalogDivisions(
+            int season,
+            String title
+    ) {
+        return catalogDivisions(
+                season
+        );
+    }
+
+    default List<CatalogCategoryView> catalogCategories(
+            int season,
+            String title,
+            long divisionId
+    ) {
+        return catalogCategories(
+                season,
+                divisionId
+        );
+    }
 }
