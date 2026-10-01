@@ -71,7 +71,14 @@ public class SportsController {
             @RequestParam(required = false) @Size(max = 150) String phase,
             @RequestParam(required = false) @Size(max = 150) String group
     ) {
-        return sports.standings(resolve(eventId, teamId), phase, group);
+        return sports.standings(
+                resolve(
+                        eventId,
+                        teamId
+                ),
+                phase,
+                group
+        );
     }
 
     @GetMapping("/top-scorers")
