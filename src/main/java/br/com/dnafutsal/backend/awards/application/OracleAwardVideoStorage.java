@@ -411,9 +411,90 @@ public class OracleAwardVideoStorage {
         }
     }
 
+    public ReadTicket createReadTicket(
+            String objectName,
+            String ticketName,
+            Instant expiresAt
+    ) {
+        try {
+            CreatePreauthenticatedRequestDetails details =
+                    CreatePreauthenticatedRequestDetails.builder()
+                            .name(
+                                    ticketName
+                            )
+                            .bucketListingAction(
+                                    PreauthenticatedRequest.BucketListingAction.Deny
+                            )
+                            .objectName(
+                                    objectName
+                            )
+                            .accessType(
+                                    CreatePreauthenticatedRequestDetails.AccessType.ObjectRead
+                            )
+                            .timeExpires(
+                                    Date.from(
+                                            expiresAt
+                                    )
+                            )
+                            .build();
+
+            CreatePreauthenticatedRequestResponse response =
+                    client()
+                            .createPreauthenticatedRequest(
+                                    CreatePreauthenticatedRequestRequest.builder()
+                                            .namespaceName(
+                                                    properties.ociNamespace()
+                                            )
+                                            .bucketName(
+                                                    properties.ociBucket()
+                                            )
+                                            .createPreauthenticatedRequestDetails(
+                                                    details
+                                            )
+                                            .build()
+                            );
+
+            PreauthenticatedRequest request =
+                    response.getPreauthenticatedRequest();
+
+            String accessUri =
+                    request.getAccessUri();
+
+            String url =
+                    accessUri.startsWith("http://")
+                            || accessUri.startsWith("https://")
+                            ? accessUri
+                            : properties.effectiveOciEndpoint()
+                            + (
+                            accessUri.startsWith("/")
+                                    ? accessUri
+                                    : "/" + accessUri
+                    );
+
+            return new ReadTicket(
+                    url,
+                    expiresAt
+            );
+
+        } catch (RuntimeException exception) {
+            throw Errors.dependencyUnavailable(
+                    "AWARD_OBJECT_STORAGE_READ_UNAVAILABLE",
+                    "Não foi possível liberar a visualização do vídeo.",
+                    exception,
+                    Map.of()
+            );
+        }
+    }
+
     public record WriteTicket(
             String parId,
             String uploadUrl,
+            Instant expiresAt
+    ) {
+    }
+
+    public record ReadTicket(
+            String url,
             Instant expiresAt
     ) {
     }

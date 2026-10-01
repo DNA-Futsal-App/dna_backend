@@ -464,12 +464,6 @@ public class AwardRegistrationService {
                 entries.saveAndFlush(
                         entry
                 );
-
-        /*
-         * Só inicia o worker depois do COMMIT.
-         * Isso evita o worker enxergar a entry antes
-         * de PROCESSING estar persistido.
-         */
         TransactionSynchronizationManager
                 .registerSynchronization(
                         new TransactionSynchronization() {
@@ -644,7 +638,7 @@ public class AwardRegistrationService {
                                 MEDIA_READ_TTL
                         );
 
-        AwardMediaTicketResponse ticket =
+        OracleAwardVideoStorage.ReadTicket ticket =
                 storage.createReadTicket(
                         entry.getObjectName(),
                         "award-view-"
