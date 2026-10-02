@@ -226,10 +226,17 @@ public class AwardRegistration {
     }
 
     public void cancel(){
+
         this.status = AwardRegistrationStatus.CANCELLED;
+        this.submittedAt = null;
     }
 
     public AwardRegistrationGender getGender() {
         return gender;
+    }
+
+    public void reopenForEditing() {
+        this.status = AwardRegistrationStatus.DRAFT;
+        this.submittedAt = null;
     }
 }
