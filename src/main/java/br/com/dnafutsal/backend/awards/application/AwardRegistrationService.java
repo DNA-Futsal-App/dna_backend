@@ -346,14 +346,6 @@ public class AwardRegistrationService {
                         entryId
                 );
 
-        if (entry.getSourceType()
-                != AwardRegistrationMediaSource.UPLOAD) {
-            throw Errors.badRequest(
-                    "AWARD_ENTRY_NOT_UPLOAD",
-                    "Esta categoria foi configurada para receber um link externo."
-            );
-        }
-
         storage.deleteObjectQuietly(
                 entry.getPendingObjectName()
         );
@@ -553,13 +545,10 @@ public class AwardRegistrationService {
                         entryId
                 );
 
-        if (entry.getSourceType()
-                != AwardRegistrationMediaSource.LINK) {
-            throw Errors.badRequest(
-                    "AWARD_ENTRY_NOT_LINK",
-                    "Esta categoria foi configurada para upload de vídeo."
-            );
-        }
+        StorageCleanup cleanup =
+                storageCleanup(
+                        entry
+                );
 
         entry.updateExternalUrl(
                 validateExternalUrl(
@@ -567,10 +556,19 @@ public class AwardRegistrationService {
                 )
         );
 
-        return entryResponse(
+        AwardRegistrationEntry saved =
                 entries.saveAndFlush(
                         entry
+                );
+
+        scheduleStorageCleanupAfterCommit(
+                List.of(
+                        cleanup
                 )
+        );
+
+        return entryResponse(
+                saved
         );
     }
 
@@ -648,10 +646,6 @@ public class AwardRegistrationService {
                 requireOwnedRegistration(
                         registrationId
                 );
-
-        requireReviewNotStarted(
-                registration
-        );
 
         List<AwardRegistrationEntry> currentEntries =
                 entries.findByRegistrationIdOrderByCreatedAtAsc(
@@ -1018,24 +1012,6 @@ public class AwardRegistrationService {
             throw Errors.conflict(
                     "AWARD_REGISTRATION_CANCELLED",
                     "Esta inscrição foi cancelada."
-            );
-        }
-
-        requireReviewNotStarted(
-                registration
-        );
-    }
-
-    private void requireReviewNotStarted(
-            AwardRegistration registration
-    ) {
-        if (entries.existsByRegistrationIdAndReviewStatusNot(
-                registration.getId(),
-                AwardRegistrationReviewStatus.PENDING_REVIEW
-        )) {
-            throw Errors.conflict(
-                    "AWARD_REGISTRATION_REVIEW_STARTED",
-                    "A análise das candidaturas já começou. Vídeos e categorias não podem mais ser alterados."
             );
         }
     }

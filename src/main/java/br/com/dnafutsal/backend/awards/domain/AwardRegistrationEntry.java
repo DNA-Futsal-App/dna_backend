@@ -131,9 +131,12 @@ public class AwardRegistrationEntry {
             String pendingObjectName,
             String pendingParId
     ) {
+        this.sourceType = AwardRegistrationMediaSource.UPLOAD;
+        this.externalUrl = null;
         this.pendingObjectName = pendingObjectName;
         this.pendingParId = pendingParId;
         this.mediaStatus = AwardRegistrationMediaStatus.PENDING;
+        resetReview();
     }
 
     public void beginProcessing() {
@@ -192,14 +195,25 @@ public class AwardRegistrationEntry {
     }
 
     public void updateExternalUrl(String externalUrl) {
-        if (sourceType != AwardRegistrationMediaSource.LINK) {
-            throw new IllegalStateException(
-                    "Only LINK entries can update externalUrl."
-            );
-        }
-
+        this.sourceType = AwardRegistrationMediaSource.LINK;
         this.externalUrl = externalUrl;
+        this.objectName = null;
+        this.displayFilename = null;
+        this.pendingObjectName = null;
+        this.pendingParId = null;
+        this.durationMs = null;
+        this.width = null;
+        this.height = null;
+        this.fileSizeBytes = null;
         this.mediaStatus = AwardRegistrationMediaStatus.READY;
+        resetReview();
+    }
+
+    private void resetReview() {
+        this.reviewStatus = AwardRegistrationReviewStatus.PENDING_REVIEW;
+        this.reviewedAt = null;
+        this.reviewedByUserId = null;
+        this.reviewReason = null;
     }
 
     public void approveReview(

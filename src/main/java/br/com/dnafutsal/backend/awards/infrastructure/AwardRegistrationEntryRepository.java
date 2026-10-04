@@ -29,11 +29,6 @@ public interface AwardRegistrationEntryRepository
             UUID registrationId
     );
 
-    boolean existsByRegistrationIdAndReviewStatusNot(
-            UUID registrationId,
-            AwardRegistrationReviewStatus reviewStatus
-    );
-
     List<AwardRegistrationEntry> findByMediaStatus(
             AwardRegistrationMediaStatus mediaStatus
     );
