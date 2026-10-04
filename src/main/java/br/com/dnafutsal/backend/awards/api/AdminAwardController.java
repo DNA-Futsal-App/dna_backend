@@ -123,6 +123,24 @@ public class AdminAwardController {
         );
     }
 
+    @PostMapping("/editions/{editionId}/registrations/open")
+    AwardEditionAdminResponse openRegistrations(
+            @PathVariable UUID editionId
+    ) {
+        return editions.openRegistrations(
+                editionId
+        );
+    }
+
+    @PostMapping("/editions/{editionId}/registrations/close")
+    AwardEditionAdminResponse closeRegistrations(
+            @PathVariable UUID editionId
+    ) {
+        return editions.closeRegistrations(
+                editionId
+        );
+    }
+
     @PostMapping("/editions/{editionId}/reset-voting")
     ResetAwardVotingResponse resetVoting(
             @PathVariable UUID editionId

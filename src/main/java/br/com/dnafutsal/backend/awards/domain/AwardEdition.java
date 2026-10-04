@@ -37,6 +37,15 @@ public class AwardEdition {
     @Column(name = "voting_closes_at")
     private Instant votingClosesAt;
 
+    @Column(name = "registrations_open", nullable = false)
+    private boolean registrationsOpen;
+
+    @Column(name = "registrations_opened_at")
+    private Instant registrationsOpenedAt;
+
+    @Column(name = "registrations_closed_at")
+    private Instant registrationsClosedAt;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -112,6 +121,26 @@ public class AwardEdition {
         this.votingOpensAt = null;
         this.votingClosesAt = null;
     }
+
+    public boolean isRegistrationsOpen() {
+        return registrationsOpen;
+    }
+
+    public void openRegistrations(
+            Instant openedAt
+    ) {
+        this.registrationsOpen = true;
+        this.registrationsOpenedAt = openedAt;
+        this.registrationsClosedAt = null;
+    }
+
+    public void closeRegistrations(
+            Instant closedAt
+    ) {
+        this.registrationsOpen = false;
+        this.registrationsClosedAt = closedAt;
+    }
+
     public UUID getId() {
         return id;
     }
@@ -138,6 +167,14 @@ public class AwardEdition {
 
     public Instant getVotingClosesAt() {
         return votingClosesAt;
+    }
+
+    public Instant getRegistrationsOpenedAt() {
+        return registrationsOpenedAt;
+    }
+
+    public Instant getRegistrationsClosedAt() {
+        return registrationsClosedAt;
     }
 
     public Instant getCreatedAt() {

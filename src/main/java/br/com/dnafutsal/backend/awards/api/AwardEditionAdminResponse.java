@@ -12,7 +12,10 @@ public record AwardEditionAdminResponse(
         int season,
         String status,
         Instant votingOpensAt,
-        Instant votingClosesAt
+        Instant votingClosesAt,
+        boolean registrationsOpen,
+        Instant registrationsOpenedAt,
+        Instant registrationsClosedAt
 ) {
 
     public static AwardEditionAdminResponse from(
@@ -25,7 +28,10 @@ public record AwardEditionAdminResponse(
                 edition.getSeason(),
                 edition.getStatus().name(),
                 edition.getVotingOpensAt(),
-                edition.getVotingClosesAt()
+                edition.getVotingClosesAt(),
+                edition.isRegistrationsOpen(),
+                edition.getRegistrationsOpenedAt(),
+                edition.getRegistrationsClosedAt()
         );
     }
 }

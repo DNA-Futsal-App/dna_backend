@@ -93,6 +93,7 @@ public class AwardRegistrationService {
         return new AwardRegistrationContextResponse(
                 edition.getName(),
                 edition.getSeason(),
+                edition.isRegistrationsOpen(),
                 properties.effectiveMaxUploadBytes(),
                 properties.effectiveMaxDurationSeconds(),
                 contestCategories
@@ -137,6 +138,10 @@ public class AwardRegistrationService {
 
         AwardEdition edition =
                 requireEdition();
+
+        requireRegistrationsOpen(
+                edition
+        );
 
         UserAccount user =
                 users.findById(
@@ -336,7 +341,7 @@ public class AwardRegistrationService {
                         registrationId
                 );
 
-        requireWritable(
+        requireNotCancelled(
                 registration
         );
 
@@ -646,6 +651,10 @@ public class AwardRegistrationService {
                 requireOwnedRegistration(
                         registrationId
                 );
+
+        requireRegistrationsOpen(
+                registration
+        );
 
         List<AwardRegistrationEntry> currentEntries =
                 entries.findByRegistrationIdOrderByCreatedAtAsc(
@@ -1007,11 +1016,53 @@ public class AwardRegistrationService {
     private void requireWritable(
             AwardRegistration registration
     ) {
+        requireNotCancelled(
+                registration
+        );
+
+        requireRegistrationsOpen(
+                registration
+        );
+    }
+
+    private void requireNotCancelled(
+            AwardRegistration registration
+    ) {
         if (registration.getStatus()
                 == AwardRegistrationStatus.CANCELLED) {
             throw Errors.conflict(
                     "AWARD_REGISTRATION_CANCELLED",
                     "Esta inscrição foi cancelada."
+            );
+        }
+    }
+
+    private void requireRegistrationsOpen(
+            AwardRegistration registration
+    ) {
+        AwardEdition edition =
+                editions.findById(
+                                registration.getEditionId()
+                        )
+                        .orElseThrow(() ->
+                                Errors.notFound(
+                                        "AWARD_EDITION_NOT_FOUND",
+                                        "Edição do prêmio não encontrada."
+                                )
+                        );
+
+        requireRegistrationsOpen(
+                edition
+        );
+    }
+
+    private void requireRegistrationsOpen(
+            AwardEdition edition
+    ) {
+        if (!edition.isRegistrationsOpen()) {
+            throw Errors.conflict(
+                    "AWARD_REGISTRATIONS_CLOSED",
+                    "O período de inscrições do Prêmio Legacy está encerrado."
             );
         }
     }

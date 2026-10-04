@@ -204,6 +204,58 @@ public class AwardEditionAdminService {
         );
     }
 
+    @Transactional
+    public AwardEditionAdminResponse openRegistrations(
+            UUID editionId
+    ) {
+        AwardEdition edition =
+                edition(
+                        editionId
+                );
+
+        if (edition.isRegistrationsOpen()) {
+            return AwardEditionAdminResponse.from(
+                    edition
+            );
+        }
+
+        edition.openRegistrations(
+                clock.instant()
+        );
+
+        return AwardEditionAdminResponse.from(
+                editions.saveAndFlush(
+                        edition
+                )
+        );
+    }
+
+    @Transactional
+    public AwardEditionAdminResponse closeRegistrations(
+            UUID editionId
+    ) {
+        AwardEdition edition =
+                edition(
+                        editionId
+                );
+
+        if (!edition.isRegistrationsOpen()) {
+            return AwardEditionAdminResponse.from(
+                    edition
+            );
+        }
+
+        edition.closeRegistrations(
+                clock.instant()
+        );
+
+        return AwardEditionAdminResponse.from(
+                editions.saveAndFlush(
+                        edition
+                )
+        );
+    }
+
     private void validateCoachBindings(
             UUID editionId,
             List<AwardCandidate> activeCandidates
