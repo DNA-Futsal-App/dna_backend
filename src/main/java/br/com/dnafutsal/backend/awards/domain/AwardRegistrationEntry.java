@@ -35,6 +35,19 @@ public class AwardRegistrationEntry {
     @Column(name = "media_status", nullable = false, length = 20)
     private AwardRegistrationMediaStatus mediaStatus;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "review_status", nullable = false, length = 20)
+    private AwardRegistrationReviewStatus reviewStatus;
+
+    @Column(name = "reviewed_at")
+    private Instant reviewedAt;
+
+    @Column(name = "reviewed_by_user_id")
+    private UUID reviewedByUserId;
+
+    @Column(name = "review_reason", length = 1000)
+    private String reviewReason;
+
     @Column(name = "external_url", length = 2000)
     private String externalUrl;
 
@@ -86,6 +99,7 @@ public class AwardRegistrationEntry {
                 sourceType == AwardRegistrationMediaSource.LINK
                         ? AwardRegistrationMediaStatus.READY
                         : AwardRegistrationMediaStatus.PENDING;
+        this.reviewStatus = AwardRegistrationReviewStatus.PENDING_REVIEW;
     }
 
     @PrePersist
@@ -98,6 +112,10 @@ public class AwardRegistrationEntry {
 
         if (mediaStatus == null) {
             mediaStatus = AwardRegistrationMediaStatus.PENDING;
+        }
+
+        if (reviewStatus == null) {
+            reviewStatus = AwardRegistrationReviewStatus.PENDING_REVIEW;
         }
 
         createdAt = now;
@@ -184,6 +202,62 @@ public class AwardRegistrationEntry {
         this.mediaStatus = AwardRegistrationMediaStatus.READY;
     }
 
+    public void approveReview(
+            UUID reviewerUserId,
+            Instant reviewedAt
+    ) {
+        requirePendingReview();
+
+        if (mediaStatus != AwardRegistrationMediaStatus.READY) {
+            throw new IllegalStateException(
+                    "Only READY entries can be reviewed."
+            );
+        }
+
+        this.reviewStatus = AwardRegistrationReviewStatus.APPROVED;
+        this.reviewedByUserId = reviewerUserId;
+        this.reviewedAt = reviewedAt;
+        this.reviewReason = null;
+    }
+
+    public void rejectReview(
+            UUID reviewerUserId,
+            Instant reviewedAt,
+            String reason
+    ) {
+        requirePendingReview();
+
+        if (mediaStatus != AwardRegistrationMediaStatus.READY) {
+            throw new IllegalStateException(
+                    "Only READY entries can be reviewed."
+            );
+        }
+
+        String normalizedReason =
+                reason == null
+                        ? ""
+                        : reason.trim();
+
+        if (normalizedReason.isBlank()) {
+            throw new IllegalArgumentException(
+                    "Review reason is required when rejecting an entry."
+            );
+        }
+
+        this.reviewStatus = AwardRegistrationReviewStatus.REJECTED;
+        this.reviewedByUserId = reviewerUserId;
+        this.reviewedAt = reviewedAt;
+        this.reviewReason = normalizedReason;
+    }
+
+    private void requirePendingReview() {
+        if (reviewStatus != AwardRegistrationReviewStatus.PENDING_REVIEW) {
+            throw new IllegalStateException(
+                    "This entry already has a review decision."
+            );
+        }
+    }
+
     public UUID getId() {
         return id;
     }
@@ -202,6 +276,22 @@ public class AwardRegistrationEntry {
 
     public AwardRegistrationMediaStatus getMediaStatus() {
         return mediaStatus;
+    }
+
+    public AwardRegistrationReviewStatus getReviewStatus() {
+        return reviewStatus;
+    }
+
+    public Instant getReviewedAt() {
+        return reviewedAt;
+    }
+
+    public UUID getReviewedByUserId() {
+        return reviewedByUserId;
+    }
+
+    public String getReviewReason() {
+        return reviewReason;
     }
 
     public String getExternalUrl() {

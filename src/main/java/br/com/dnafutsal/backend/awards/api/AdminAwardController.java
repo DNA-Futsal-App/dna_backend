@@ -5,20 +5,26 @@ import br.com.dnafutsal.backend.awards.application.AwardCandidateAdminService;
 import br.com.dnafutsal.backend.awards.application.AwardCandidateImportService;
 import br.com.dnafutsal.backend.awards.application.AwardCoachSyncService;
 import br.com.dnafutsal.backend.awards.application.AwardEditionAdminService;
+import br.com.dnafutsal.backend.awards.application.AwardRegistrationReviewService;
 import br.com.dnafutsal.backend.awards.application.AwardResultsService;
 import br.com.dnafutsal.backend.awards.application.AwardVotingResetService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.UUID;
 
+@Validated
 @RestController
 @RequestMapping("/api/v1/admin/awards")
 public class AdminAwardController {
@@ -30,6 +36,7 @@ public class AdminAwardController {
     private final AwardAdminDashboardService dashboard;
     private final AwardResultsService results;
     private final AwardVotingResetService votingReset;
+    private final AwardRegistrationReviewService registrationReviews;
 
     public AdminAwardController(
             AwardEditionAdminService editions,
@@ -38,7 +45,8 @@ public class AdminAwardController {
             AwardCandidateAdminService candidates,
             AwardAdminDashboardService dashboard,
             AwardResultsService results,
-            AwardVotingResetService votingReset
+            AwardVotingResetService votingReset,
+            AwardRegistrationReviewService registrationReviews
     ) {
         this.editions = editions;
         this.importer = importer;
@@ -47,6 +55,7 @@ public class AdminAwardController {
         this.dashboard = dashboard;
         this.results = results;
         this.votingReset = votingReset;
+        this.registrationReviews = registrationReviews;
     }
 
     @GetMapping("/editions")
@@ -133,6 +142,65 @@ public class AdminAwardController {
         return coachSync.sync(
                 editionId,
                 request
+        );
+    }
+
+
+    @GetMapping("/editions/{editionId}/registrations")
+    AwardAdminRegistrationPageResponse registrations(
+            @PathVariable UUID editionId,
+            @RequestParam(required = false)
+            br.com.dnafutsal.backend.awards.domain.AwardRegistrationReviewStatus reviewStatus,
+            @RequestParam(defaultValue = "0")
+            @Min(0)
+            int page,
+            @RequestParam(defaultValue = "20")
+            @Min(1)
+            @Max(50)
+            int size
+    ) {
+        return registrationReviews.page(
+                editionId,
+                reviewStatus,
+                page,
+                size
+        );
+    }
+
+    @PostMapping("/registrations/{registrationId}/entries/{entryId}/approve")
+    AwardAdminRegistrationEntryResponse approveRegistrationEntry(
+            @PathVariable UUID registrationId,
+            @PathVariable UUID entryId
+    ) {
+        return registrationReviews.approve(
+                registrationId,
+                entryId
+        );
+    }
+
+    @PostMapping("/registrations/{registrationId}/entries/{entryId}/reject")
+    AwardAdminRegistrationEntryResponse rejectRegistrationEntry(
+            @PathVariable UUID registrationId,
+            @PathVariable UUID entryId,
+            @Valid
+            @RequestBody
+            RejectAwardRegistrationEntryRequest request
+    ) {
+        return registrationReviews.reject(
+                registrationId,
+                entryId,
+                request.reason()
+        );
+    }
+
+    @PostMapping("/registrations/{registrationId}/entries/{entryId}/media-ticket")
+    AwardMediaTicketResponse registrationMediaTicket(
+            @PathVariable UUID registrationId,
+            @PathVariable UUID entryId
+    ) {
+        return registrationReviews.mediaTicket(
+                registrationId,
+                entryId
         );
     }
 

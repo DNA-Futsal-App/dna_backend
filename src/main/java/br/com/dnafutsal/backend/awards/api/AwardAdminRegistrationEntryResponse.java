@@ -8,7 +8,7 @@ import br.com.dnafutsal.backend.awards.domain.AwardRegistrationReviewStatus;
 import java.time.Instant;
 import java.util.UUID;
 
-public record AwardRegistrationEntryResponse(
+public record AwardAdminRegistrationEntryResponse(
         UUID id,
         AwardRegistrationContestCategory contestCategory,
         String contestCategoryLabel,
@@ -22,6 +22,8 @@ public record AwardRegistrationEntryResponse(
         Integer height,
         Long fileSizeBytes,
         Instant reviewedAt,
+        UUID reviewedByUserId,
+        String reviewedByName,
         String reviewReason
 ) {
 }

@@ -649,6 +649,9 @@ public class AwardRegistrationService {
                         registrationId
                 );
 
+        requireReviewNotStarted(
+                registration
+        );
 
         List<AwardRegistrationEntry> currentEntries =
                 entries.findByRegistrationIdOrderByCreatedAtAsc(
@@ -1017,6 +1020,24 @@ public class AwardRegistrationService {
                     "Esta inscrição foi cancelada."
             );
         }
+
+        requireReviewNotStarted(
+                registration
+        );
+    }
+
+    private void requireReviewNotStarted(
+            AwardRegistration registration
+    ) {
+        if (entries.existsByRegistrationIdAndReviewStatusNot(
+                registration.getId(),
+                AwardRegistrationReviewStatus.PENDING_REVIEW
+        )) {
+            throw Errors.conflict(
+                    "AWARD_REGISTRATION_REVIEW_STARTED",
+                    "A análise das candidaturas já começou. Vídeos e categorias não podem mais ser alterados."
+            );
+        }
     }
 
     private CatalogContext validateSportsContext(
@@ -1316,12 +1337,15 @@ public class AwardRegistrationService {
                         .label(),
                 entry.getSourceType(),
                 entry.getMediaStatus(),
+                entry.getReviewStatus(),
                 entry.getExternalUrl(),
                 entry.getDisplayFilename(),
                 entry.getDurationMs(),
                 entry.getWidth(),
                 entry.getHeight(),
-                entry.getFileSizeBytes()
+                entry.getFileSizeBytes(),
+                entry.getReviewedAt(),
+                entry.getReviewReason()
         );
     }
 

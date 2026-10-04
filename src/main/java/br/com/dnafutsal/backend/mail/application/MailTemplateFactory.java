@@ -35,6 +35,80 @@ public class MailTemplateFactory {
                         "Criar nova senha", link));
     }
 
+    public MailMessage awardCandidateApproved(
+            String name,
+            String email,
+            long registrationNumber,
+            String athleteName,
+            String categoryLabel,
+            String editionName
+    ) {
+        String link =
+                properties.frontendBaseUrl()
+                        + "/app/premio/minha-inscricao";
+
+        String text =
+                "A candidatura de "
+                        + athleteName
+                        + " na categoria "
+                        + categoryLabel
+                        + " foi aprovada no "
+                        + editionName
+                        + ". Inscrição #"
+                        + String.format("%06d", registrationNumber)
+                        + ".";
+
+        return new MailMessage(
+                email,
+                "Candidatura aprovada — Prêmio Legacy",
+                layout(
+                        name,
+                        "Candidatura aprovada",
+                        text,
+                        "Ver minha inscrição",
+                        link
+                )
+        );
+    }
+
+    public MailMessage awardCandidateRejected(
+            String name,
+            String email,
+            long registrationNumber,
+            String athleteName,
+            String categoryLabel,
+            String editionName,
+            String reason
+    ) {
+        String link =
+                properties.frontendBaseUrl()
+                        + "/app/premio/minha-inscricao";
+
+        String text =
+                "A candidatura de "
+                        + athleteName
+                        + " na categoria "
+                        + categoryLabel
+                        + " não foi aprovada no "
+                        + editionName
+                        + ". Inscrição #"
+                        + String.format("%06d", registrationNumber)
+                        + ". Motivo: "
+                        + reason;
+
+        return new MailMessage(
+                email,
+                "Candidatura não aprovada — Prêmio Legacy",
+                layout(
+                        name,
+                        "Candidatura não aprovada",
+                        text,
+                        "Ver minha inscrição",
+                        link
+                )
+        );
+    }
+
     private String layout(String name, String title, String text, String button, String link) {
         return """
                 <!doctype html><html lang="pt-BR"><body style="font-family:Arial,sans-serif;background:#f4f7fb;padding:24px">
