@@ -20,6 +20,14 @@ public interface AwardBallotRepository
             UUID voterUserId
     );
 
+    boolean existsByEditionIdAndCoachVoterId(
+            UUID editionId, UUID coachVoterId
+    );
+
+    Optional<AwardBallot> findByEditionIdAndCoachVoterId(
+            UUID editionId, UUID coachVoterId
+    );
+
     List<AwardBallot> findByEditionId(
             UUID editionId
     );

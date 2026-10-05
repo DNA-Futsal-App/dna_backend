@@ -85,6 +85,13 @@ public class AdminAwardController {
         return results.audit(editionId);
     }
 
+    @GetMapping("/editions/{editionId}/partial-results")
+    AwardAdminResultsResponse partialResults(
+            @PathVariable UUID editionId
+    ) {
+        return results.partialResults(editionId);
+    }
+
     @GetMapping("/editions/{editionId}/results")
     AwardAdminResultsResponse results(
             @PathVariable UUID editionId

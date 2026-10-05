@@ -73,6 +73,15 @@ public class AwardResultsService {
     }
 
     @Transactional(readOnly = true)
+    public AwardAdminResultsResponse partialResults(
+            UUID editionId
+    ) {
+        return aggregate(
+                snapshot(editionId)
+        );
+    }
+
+    @Transactional(readOnly = true)
     public AwardAdminResultsResponse results(
             UUID editionId
     ) {
@@ -82,10 +91,16 @@ public class AwardResultsService {
                 != AwardEditionStatus.CLOSED) {
             throw Errors.conflict(
                     "AWARD_RESULTS_LOCKED_UNTIL_CLOSE",
-                    "A apuração por candidato só é liberada depois que a votação for encerrada."
+                    "A apuração final só é liberada depois que a votação for encerrada."
             );
         }
 
+        return aggregate(snapshot);
+    }
+
+    private AwardAdminResultsResponse aggregate(
+            Snapshot snapshot
+    ) {
         AwardAdminAuditResponse audit = audit(snapshot);
 
         if (!audit.integrityOk()) {

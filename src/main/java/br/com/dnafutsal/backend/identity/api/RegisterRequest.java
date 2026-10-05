@@ -17,6 +17,6 @@ public record RegisterRequest(
         @Size(max = 100) String categoryId,
         @Size(max = 100) String divisionId,
         @Size(max = 100) String teamId,
-        @Size(max = 200) String coachInviteToken
+        @Size(max = 200) String coachAccessToken
 ) {
 }

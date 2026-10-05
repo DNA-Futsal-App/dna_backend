@@ -25,4 +25,20 @@ public interface AwardCoachVoterRepository extends JpaRepository<AwardCoachVoter
     List<AwardCoachVoter> findByEditionId(
             UUID editionId
     );
+
+    List<AwardCoachVoter> findByCredentialIdAndActiveTrueOrderByCreatedAtAsc(
+            UUID credentialId
+    );
+
+    Optional<AwardCoachVoter> findByIdAndCredentialIdAndActiveTrue(
+            UUID id, UUID credentialId
+    );
+
+    boolean existsByCredentialIdAndEventIdAndDivisionIdAndCategoryIdAndTeamIdAndActiveTrue(
+            UUID credentialId,
+            long eventId,
+            long divisionId,
+            long categoryId,
+            String teamId
+    );
 }
