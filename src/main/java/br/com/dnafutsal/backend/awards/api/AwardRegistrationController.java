@@ -192,6 +192,20 @@ public class AwardRegistrationController {
         );
     }
 
+    @DeleteMapping("/{registrationId}/permanent")
+    ResponseEntity<Void> deletePermanently(
+            @PathVariable
+            UUID registrationId
+    ) {
+        registrations.deletePermanently(
+                registrationId
+        );
+
+        return ResponseEntity
+                .noContent()
+                .build();
+    }
+
     @GetMapping("/catalog/divisions")
     List<CatalogItemView> divisions(
             @RequestParam

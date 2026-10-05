@@ -899,6 +899,51 @@ public class AwardRegistrationService {
         );
     }
 
+    @Transactional
+    public void deletePermanently(
+            UUID registrationId
+    ) {
+        AwardRegistration registration =
+                requireOwnedRegistration(
+                        registrationId
+                );
+
+        requireRegistrationsOpen(
+                registration
+        );
+
+        List<AwardRegistrationEntry> registrationEntries =
+                entries.findByRegistrationIdOrderByCreatedAtAsc(
+                        registrationId
+                );
+
+        List<StorageCleanup> cleanup =
+                registrationEntries.stream()
+                        .map(
+                                this::storageCleanup
+                        )
+                        .toList();
+
+        /*
+         * O FK de award_registration_entries usa ON DELETE CASCADE.
+         * Excluímos o registro principal e deixamos o banco remover
+         * as entries na mesma transação.
+         */
+        registrations.delete(
+                registration
+        );
+
+        registrations.flush();
+
+        /*
+         * A Oracle só é limpa depois do commit. Se a transação falhar,
+         * nenhum objeto é removido.
+         */
+        scheduleStorageCleanupAfterCommit(
+                cleanup
+        );
+    }
+
     private StorageCleanup storageCleanup(
             AwardRegistrationEntry entry
     ) {
