@@ -176,7 +176,7 @@ public class SportsController {
             String teamId
     ) {
         return myTeam.get(
-                resolve(
+                resolveTeam(
                         eventId,
                         teamId
                 )
@@ -221,7 +221,19 @@ public class SportsController {
     }
 
     private SportsFilter resolve(Long eventId, String teamId) {
-        return filters.resolve(currentUser.userId(), eventId, teamId);
+        return filters.resolveCompetition(
+                currentUser.userId(),
+                eventId,
+                teamId
+        );
+    }
+
+    private SportsFilter resolveTeam(Long eventId, String teamId) {
+        return filters.resolve(
+                currentUser.userId(),
+                eventId,
+                teamId
+        );
     }
 
     private SportsFilter resolveCompetition(
