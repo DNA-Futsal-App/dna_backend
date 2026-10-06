@@ -213,14 +213,14 @@ class SportsControllerWebTest {
         UUID userId = UUID.randomUUID();
         SportsFilter filter = new SportsFilter(917, null);
         when(currentUser.userId()).thenReturn(userId);
-        when(filters.resolve(userId, 917L, null)).thenReturn(filter);
+        when(filters.resolveCompetition(userId, 917L, null)).thenReturn(filter);
         when(sports.playedMatches(filter, null, null, null)).thenReturn(List.of());
 
         mvc.perform(get("/api/v1/matches/played").with(user("user")).param("eventId", "917"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isArray());
 
-        verify(filters).resolve(userId, 917L, null);
+        verify(filters).resolveCompetition(userId, 917L, null);
     }
 
     @Test
