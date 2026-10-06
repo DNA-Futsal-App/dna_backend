@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
+import org.springframework.web.util.DisconnectedClientHelper;
 
 import java.net.URI;
 import java.time.Instant;
@@ -113,6 +114,22 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     ResponseEntity<ProblemDetail> handleUnexpected(Exception exception, HttpServletRequest request) {
+        if (DisconnectedClientHelper.isClientDisconnectedException(exception)) {
+            /*
+             * O consumidor encerrou a conexão enquanto o Spring escrevia a
+             * resposta. O socket já não aceita outro ProblemDetail e isso
+             * não representa um INTERNAL_ERROR da aplicação.
+             */
+            log.debug(
+                    "Client disconnected before response completed requestId={} method={} path={} exceptionType={}",
+                    RequestIdFilter.from(request),
+                    request.getMethod(),
+                    request.getRequestURI(),
+                    exception.getClass().getName()
+            );
+            return null;
+        }
+
         Throwable rootCause = rootCause(exception);
         log.error("Unexpected request failure requestId={} method={} path={} status=500 code=INTERNAL_ERROR "
                         + "exceptionType={} rootCauseType={}",

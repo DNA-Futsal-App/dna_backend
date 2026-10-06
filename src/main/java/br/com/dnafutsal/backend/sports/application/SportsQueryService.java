@@ -440,33 +440,366 @@ public class SportsQueryService {
             SportsSnapshot snapshot,
             String requestedPhase
     ) {
-        String phase =
-                hasText(requestedPhase)
-                        ? requestedPhase
-                        : currentPhase(
+        if (hasText(requestedPhase)) {
+            return deduplicateStandings(
+                    snapshot.standings()
+                            .stream()
+                            .filter(row ->
+                                    contains(
+                                            row.phase(),
+                                            requestedPhase
+                                    )
+                            )
+                            .toList()
+            );
+        }
+
+        String classificationPhase =
+                classificationPhase(
                         snapshot
                 );
 
-        if (!hasText(phase)) {
-            return snapshot.standings();
+        if (!hasText(classificationPhase)) {
+            return deduplicateStandings(
+                    snapshot.standings()
+            );
         }
 
-        List<StandingView> result =
+        return deduplicateStandings(
                 snapshot.standings()
                         .stream()
                         .filter(row ->
-                                contains(
+                                same(
                                         row.phase(),
+                                        classificationPhase
+                                )
+                        )
+                        .toList()
+        );
+    }
+
+    private String classificationPhase(
+            SportsSnapshot snapshot
+    ) {
+        var phasesByKey =
+                new java.util.LinkedHashMap<String, String>();
+
+        snapshot.standings()
+                .stream()
+                .map(
+                        StandingView::phase
+                )
+                .filter(
+                        this::hasText
+                )
+                .forEach(phase ->
+                        phasesByKey.putIfAbsent(
+                                normalize(phase),
+                                phase
+                        )
+                );
+
+        List<String> phases =
+                List.copyOf(
+                        phasesByKey.values()
+                );
+
+        if (phases.isEmpty()) {
+            return null;
+        }
+
+        /*
+         * A FPFS expõe uma aba/fase própria chamada "Fase Classificatória"
+         * (ou variantes como "Fase de Classificação"). O scraper preserva
+         * esse rótulo em StandingView.phase(), então essa é a fonte de
+         * verdade para a tabela final da fase de pontos.
+         */
+        List<String> officialClassificationPhases =
+                phases.stream()
+                        .filter(
+                                this::isOfficialClassificationPhase
+                        )
+                        .toList();
+
+        if (
+                !officialClassificationPhases.isEmpty()
+        ) {
+            return officialClassificationPhases
+                    .stream()
+                    .max(
+                            Comparator
+                                    .comparingInt(
+                                            (String phase) ->
+                                                    distinctTeamsInPhase(
+                                                            snapshot,
+                                                            phase
+                                                    )
+                                    )
+                                    .thenComparingInt(
+                                            (String phase) ->
+                                                    totalPlayedInPhase(
+                                                            snapshot,
+                                                            phase
+                                                    )
+                                    )
+                    )
+                    .orElse(
+                            officialClassificationPhases.get(0)
+                    );
+        }
+
+        /*
+         * Compatibilidade para campeonatos cuja fonte não nomeia
+         * explicitamente a fase classificatória.
+         */
+        List<String> nonKnockoutPhases =
+                phases.stream()
+                        .filter(phase ->
+                                !isKnockoutPhase(
                                         phase
                                 )
                         )
                         .toList();
+
         if (
-                result.isEmpty()
-                        && !hasText(requestedPhase)
+                nonKnockoutPhases.isEmpty()
         ) {
-            return snapshot.standings();
+            return null;
         }
+
+        Comparator<MatchView> byDate =
+                Comparator
+                        .comparing(
+                                MatchView::scheduledDate,
+                                Comparator.nullsFirst(
+                                        Comparator.naturalOrder()
+                                )
+                        )
+                        .thenComparing(
+                                MatchView::scheduledAt,
+                                Comparator.nullsFirst(
+                                        Comparator.naturalOrder()
+                                )
+                        );
+
+        String phaseFromLatestClassificationMatch =
+                snapshot.matches()
+                        .stream()
+                        .filter(match ->
+                                hasText(
+                                        match.phase()
+                                )
+                        )
+                        .filter(match ->
+                                !isKnockoutPhase(
+                                        match.phase()
+                                )
+                        )
+                        .filter(match ->
+                                nonKnockoutPhases.stream()
+                                        .anyMatch(phase ->
+                                                same(
+                                                        phase,
+                                                        match.phase()
+                                                )
+                                        )
+                        )
+                        .max(
+                                byDate
+                        )
+                        .map(
+                                MatchView::phase
+                        )
+                        .orElse(null);
+
+        if (
+                phaseFromLatestClassificationMatch
+                        != null
+        ) {
+            return nonKnockoutPhases.stream()
+                    .filter(phase ->
+                            same(
+                                    phase,
+                                    phaseFromLatestClassificationMatch
+                            )
+                    )
+                    .findFirst()
+                    .orElse(
+                            phaseFromLatestClassificationMatch
+                    );
+        }
+
+        return nonKnockoutPhases.get(
+                nonKnockoutPhases.size() - 1
+        );
+    }
+
+    private boolean isOfficialClassificationPhase(
+            String value
+    ) {
+        String phase =
+                normalize(value);
+
+        return phase.contains(
+                "classificatoria"
+        )
+                || phase.contains(
+                "classificacao"
+        );
+    }
+
+    private int distinctTeamsInPhase(
+            SportsSnapshot snapshot,
+            String phase
+    ) {
+        return Math.toIntExact(
+                snapshot.standings()
+                        .stream()
+                        .filter(row ->
+                                same(
+                                        row.phase(),
+                                        phase
+                                )
+                        )
+                        .map(row ->
+                                normalize(
+                                        row.team().name()
+                                )
+                        )
+                        .distinct()
+                        .count()
+        );
+    }
+
+    private int totalPlayedInPhase(
+            SportsSnapshot snapshot,
+            String phase
+    ) {
+        return snapshot.standings()
+                .stream()
+                .filter(row ->
+                        same(
+                                row.phase(),
+                                phase
+                        )
+                )
+                .map(
+                        StandingView::played
+                )
+                .filter(
+                        java.util.Objects::nonNull
+                )
+                .mapToInt(
+                        Integer::intValue
+                )
+                .sum();
+    }
+
+    private boolean isKnockoutPhase(
+            String value
+    ) {
+        String phase =
+                normalize(value);
+
+        return phase.contains("oitav")
+                || phase.contains("quart")
+                || phase.contains("semi final")
+                || phase.contains("semifinal")
+                || phase.equals("final")
+                || phase.endsWith(" final")
+                || phase.contains("mata mata")
+                || phase.contains("eliminatoria")
+                || phase.contains("playoff");
+    }
+
+    private List<StandingView> deduplicateStandings(
+            List<StandingView> rows
+    ) {
+        var unique =
+                new java.util.LinkedHashMap<String, StandingView>();
+
+        for (StandingView row : rows) {
+            String key =
+                    normalize(
+                            row.group()
+                    )
+                            + "|"
+                            + normalize(
+                            row.team().name()
+                    );
+
+            StandingView previous =
+                    unique.get(
+                            key
+                    );
+
+            if (
+                    previous == null
+                            || isMoreCompleteStanding(
+                            row,
+                            previous
+                    )
+            ) {
+                unique.put(
+                        key,
+                        row
+                );
+            }
+        }
+
+        return List.copyOf(
+                unique.values()
+        );
+    }
+
+    private boolean isMoreCompleteStanding(
+            StandingView candidate,
+            StandingView current
+    ) {
+        int candidatePlayed =
+                candidate.played() == null
+                        ? -1
+                        : candidate.played();
+
+        int currentPlayed =
+                current.played() == null
+                        ? -1
+                        : current.played();
+
+        if (
+                candidatePlayed
+                        != currentPlayed
+        ) {
+            return candidatePlayed
+                    > currentPlayed;
+        }
+
+        return populatedStandingFields(
+                candidate
+        )
+                > populatedStandingFields(
+                current
+        );
+    }
+
+    private int populatedStandingFields(
+            StandingView row
+    ) {
+        int result = 0;
+
+        if (row.position() != null) result++;
+        if (row.played() != null) result++;
+        if (row.wins() != null) result++;
+        if (row.draws() != null) result++;
+        if (row.losses() != null) result++;
+        if (row.goalsFor() != null) result++;
+        if (row.goalsAgainst() != null) result++;
+        if (row.goalDifference() != null) result++;
+        if (row.points() != null) result++;
+        if (row.average() != null) result++;
+        if (row.goalsForAverage() != null) result++;
+        if (row.goalsAgainstAverage() != null) result++;
+        if (row.technicalIndex() != null) result++;
 
         return result;
     }
