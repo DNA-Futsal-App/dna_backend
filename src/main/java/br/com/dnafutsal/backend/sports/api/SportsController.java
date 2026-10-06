@@ -66,13 +66,24 @@ public class SportsController {
 
     @GetMapping("/standings")
     List<StandingView> standings(
-            @RequestParam(required = false) @Positive Long eventId,
-            @RequestParam(required = false) @Size(max = 100) String teamId,
-            @RequestParam(required = false) @Size(max = 150) String phase,
-            @RequestParam(required = false) @Size(max = 150) String group
+            @RequestParam(required = false)
+            @Positive
+            Long eventId,
+
+            @RequestParam(required = false)
+            @Size(max = 100)
+            String teamId,
+
+            @RequestParam(required = false)
+            @Size(max = 150)
+            String phase,
+
+            @RequestParam(required = false)
+            @Size(max = 150)
+            String group
     ) {
         return sports.standings(
-                resolve(
+                resolveCompetition(
                         eventId,
                         teamId
                 ),

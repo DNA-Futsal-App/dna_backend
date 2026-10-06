@@ -24,12 +24,10 @@ class SportsScraperMapper {
 
     private final ZoneId zoneId;
     private final Clock clock;
-    private final TeamLogoResolver logos;
 
-    SportsScraperMapper(AppProperties properties, Clock clock, TeamLogoResolver logos) {
+    SportsScraperMapper(AppProperties properties, Clock clock) {
         this.zoneId = properties.zoneId();
         this.clock = clock;
-        this.logos = logos;
     }
 
     CatalogItemView catalogItem(
@@ -225,8 +223,7 @@ class SportsScraperMapper {
 
     private TeamView team(long eventId, ScraperTeam source) {
         String id = Long.toString(source.teamId());
-        return new TeamView(id, source.name(), null,
-                logos.resolve(eventId, id, source.name(), source.logoUrl()));
+        return new TeamView(id, source.name(), null, source.logoUrl());
     }
 
     private Map<String, TeamView> indexByName(List<TeamView> teams) {
@@ -250,14 +247,13 @@ class SportsScraperMapper {
         TeamView known = teamsByName.get(normalized);
         if (known != null) {
             String upstream = known.logoUrl() != null ? known.logoUrl() : logoUrl;
-            return new TeamView(known.id(), known.name(), known.shortName(),
-                    logos.resolve(eventId, known.id(), known.name(), upstream));
+            return new TeamView(known.id(), known.name(), known.shortName(), upstream);
         }
         String displayName = name == null || name.isBlank() ? "Equipe não informada" : name.trim();
         String suffix = normalized.isBlank() ? deterministicId(displayName) : normalized.replace(' ', '-');
         String id = "name:" + suffix;
-        return new TeamView(id, displayName, null, teamsByName.containsKey(normalized)
-                ? null : logos.resolve(eventId, id, displayName, logoUrl));
+        return new TeamView(id, displayName, null,
+                teamsByName.containsKey(normalized) ? null : logoUrl);
     }
 
     private String gameId(long eventId, ScraperGame game) {

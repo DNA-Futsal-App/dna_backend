@@ -228,4 +228,77 @@ class SportsControllerWebTest {
         mvc.perform(post("/api/v1/internal/sports/match-completed").with(user("user")))
                 .andExpect(status().isNotFound());
     }
+
+    @Test
+    void standingsUsesCompetitionFilterWithoutImplicitProfileTeam()
+            throws Exception {
+
+        UUID userId =
+                UUID.randomUUID();
+
+        SportsFilter filter =
+                new SportsFilter(
+                        917,
+                        null
+                );
+
+        when(
+                currentUser.userId()
+        ).thenReturn(
+                userId
+        );
+
+        when(
+                filters.resolveCompetition(
+                        userId,
+                        917L,
+                        null
+                )
+        ).thenReturn(
+                filter
+        );
+
+        when(
+                sports.standings(
+                        filter,
+                        null,
+                        null
+                )
+        ).thenReturn(
+                List.of()
+        );
+
+        mvc.perform(
+                        get("/api/v1/standings")
+                                .with(
+                                        user("user")
+                                )
+                                .param(
+                                        "eventId",
+                                        "917"
+                                )
+                )
+                .andExpect(
+                        status().isOk()
+                )
+                .andExpect(
+                        jsonPath("$").isArray()
+                );
+
+        verify(
+                filters
+        ).resolveCompetition(
+                userId,
+                917L,
+                null
+        );
+
+        verify(
+                sports
+        ).standings(
+                filter,
+                null,
+                null
+        );
+    }
 }

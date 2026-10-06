@@ -3,7 +3,6 @@ package br.com.dnafutsal.backend.sports.infrastructure;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
-import org.springframework.stereotype.Component;
 import tools.jackson.databind.DeserializationFeature;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -17,7 +16,13 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 
-@Component
+/**
+ * Resolver legado mantido temporariamente para rollback e testes do manifesto antigo.
+ *
+ * <p>Não é mais um componente Spring. O runtime passa a preservar diretamente
+ * o logoUrl fornecido pelo scraper, seguindo a estratégia do projeto de referência.</p>
+ */
+@Deprecated(forRemoval = true)
 public class TeamLogoResolver {
 
     public record Club(String key, String logoPath) {}
