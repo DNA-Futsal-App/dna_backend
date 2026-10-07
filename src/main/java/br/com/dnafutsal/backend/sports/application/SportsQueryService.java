@@ -197,6 +197,83 @@ public class SportsQueryService {
                 .toList();
     }
 
+    public List<CompetitionKeyView> competitionKeys(
+            SportsFilter filter
+    ) {
+        SportsSnapshot snapshot =
+                snapshots.snapshot(
+                        filter.eventId()
+                );
+
+        var keysByTeam =
+                new java.util.LinkedHashMap<String, CompetitionKeyView>();
+
+        for (MatchView match : snapshot.matches()) {
+            CompetitionKey key =
+                    competitionKey(
+                            match.phase()
+                    );
+
+            if (key == null) {
+                continue;
+            }
+
+            putCompetitionKey(
+                    keysByTeam,
+                    match.homeTeam(),
+                    key
+            );
+
+            putCompetitionKey(
+                    keysByTeam,
+                    match.awayTeam(),
+                    key
+            );
+        }
+
+        for (StandingView row : snapshot.standings()) {
+            CompetitionKey key =
+                    competitionKey(
+                            row.group()
+                    );
+
+            if (key == null) {
+                key =
+                        competitionKey(
+                                row.phase()
+                        );
+            }
+
+            if (key == null) {
+                continue;
+            }
+
+            putCompetitionKey(
+                    keysByTeam,
+                    row.team(),
+                    key
+            );
+        }
+
+        return keysByTeam
+                .values()
+                .stream()
+                .sorted(
+                        Comparator
+                                .<CompetitionKeyView>comparingInt(
+                                        view ->
+                                                competitionKeyOrder(
+                                                        view.key()
+                                                )
+                                )
+                                .thenComparing(
+                                        CompetitionKeyView::teamName,
+                                        String.CASE_INSENSITIVE_ORDER
+                                )
+                )
+                .toList();
+    }
+
     public List<TopScorerView> topScorers(
             SportsFilter filter,
             String requestedPhase,
@@ -223,6 +300,10 @@ public class SportsQueryService {
                     )
                     .toList();
         }
+
+        rows = deduplicateTopScorers(
+                rows
+        );
 
         List<TopScorerView> filtered =
                 rows.stream()
@@ -366,6 +447,104 @@ public class SportsQueryService {
         }
 
         return SportsScheduleState.NO_GAMES;
+    }
+
+    private List<TopScorerView> deduplicateTopScorers(
+            List<TopScorerView> rows
+    ) {
+        var unique =
+                new java.util.LinkedHashMap<String, TopScorerView>();
+
+        int anonymousIndex = 0;
+
+        for (TopScorerView row : rows) {
+            String athleteKey =
+                    normalize(
+                            row.athleteName()
+                    );
+
+            /*
+             * Atletas anonimizados não podem ser consolidados pelo texto
+             * exibido ("Atleta não exibido"), pois podem representar
+             * pessoas diferentes.
+             */
+            if (!hasText(athleteKey)) {
+                unique.put(
+                        "__anonymous__" + anonymousIndex++,
+                        row
+                );
+                continue;
+            }
+
+            TopScorerView current =
+                    unique.get(
+                            athleteKey
+                    );
+
+            if (
+                    current == null
+                            || isPreferredTopScorer(
+                            row,
+                            current
+                    )
+            ) {
+                unique.put(
+                        athleteKey,
+                        row
+                );
+            }
+        }
+
+        return List.copyOf(
+                unique.values()
+        );
+    }
+
+    private boolean isPreferredTopScorer(
+            TopScorerView candidate,
+            TopScorerView current
+    ) {
+        int candidateGoals =
+                candidate.goals() == null
+                        ? -1
+                        : candidate.goals();
+
+        int currentGoals =
+                current.goals() == null
+                        ? -1
+                        : current.goals();
+
+        if (candidateGoals != currentGoals) {
+            return candidateGoals
+                    > currentGoals;
+        }
+
+        return populatedTopScorerFields(
+                candidate
+        )
+                > populatedTopScorerFields(
+                current
+        );
+    }
+
+    private int populatedTopScorerFields(
+            TopScorerView row
+    ) {
+        int result = 0;
+
+        if (hasText(row.athleteName())) result++;
+        if (hasText(row.athleteImageUrl())) result++;
+        if (hasText(row.phase())) result++;
+
+        if (row.team() != null) {
+            if (hasText(row.team().id())) result++;
+            if (hasText(row.team().name())) result++;
+            if (hasText(row.team().logoUrl())) result++;
+        }
+
+        if (row.goals() != null) result++;
+
+        return result;
     }
 
     private static @NonNull List<TopScorerView> getTopScorerViews(List<TopScorerView> filtered) {
@@ -632,6 +811,63 @@ public class SportsQueryService {
         return nonKnockoutPhases.get(
                 nonKnockoutPhases.size() - 1
         );
+    }
+
+    private CompetitionKey competitionKey(
+            String value
+    ) {
+        String normalized =
+                normalize(
+                        value
+                );
+
+        if (normalized.contains("ouro")) {
+            return CompetitionKey.GOLD;
+        }
+
+        if (normalized.contains("prata")) {
+            return CompetitionKey.SILVER;
+        }
+
+        if (normalized.contains("bronze")) {
+            return CompetitionKey.BRONZE;
+        }
+
+        return null;
+    }
+
+    private void putCompetitionKey(
+            java.util.Map<String, CompetitionKeyView> keysByTeam,
+            TeamView team,
+            CompetitionKey key
+    ) {
+        if (
+                team == null
+                        || !hasText(
+                        team.id()
+                )
+        ) {
+            return;
+        }
+
+        keysByTeam.putIfAbsent(
+                team.id(),
+                new CompetitionKeyView(
+                        team.id(),
+                        team.name(),
+                        key
+                )
+        );
+    }
+
+    private int competitionKeyOrder(
+            CompetitionKey key
+    ) {
+        return switch (key) {
+            case GOLD -> 10;
+            case SILVER -> 20;
+            case BRONZE -> 30;
+        };
     }
 
     private boolean isOfficialClassificationPhase(

@@ -92,6 +92,20 @@ public class SportsController {
         );
     }
 
+    @GetMapping("/standings/keys")
+    List<CompetitionKeyView> competitionKeys(
+            @RequestParam(required = false)
+            @Positive
+            Long eventId
+    ) {
+        return sports.competitionKeys(
+                resolveCompetition(
+                        eventId,
+                        null
+                )
+        );
+    }
+
     @GetMapping("/top-scorers")
     List<TopScorerView> topScorers(
             @RequestParam(required = false) @Positive Long eventId,
