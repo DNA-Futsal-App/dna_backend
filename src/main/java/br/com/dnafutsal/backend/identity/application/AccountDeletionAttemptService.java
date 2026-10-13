@@ -9,6 +9,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.Timestamp;
 import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
 
 @Service
 public class AccountDeletionAttemptService {
@@ -26,17 +28,19 @@ public class AccountDeletionAttemptService {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void reserve(String identifier) {
         String key = tokens.hash("account-deletion:" + identifier);
-        Timestamp now = Timestamp.from(clock.instant());
+        Instant currentInstant = clock.instant();
+        Timestamp now = Timestamp.from(currentInstant);
+        Timestamp windowCutoff = Timestamp.from(currentInstant.minus(Duration.ofMinutes(15)));
         Integer attempts = jdbc.queryForObject("""
                 INSERT INTO account_deletion_attempts(identifier_hash, attempts, window_started_at)
                 VALUES (?, 1, ?)
                 ON CONFLICT(identifier_hash) DO UPDATE SET
-                    attempts = CASE WHEN account_deletion_attempts.window_started_at <= ? - INTERVAL '15 minutes'
+                    attempts = CASE WHEN account_deletion_attempts.window_started_at <= ?
                         THEN 1 ELSE account_deletion_attempts.attempts + 1 END,
-                    window_started_at = CASE WHEN account_deletion_attempts.window_started_at <= ? - INTERVAL '15 minutes'
+                    window_started_at = CASE WHEN account_deletion_attempts.window_started_at <= ?
                         THEN ? ELSE account_deletion_attempts.window_started_at END
                 RETURNING attempts
-                """, Integer.class, key, now, now, now, now);
+                """, Integer.class, key, now, windowCutoff, windowCutoff, now);
         if (attempts != null && attempts > 7) {
             throw Errors.tooManyRequests("ACCOUNT_DELETION_RATE_LIMITED",
                     "Muitas tentativas. Aguarde 15 minutos e tente novamente.");
