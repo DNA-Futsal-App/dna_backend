@@ -13,6 +13,60 @@ tags:
   - name: Sports
   - name: News
 paths:
+  /api/v1/auth/account-deletion:
+    post:
+      tags: [ Auth ]
+      summary: Agenda exclusão definitiva da conta em 10 dias
+      description: Bloqueia imediatamente a conta e revoga sessões. Envia confirmação por e-mail. Preserva votos e remove todas as inscrições após 240 horas.
+      security: [ { bearerAuth: [ ] } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ currentPassword ]
+              properties:
+                currentPassword: { type: string, minLength: 1, maxLength: 72, writeOnly: true }
+      responses:
+        '202':
+          description: Exclusão agendada e confirmação enfileirada
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ status, requestedAt, scheduledFor, message ]
+                properties:
+                  status: { type: string, enum: [ PENDING_DELETION ] }
+                  requestedAt: { type: string, format: date-time }
+                  scheduledFor: { type: string, format: date-time }
+                  message: { type: string }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+  /api/v1/auth/account-deletion/cancel:
+    post:
+      tags: [ Auth ]
+      summary: Cancela a exclusão antes do vencimento usando credenciais
+      description: Não enviar JWT revogado. Não emite sessão; fazer novo login após o cancelamento. Conta já ativa retorna 204 após validar credenciais.
+      security: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ login, currentPassword ]
+              properties:
+                login: { type: string, minLength: 1, maxLength: 254 }
+                currentPassword: { type: string, minLength: 1, maxLength: 72, writeOnly: true }
+      responses:
+        '204': { description: Conta ativa; realizar novo login }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
   /api/v1/auth/register:
     post:
       tags: [ Auth ]

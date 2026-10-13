@@ -11,6 +11,7 @@ import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 
 import java.time.Instant;
+import java.time.Duration;
 import java.util.UUID;
 
 @Entity
@@ -23,13 +24,13 @@ public class UserAccount {
     @Column(nullable = false, length = 120)
     private String name;
 
-    @Column(nullable = false, length = 254)
+    @Column(length = 254)
     private String email;
 
-    @Column(nullable = false, length = 16)
+    @Column(length = 16)
     private String phone;
 
-    @Column(name = "password_hash", nullable = false, length = 255)
+    @Column(name = "password_hash", length = 255)
     private String passwordHash;
 
     @Column(name = "child_instagram", length = 64)
@@ -66,6 +67,15 @@ public class UserAccount {
 
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
+
+    @Column(name = "deletion_requested_at")
+    private Instant deletionRequestedAt;
+
+    @Column(name = "deletion_scheduled_for")
+    private Instant deletionScheduledFor;
+
+    @Column(name = "deleted_at")
+    private Instant deletedAt;
 
     @Version
     private long version;
@@ -135,6 +145,28 @@ public class UserAccount {
 
     public UUID getId() {
         return id;
+    }
+
+    public void scheduleDeletion(Instant now) {
+        status = UserStatus.PENDING_DELETION;
+        deletionRequestedAt = now;
+        deletionScheduledFor = now.plus(Duration.ofDays(10));
+        tokenVersion++;
+    }
+
+    public void cancelDeletion() {
+        status = UserStatus.ACTIVE;
+        deletionRequestedAt = null;
+        deletionScheduledFor = null;
+        tokenVersion++;
+    }
+
+    public Instant getDeletionRequestedAt() {
+        return deletionRequestedAt;
+    }
+
+    public Instant getDeletionScheduledFor() {
+        return deletionScheduledFor;
     }
 
     public String getName() {

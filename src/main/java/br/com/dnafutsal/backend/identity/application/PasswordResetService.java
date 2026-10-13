@@ -12,8 +12,6 @@ import br.com.dnafutsal.backend.identity.infrastructure.RefreshSessionRepository
 import br.com.dnafutsal.backend.identity.infrastructure.UserAccountRepository;
 import br.com.dnafutsal.backend.mail.application.MailOutboxService;
 import br.com.dnafutsal.backend.mail.application.MailTemplateFactory;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Caching;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -80,10 +78,6 @@ public class PasswordResetService {
     }
 
     @Transactional
-    @Caching(evict = {
-            @CacheEvict(cacheNames = "user-profile", key = "#result"),
-            @CacheEvict(cacheNames = "user-security", key = "#result")
-    })
     public java.util.UUID confirm(String rawToken, String newPassword) {
         Instant now = clock.instant();
         PasswordResetToken token = resetTokens.findByTokenHash(tokenSupport.hash(rawToken))
@@ -91,8 +85,12 @@ public class PasswordResetService {
         if (!token.isUsableAt(now)) {
             throw Errors.badRequest("EXPIRED_RESET_TOKEN", "O link de redefinição expirou ou já foi utilizado.");
         }
-        UserAccount user = users.findById(token.getUserId())
+        UserAccount user = users.findByIdForUpdate(token.getUserId())
                 .orElseThrow(() -> Errors.notFound("USER_NOT_FOUND", "Usuário não encontrado."));
+        if (user.getStatus() != UserStatus.ACTIVE
+                || resetTokens.findByTokenHash(tokenSupport.hash(rawToken)).isEmpty()) {
+            throw Errors.badRequest("INVALID_RESET_TOKEN", "O link de redefinição é inválido.");
+        }
         user.changePassword(passwordEncoder.encode(newPassword));
         resetTokens.invalidateAllByUserId(user.getId(), now);
         refreshSessions.revokeAllByUserId(user.getId(), now);
@@ -102,10 +100,10 @@ public class PasswordResetService {
     private Optional<UserAccount> findByLogin(String login) {
         String value = login.trim();
         if (value.contains("@")) {
-            return users.findByEmail(normalizer.email(value));
+            return users.findByEmailForUpdate(normalizer.email(value));
         }
         try {
-            return users.findByPhone(normalizer.phone(value));
+            return users.findByPhoneForUpdate(normalizer.phone(value));
         } catch (RuntimeException exception) {
             return Optional.empty();
         }

@@ -8,6 +8,7 @@ import br.com.dnafutsal.backend.awards.infrastructure.AwardRegistrationRepositor
 import br.com.dnafutsal.backend.common.Errors;
 import br.com.dnafutsal.backend.config.AwardRegistrationProperties;
 import br.com.dnafutsal.backend.identity.application.CurrentUserService;
+import br.com.dnafutsal.backend.identity.application.AccountMediaTracker;
 import br.com.dnafutsal.backend.identity.domain.UserAccount;
 import br.com.dnafutsal.backend.identity.infrastructure.UserAccountRepository;
 import br.com.dnafutsal.backend.sports.application.SportsCatalogService;
@@ -44,6 +45,7 @@ public class AwardRegistrationService {
     private final Clock clock;
     private static final Duration MEDIA_READ_TTL = Duration.ofMinutes(30);
     private final AwardVideoProcessingService videoProcessing;
+    private final AccountMediaTracker mediaTracker;
 
     public AwardRegistrationService(
             CurrentUserService currentUser,
@@ -57,7 +59,8 @@ public class AwardRegistrationService {
             AwardVideoProcessor videoProcessor,
             AwardRegistrationProperties properties,
             Clock clock,
-            AwardVideoProcessingService videoProcessing
+            AwardVideoProcessingService videoProcessing,
+            AccountMediaTracker mediaTracker
     ) {
         this.currentUser = currentUser;
         this.users = users;
@@ -71,6 +74,7 @@ public class AwardRegistrationService {
         this.properties = properties;
         this.clock = clock;
         this.videoProcessing = videoProcessing;
+        this.mediaTracker = mediaTracker;
     }
 
     @Transactional(readOnly = true)
@@ -373,6 +377,7 @@ public class AwardRegistrationService {
                                 properties.effectiveUploadTicketTtl()
                         );
 
+        mediaTracker.track(registration.getRepresentativeUserId(), "OBJECT", temporaryObjectName);
         OracleAwardVideoStorage.WriteTicket ticket =
                 storage.createWriteTicket(
                         temporaryObjectName,
@@ -383,6 +388,7 @@ public class AwardRegistrationService {
                         expiresAt
                 );
 
+        mediaTracker.track(registration.getRepresentativeUserId(), "PAR", ticket.parId());
         entry.beginUpload(
                 temporaryObjectName,
                 ticket.parId()

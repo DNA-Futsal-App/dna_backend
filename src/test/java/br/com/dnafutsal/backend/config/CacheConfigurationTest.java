@@ -21,14 +21,11 @@ class CacheConfigurationTest {
 
 
         assertThat(manager.getCacheNames()).containsExactlyInAnyOrder(
-                "sports-catalog-divisions","sports-catalog-categories","sports-events", "sports-event", "sports-teams", "sports-snapshot",
-                "user-profile", "user-security");
+                "sports-catalog-divisions","sports-catalog-categories","sports-events", "sports-event", "sports-teams", "sports-snapshot");
         assertPolicy(manager, "sports-events", 2_000, Duration.ofHours(1));
         assertPolicy(manager, "sports-event", 2_000, Duration.ofHours(1));
         assertPolicy(manager, "sports-teams", 2_000, Duration.ofHours(2));
         assertPolicy(manager, "sports-snapshot", 2_000, Duration.ofMinutes(10));
-        assertPolicy(manager, "user-profile", 10_000, null);
-        assertPolicy(manager, "user-security", 10_000, null);
     }
 
     @Test

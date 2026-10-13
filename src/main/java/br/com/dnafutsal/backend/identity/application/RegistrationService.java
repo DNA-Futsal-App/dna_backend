@@ -11,7 +11,6 @@ import br.com.dnafutsal.backend.identity.infrastructure.EmailVerificationTokenRe
 import br.com.dnafutsal.backend.identity.infrastructure.UserAccountRepository;
 import br.com.dnafutsal.backend.mail.application.MailOutboxService;
 import br.com.dnafutsal.backend.mail.application.MailTemplateFactory;
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -87,7 +86,6 @@ public class RegistrationService {
     }
 
     @Transactional
-    @CacheEvict(cacheNames = "user-security", key = "#result", condition = "#result != null")
     public java.util.UUID verifyEmail(String rawToken) {
         Instant now = clock.instant();
         EmailVerificationToken token = verificationTokens.findByTokenHash(tokenSupport.hash(rawToken))
@@ -95,8 +93,12 @@ public class RegistrationService {
         if (!token.isUsableAt(now)) {
             throw Errors.badRequest("EXPIRED_VERIFICATION_TOKEN", "O link de confirmação expirou ou já foi utilizado.");
         }
-        UserAccount user = users.findById(token.getUserId())
+        UserAccount user = users.findByIdForUpdate(token.getUserId())
                 .orElseThrow(() -> Errors.notFound("USER_NOT_FOUND", "Usuário não encontrado."));
+        if (user.getStatus() != br.com.dnafutsal.backend.identity.domain.UserStatus.PENDING_EMAIL_VERIFICATION
+                || verificationTokens.findByTokenHash(tokenSupport.hash(rawToken)).isEmpty()) {
+            throw Errors.badRequest("INVALID_VERIFICATION_TOKEN", "O link de confirmação é inválido.");
+        }
         token.use(now);
         user.activate(now);
 
@@ -133,10 +135,10 @@ public class RegistrationService {
     private Optional<UserAccount> findByLogin(String login) {
         String value = login.trim();
         if (value.contains("@")) {
-            return users.findByEmail(normalizer.email(value));
+            return users.findByEmailForUpdate(normalizer.email(value));
         }
         try {
-            return users.findByPhone(normalizer.phone(value));
+            return users.findByPhoneForUpdate(normalizer.phone(value));
         } catch (RuntimeException exception) {
             return Optional.empty();
         }

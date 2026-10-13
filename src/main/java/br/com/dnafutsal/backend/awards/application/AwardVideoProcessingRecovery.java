@@ -32,6 +32,7 @@ public class AwardVideoProcessingRecovery {
     }
 
     @EventListener(ApplicationReadyEvent.class)
+    @org.springframework.scheduling.annotation.Scheduled(fixedDelayString = "${app.awards.video-recovery-delay:60000}")
     public void recover() {
         List<AwardRegistrationEntry> pending =
                 entries.findByMediaStatus(

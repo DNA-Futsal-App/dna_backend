@@ -7,6 +7,10 @@ import br.com.dnafutsal.backend.awards.domain.AwardRegistrationMediaStatus;
 import br.com.dnafutsal.backend.awards.infrastructure.AwardEditionRepository;
 import br.com.dnafutsal.backend.awards.infrastructure.AwardRegistrationEntryRepository;
 import br.com.dnafutsal.backend.awards.infrastructure.AwardRegistrationRepository;
+import br.com.dnafutsal.backend.identity.infrastructure.UserAccountRepository;
+import br.com.dnafutsal.backend.identity.application.AccountMediaTracker;
+import br.com.dnafutsal.backend.identity.domain.UserStatus;
+import org.springframework.transaction.annotation.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Async;
@@ -33,6 +37,8 @@ public class AwardVideoProcessingService {
     private final OracleAwardVideoStorage storage;
     private final AwardVideoProcessor processor;
     private final AwardVideoProcessingFinalizer finalizer;
+    private final UserAccountRepository users;
+    private final AccountMediaTracker mediaTracker;
 
     public AwardVideoProcessingService(
             AwardRegistrationEntryRepository entries,
@@ -40,7 +46,9 @@ public class AwardVideoProcessingService {
             AwardEditionRepository editions,
             OracleAwardVideoStorage storage,
             AwardVideoProcessor processor,
-            AwardVideoProcessingFinalizer finalizer
+            AwardVideoProcessingFinalizer finalizer,
+            UserAccountRepository users,
+            AccountMediaTracker mediaTracker
     ) {
         this.entries = entries;
         this.registrations = registrations;
@@ -48,14 +56,25 @@ public class AwardVideoProcessingService {
         this.storage = storage;
         this.processor = processor;
         this.finalizer = finalizer;
+        this.users = users;
+        this.mediaTracker = mediaTracker;
     }
 
     @Async("awardVideoExecutor")
+    @Transactional
     public void processAsync(
             UUID registrationId,
             UUID entryId,
             String expectedPendingObjectName
     ) {
+        AwardRegistration owner = registrations.findById(registrationId).orElse(null);
+        if (owner == null) {
+            return;
+        }
+        var account = users.findByIdForUpdate(owner.getRepresentativeUserId()).orElse(null);
+        if (account == null || account.getStatus() != UserStatus.ACTIVE) {
+            return;
+        }
         Path raw = null;
 
         AwardVideoProcessor.ProcessedVideo processed =
@@ -134,6 +153,10 @@ public class AwardVideoProcessingService {
                             entry
                     );
 
+            mediaTracker.track(account.getId(), "OBJECT", newObjectName);
+            mediaTracker.track(account.getId(), "OBJECT", oldObjectName);
+            mediaTracker.track(account.getId(), "OBJECT", expectedPendingObjectName);
+            mediaTracker.track(account.getId(), "PAR", pendingParId);
             storage.uploadProcessedVideo(
                     newObjectName,
                     processed.path()

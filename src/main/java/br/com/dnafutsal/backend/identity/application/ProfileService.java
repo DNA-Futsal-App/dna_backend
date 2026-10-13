@@ -4,11 +4,9 @@ import br.com.dnafutsal.backend.common.Errors;
 import br.com.dnafutsal.backend.identity.api.UpdateProfileRequest;
 import br.com.dnafutsal.backend.identity.api.UserProfileResponse;
 import br.com.dnafutsal.backend.identity.domain.UserAccount;
+import br.com.dnafutsal.backend.identity.domain.UserStatus;
 import br.com.dnafutsal.backend.identity.infrastructure.RefreshSessionRepository;
 import br.com.dnafutsal.backend.identity.infrastructure.UserAccountRepository;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
-import org.springframework.cache.annotation.Caching;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,18 +36,17 @@ public class ProfileService {
     }
 
     @Transactional(readOnly = true)
-    @Cacheable(cacheNames = "user-profile", key = "#userId", sync = true)
     public UserProfileResponse get(UUID userId) {
         return UserProfileResponse.from(requireUser(userId));
     }
 
     @Transactional
-    @Caching(evict = {
-            @CacheEvict(cacheNames = "user-profile", key = "#userId"),
-            @CacheEvict(cacheNames = "user-security", key = "#userId")
-    })
     public UserProfileResponse update(UUID userId, UpdateProfileRequest request) {
-        UserAccount user = requireUser(userId);
+        UserAccount user = users.findByIdForUpdate(userId)
+                .orElseThrow(() -> Errors.unauthorized("ACCOUNT_UNAVAILABLE", "A conta não está disponível."));
+        if (user.getStatus() != UserStatus.ACTIVE) {
+            throw Errors.forbidden("ACCOUNT_UNAVAILABLE", "A conta não está disponível.");
+        }
         if (!passwordEncoder.matches(request.currentPassword(), user.getPasswordHash())) {
             throw Errors.unauthorized("INVALID_CURRENT_PASSWORD", "A senha atual está incorreta.");
         }

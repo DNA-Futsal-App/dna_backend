@@ -1,6 +1,8 @@
 package br.com.dnafutsal.backend.identity.api;
 
 import br.com.dnafutsal.backend.identity.application.AuthenticationService;
+import br.com.dnafutsal.backend.identity.application.AccountDeletionService;
+import br.com.dnafutsal.backend.identity.application.CurrentUserService;
 import br.com.dnafutsal.backend.identity.application.ClientContext;
 import br.com.dnafutsal.backend.identity.application.PasswordResetService;
 import br.com.dnafutsal.backend.identity.application.RegistrationService;
@@ -29,12 +31,28 @@ public class AuthController {
     private final RegistrationService registration;
     private final AuthenticationService authentication;
     private final PasswordResetService passwordReset;
+    private final AccountDeletionService accountDeletion;
+    private final CurrentUserService currentUser;
 
     public AuthController(RegistrationService registration, AuthenticationService authentication,
-                          PasswordResetService passwordReset) {
+                          PasswordResetService passwordReset,
+                          AccountDeletionService accountDeletion, CurrentUserService currentUser) {
         this.registration = registration;
         this.authentication = authentication;
         this.passwordReset = passwordReset;
+        this.accountDeletion = accountDeletion;
+        this.currentUser = currentUser;
+    }
+
+    @PostMapping("/account-deletion")
+    ResponseEntity<AccountDeletionResponse> requestAccountDeletion(@Valid @RequestBody AccountDeletionRequest request) {
+        return ResponseEntity.accepted().body(accountDeletion.request(currentUser.userId(), request.currentPassword()));
+    }
+
+    @PostMapping("/account-deletion/cancel")
+    ResponseEntity<Void> cancelAccountDeletion(@Valid @RequestBody CancelAccountDeletionRequest request) {
+        accountDeletion.cancel(request.login(), request.currentPassword());
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/register")

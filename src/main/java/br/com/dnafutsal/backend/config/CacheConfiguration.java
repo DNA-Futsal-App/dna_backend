@@ -27,7 +27,6 @@ public class CacheConfiguration {
     @Bean
     public CacheManager cacheManager() {
         long sportsMaxEntries = properties.sportsMaxEntries();
-        long identityMaxEntries = properties.identityMaxEntries();
 
         SimpleCacheManager manager = new SimpleCacheManager();
         manager.setCaches(List.of(
@@ -60,14 +59,6 @@ public class CacheConfiguration {
                         "sports-snapshot",
                         integrations.sports().snapshotCacheTtl(),
                         sportsMaxEntries
-                ),
-                boundedCache(
-                        "user-profile",
-                        identityMaxEntries
-                ),
-                boundedCache(
-                        "user-security",
-                        identityMaxEntries
                 )
         ));
         return manager;
@@ -90,10 +81,4 @@ public class CacheConfiguration {
                 .build(), false);
     }
 
-    private CaffeineCache boundedCache(String name, long maximumSize) {
-        return new CaffeineCache(name, Caffeine.newBuilder()
-                .maximumSize(maximumSize)
-                .recordStats()
-                .build(), false);
-    }
 }

@@ -65,6 +65,12 @@ public class AuthenticationService {
             throw Errors.unauthorized("INVALID_CREDENTIALS", "E-mail/telefone ou senha inválidos.");
         }
         UserAccount user = found.get();
+        if (user.getStatus() == UserStatus.PENDING_DELETION
+                && user.getDeletionScheduledFor() != null
+                && clock.instant().isBefore(user.getDeletionScheduledFor())) {
+            throw Errors.forbidden("ACCOUNT_PENDING_DELETION",
+                    "Sua conta tem uma exclusão agendada. Confirme se deseja cancelar a exclusão e entrar.");
+        }
         if (user.getStatus() == UserStatus.PENDING_EMAIL_VERIFICATION) {
             throw Errors.forbidden("EMAIL_NOT_VERIFIED", "Confirme seu e-mail antes de entrar.");
         }
@@ -83,7 +89,7 @@ public class AuthenticationService {
         if (!session.isUsableAt(now)) {
             throw Errors.unauthorized("EXPIRED_REFRESH_TOKEN", "A sessão expirou. Faça login novamente.");
         }
-        UserAccount user = users.findById(session.getUserId())
+        UserAccount user = users.findByIdForUpdate(session.getUserId())
                 .orElseThrow(() -> Errors.unauthorized("INVALID_REFRESH_TOKEN", "A sessão é inválida."));
         if (user.getStatus() != UserStatus.ACTIVE) {
             throw Errors.forbidden("ACCOUNT_UNAVAILABLE", "A conta não está disponível.");
@@ -111,10 +117,10 @@ public class AuthenticationService {
     private Optional<UserAccount> findByLogin(String login) {
         String value = login.trim();
         if (value.contains("@")) {
-            return users.findByEmail(normalizer.email(value));
+            return users.findByEmailForUpdate(normalizer.email(value));
         }
         try {
-            return users.findByPhone(normalizer.phone(value));
+            return users.findByPhoneForUpdate(normalizer.phone(value));
         } catch (RuntimeException exception) {
             return Optional.empty();
         }

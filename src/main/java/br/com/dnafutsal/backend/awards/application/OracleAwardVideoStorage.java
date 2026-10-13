@@ -248,6 +248,30 @@ public class OracleAwardVideoStorage {
         }
     }
 
+    public void deleteObject(String objectName) {
+        try {
+            client().deleteObject(DeleteObjectRequest.builder()
+                    .namespaceName(properties.ociNamespace()).bucketName(properties.ociBucket())
+                    .objectName(objectName).build());
+        } catch (com.oracle.bmc.model.BmcException exception) {
+            if (exception.getStatusCode() != 404) {
+                throw exception;
+            }
+        }
+    }
+
+    public void deletePar(String parId) {
+        try {
+            client().deletePreauthenticatedRequest(DeletePreauthenticatedRequestRequest.builder()
+                    .namespaceName(properties.ociNamespace()).bucketName(properties.ociBucket())
+                    .parId(parId).build());
+        } catch (com.oracle.bmc.model.BmcException exception) {
+            if (exception.getStatusCode() != 404) {
+                throw exception;
+            }
+        }
+    }
+
     public void deleteObjectQuietly(
             String objectName
     ) {

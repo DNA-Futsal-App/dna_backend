@@ -76,6 +76,7 @@ public class SecurityConfiguration {
                         .authenticationEntryPoint(securityErrors)
                         .accessDeniedHandler(securityErrors))
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/account-deletion").authenticated()
                         .requestMatchers("/api/v1/auth/**", "/api/v1/public/**").permitAll()
                         .requestMatchers("/api/v1/admin/**").hasAuthority("SCOPE_ADMIN")
                         .requestMatchers(HttpMethod.GET, "/actuator/health", "/actuator/health/**").permitAll()
