@@ -25,7 +25,7 @@ class CacheConfigurationTest {
         assertPolicy(manager, "sports-events", 2_000, Duration.ofHours(1));
         assertPolicy(manager, "sports-event", 2_000, Duration.ofHours(1));
         assertPolicy(manager, "sports-teams", 2_000, Duration.ofHours(2));
-        assertPolicy(manager, "sports-snapshot", 2_000, Duration.ofMinutes(10));
+        assertPolicy(manager, "sports-snapshot", 2_000, Duration.ofMinutes(1));
     }
 
     @Test

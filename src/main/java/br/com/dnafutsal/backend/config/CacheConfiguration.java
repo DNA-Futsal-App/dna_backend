@@ -15,6 +15,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class CacheConfiguration {
 
     static final Duration LOGIN_ATTEMPT_WINDOW = Duration.ofMinutes(15);
+    static final Duration MAX_SPORTS_SNAPSHOT_TTL = Duration.ofMinutes(1);
 
     private final IntegrationProperties integrations;
     private final CacheProperties properties;
@@ -27,6 +28,10 @@ public class CacheConfiguration {
     @Bean
     public CacheManager cacheManager() {
         long sportsMaxEntries = properties.sportsMaxEntries();
+        Duration configuredSnapshotTtl = integrations.sports().snapshotCacheTtl();
+        Duration sportsSnapshotTtl = configuredSnapshotTtl.compareTo(MAX_SPORTS_SNAPSHOT_TTL) > 0
+                ? MAX_SPORTS_SNAPSHOT_TTL
+                : configuredSnapshotTtl;
 
         SimpleCacheManager manager = new SimpleCacheManager();
         manager.setCaches(List.of(
@@ -57,7 +62,7 @@ public class CacheConfiguration {
                 ),
                 expiringCache(
                         "sports-snapshot",
-                        integrations.sports().snapshotCacheTtl(),
+                        sportsSnapshotTtl,
                         sportsMaxEntries
                 )
         ));

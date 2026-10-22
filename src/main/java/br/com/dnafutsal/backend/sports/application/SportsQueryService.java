@@ -279,6 +279,20 @@ public class SportsQueryService {
             String requestedPhase,
             int limit
     ) {
+        return topScorers(
+                filter,
+                requestedPhase,
+                TopScorerScope.GENERAL,
+                limit
+        );
+    }
+
+    public List<TopScorerView> topScorers(
+            SportsFilter filter,
+            String requestedPhase,
+            TopScorerScope scope,
+            int limit
+    ) {
         SportsSnapshot snapshot =
                 snapshots.snapshot(
                         filter.eventId()
@@ -287,7 +301,10 @@ public class SportsQueryService {
         List<TopScorerView> rows =
                 scorersForPhase(
                         snapshot,
-                        requestedPhase
+                        requestedPhase,
+                        scope == null
+                                ? TopScorerScope.GENERAL
+                                : scope
                 );
 
         if (hasText(filter.teamId())) {
@@ -687,12 +704,6 @@ public class SportsQueryService {
             return null;
         }
 
-        /*
-         * A FPFS expõe uma aba/fase própria chamada "Fase Classificatória"
-         * (ou variantes como "Fase de Classificação"). O scraper preserva
-         * esse rótulo em StandingView.phase(), então essa é a fonte de
-         * verdade para a tabela final da fase de pontos.
-         */
         List<String> officialClassificationPhases =
                 phases.stream()
                         .filter(
@@ -942,6 +953,7 @@ public class SportsQueryService {
                 || phase.contains("semi final")
                 || phase.contains("semifinal")
                 || phase.equals("final")
+                || phase.startsWith("final ")
                 || phase.endsWith(" final")
                 || phase.contains("mata mata")
                 || phase.contains("eliminatoria")
@@ -1042,38 +1054,103 @@ public class SportsQueryService {
 
     private List<TopScorerView> scorersForPhase(
             SportsSnapshot snapshot,
-            String requestedPhase
+            String requestedPhase,
+            TopScorerScope scope
     ) {
-        String phase =
-                hasText(requestedPhase)
-                        ? requestedPhase
-                        : currentPhase(
-                        snapshot
-                );
-
-        if (!hasText(phase)) {
-            return snapshot.topScorers();
+        if (hasText(requestedPhase)) {
+            return snapshot.topScorers()
+                    .stream()
+                    .filter(row ->
+                            contains(
+                                    row.phase(),
+                                    requestedPhase
+                            )
+                    )
+                    .toList();
         }
 
-        List<TopScorerView> result =
+        return switch (scope) {
+            case GENERAL -> generalScorers(snapshot);
+            case KNOCKOUT -> knockoutScorers(snapshot);
+        };
+    }
+
+    private List<TopScorerView> generalScorers(
+            SportsSnapshot snapshot
+    ) {
+        List<TopScorerView> officialGeneral =
                 snapshot.topScorers()
                         .stream()
                         .filter(row ->
-                                contains(
-                                        row.phase(),
-                                        phase
+                                isGeneralScorerPhase(
+                                        row.phase()
                                 )
                         )
                         .toList();
 
-        if (
-                result.isEmpty()
-                        && !hasText(requestedPhase)
-        ) {
-            return snapshot.topScorers();
+        if (!officialGeneral.isEmpty()) {
+            return officialGeneral;
         }
 
-        return result;
+        // Compatibilidade para eventos antigos sem rótulo "Geral".
+        // Nunca deixa uma fase eliminatória vazar para a artilharia geral.
+        return snapshot.topScorers()
+                .stream()
+                .filter(row ->
+                        !isKnockoutPhase(
+                                row.phase()
+                        )
+                )
+                .toList();
+    }
+
+    private List<TopScorerView> knockoutScorers(
+            SportsSnapshot snapshot
+    ) {
+        // Se a FPFS publicar uma tabela acumulada de mata-mata, ela é
+        // preferida às tabelas individuais de quartas/semi/final.
+        List<TopScorerView> officialKnockout =
+                snapshot.topScorers()
+                        .stream()
+                        .filter(row ->
+                                isOfficialKnockoutScorerPhase(
+                                        row.phase()
+                                )
+                        )
+                        .toList();
+
+        if (!officialKnockout.isEmpty()) {
+            return officialKnockout;
+        }
+
+        return snapshot.topScorers()
+                .stream()
+                .filter(row ->
+                        isKnockoutPhase(
+                                row.phase()
+                        )
+                )
+                .toList();
+    }
+
+    private boolean isGeneralScorerPhase(
+            String value
+    ) {
+        String phase = normalize(value);
+
+        return phase.equals("geral")
+                || phase.contains("artilharia geral")
+                || phase.endsWith(" geral");
+    }
+
+    private boolean isOfficialKnockoutScorerPhase(
+            String value
+    ) {
+        String phase = normalize(value);
+
+        return phase.contains("mata mata")
+                || phase.contains("eliminatoria")
+                || phase.contains("playoff");
     }
 
     private String currentPhase(

@@ -111,6 +111,7 @@ public class SportsController {
             @RequestParam(required = false) @Positive Long eventId,
             @RequestParam(required = false) @Size(max = 100) String teamId,
             @RequestParam(required = false) @Size(max = 150) String phase,
+            @RequestParam(defaultValue = "GENERAL") TopScorerScope scope,
             @RequestParam(defaultValue = "10") @Min(1) @Max(500) int limit
     ) {
         return sports.topScorers(
@@ -119,6 +120,7 @@ public class SportsController {
                         teamId
                 ),
                 phase,
+                scope,
                 limit
         );
     }
