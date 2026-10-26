@@ -13,6 +13,131 @@ tags:
   - name: Sports
   - name: News
 paths:
+  /api/v1/sports/structure:
+    get:
+      tags: [ Sports ]
+      summary: Estrutura oficial por etapa, fase, grupo e trilha de mata-mata
+      security: [ { bearerAuth: [] } ]
+      parameters:
+        - in: query
+          name: eventId
+          required: true
+          schema: { type: integer, format: int64, minimum: 1 }
+      responses:
+        '200':
+          description: Fases e agrupamentos extraídos do snapshot oficial
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [eventId, title, stages]
+                properties:
+                  eventId: { type: integer, format: int64 }
+                  title: { type: string }
+                  stages:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string, enum: [PAULISTA, UNIAO] }
+                        label: { type: string }
+                        phases:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              name: { type: string }
+                              groups: { type: array, items: { type: string } }
+                              brackets: { type: array, items: { type: string } }
+                              knockout: { type: boolean }
+                              hasStandings: { type: boolean }
+                              hasScorers: { type: boolean }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /api/v1/sports/matches:
+    get:
+      tags: [ Sports ]
+      summary: Calendário por etapa, sem dados de outras etapas
+      security: [ { bearerAuth: [] } ]
+      parameters:
+        - in: query
+          name: eventId
+          required: true
+          schema: { type: integer, format: int64, minimum: 1 }
+        - in: query
+          name: stage
+          required: true
+          schema: { type: string, enum: [PAULISTA, UNIAO] }
+        - in: query
+          name: phase
+          schema: { type: string }
+      responses:
+        '200': { description: Calendário filtrado por etapa e fase }
+  /api/v1/sports/standings:
+    get:
+      tags: [ Sports ]
+      summary: Classificações oficiais de uma etapa e fase
+      security: [ { bearerAuth: [] } ]
+      parameters:
+        - in: query
+          name: eventId
+          required: true
+          schema: { type: integer, format: int64, minimum: 1 }
+        - in: query
+          name: stage
+          required: true
+          schema: { type: string, enum: [PAULISTA, UNIAO] }
+        - in: query
+          name: phase
+          schema: { type: string }
+        - in: query
+          name: group
+          schema: { type: string }
+      responses:
+        '200': { description: Linhas oficiais; coleção vazia quando indisponível }
+  /api/v1/sports/top-scorers:
+    get:
+      tags: [ Sports ]
+      summary: Artilharia de fase publicada pela FPFS
+      security: [ { bearerAuth: [] } ]
+      parameters:
+        - in: query
+          name: eventId
+          required: true
+          schema: { type: integer, format: int64, minimum: 1 }
+        - in: query
+          name: stage
+          required: true
+          schema: { type: string, enum: [PAULISTA, UNIAO] }
+        - in: query
+          name: phase
+          schema: { type: string }
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 500, default: 10 }
+      responses:
+        '200': { description: Artilharia oficial, sem extrapolar pontuação de outras fases }
+  /api/v1/public/catalog/titles:
+    get:
+      tags: [ Catalog ]
+      summary: Títulos oficiais ativos publicados pela FPFS na temporada
+      parameters:
+        - in: query
+          name: season
+          required: true
+          schema: { type: integer, minimum: 2016, maximum: 2100 }
+      responses:
+        '200':
+          description: Lista oficial de títulos da temporada, podendo não incluir Torneio União independente
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required: [id, name]
+                  properties:
+                    id: { type: integer, format: int64 }
+                    name: { type: string }
   /api/v1/auth/account-deletion:
     post:
       tags: [ Auth ]

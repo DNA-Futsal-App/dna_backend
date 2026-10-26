@@ -24,6 +24,12 @@ public class SportsCatalogService {
         this.gateway = gateway;
     }
 
+    // A prefixed cache key prevents collisions with divisions and their title filters.
+    @Cacheable(cacheNames = "sports-catalog-divisions", key = "'titles:' + #season", sync = true)
+    public List<CatalogItemView> titles(int season) {
+        return List.copyOf(gateway.catalogTitles(season));
+    }
+
     @Cacheable(
             cacheNames = "sports-catalog-divisions",
             key = "#season",

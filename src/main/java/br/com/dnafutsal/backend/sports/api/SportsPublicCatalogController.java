@@ -30,33 +30,27 @@ public class SportsPublicCatalogController {
         this.catalog = catalog;
     }
 
+    @GetMapping("/titles")
+    List<CatalogItemView> titles(@RequestParam @Min(2016) @Max(2100) int season) {
+        return catalog.titles(season);
+    }
+
     @GetMapping("/divisions")
     List<CatalogItemView> divisions(
-            @RequestParam
-            @Min(2016)
-            @Max(2100)
-            int season
+            @RequestParam @Min(2016) @Max(2100) int season,
+            @RequestParam(required = false) String title
     ) {
-        return catalog.divisions(
-                season
-        );
+        return title == null || title.isBlank() ? catalog.divisions(season) : catalog.divisions(season, title);
     }
 
     @GetMapping("/categories")
     List<CatalogCategoryView> categories(
-            @RequestParam
-            @Min(2016)
-            @Max(2100)
-            int season,
-
-            @RequestParam
-            @Positive
-            long divisionId
+            @RequestParam @Min(2016) @Max(2100) int season,
+            @RequestParam @Positive long divisionId,
+            @RequestParam(required = false) String title
     ) {
-        return catalog.categories(
-                season,
-                divisionId
-        );
+        return title == null || title.isBlank() ? catalog.categories(season, divisionId)
+                : catalog.categories(season, title, divisionId);
     }
 
     @GetMapping("/teams")

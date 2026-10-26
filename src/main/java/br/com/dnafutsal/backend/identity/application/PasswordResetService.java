@@ -63,7 +63,10 @@ public class PasswordResetService {
 
     @Transactional
     public void request(String login) {
-        findByLogin(login).filter(user -> user.getStatus() == UserStatus.ACTIVE).ifPresent(user -> {
+        Optional<UserAccount> findUser = Optional.of(findByLogin(login).orElseThrow(() ->
+                Errors.notFound("NOT_FOUND", "E-mail não cadastrado, verifique o endereço digitado e tente novamente")
+        ));
+        findUser.filter(user -> user.getStatus() == UserStatus.ACTIVE).ifPresent(user -> {
             Instant now = clock.instant();
             Instant startOfDay = now.atZone(appProperties.zoneId()).toLocalDate()
                     .atStartOfDay(appProperties.zoneId()).toInstant();

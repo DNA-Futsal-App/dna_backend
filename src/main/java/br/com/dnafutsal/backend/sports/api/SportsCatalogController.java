@@ -32,9 +32,10 @@ public class SportsCatalogController {
     List<SportsEventView> search(
             @RequestParam @Min(2016) @Max(2100) int season,
             @RequestParam(required = false) @Size(max = 100) String division,
-            @RequestParam(required = false) @Size(max = 100) String category
+            @RequestParam(required = false) @Size(max = 100) String category,
+            @RequestParam(required = false) @Size(max = 120) String title
     ) {
-        return catalog.search(new SportsEventSearch(season, null, division, category));
+        return catalog.search(new SportsEventSearch(season, title, division, category));
     }
 
     @GetMapping("/{eventId}")

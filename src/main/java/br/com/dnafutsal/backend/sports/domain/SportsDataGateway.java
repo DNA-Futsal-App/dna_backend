@@ -4,6 +4,11 @@ import java.util.List;
 
 public interface SportsDataGateway {
 
+    /** Optional catalog capability for existing gateway test doubles. */
+    default List<CatalogItemView> catalogTitles(int season) {
+        return List.of();
+    }
+
     List<CatalogItemView> catalogDivisions(
             int season
     );

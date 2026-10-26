@@ -92,6 +92,19 @@ public class HttpSportsDataGateway implements SportsDataGateway {
     }
 
     @Override
+    public List<CatalogItemView> catalogTitles(int season) {
+        Map<String, Object> diagnostics = diagnostics("catalog-titles", "season", season);
+        List<ScraperCatalogOption> response = get(
+                diagnostics,
+                uri -> uri.path("/api/v1/catalog/titles")
+                        .queryParam("season", season).build(),
+                new ParameterizedTypeReference<>() {}
+        );
+        return mapResponse(diagnostics,
+                () -> response.stream().map(mapper::catalogItem).toList());
+    }
+
+    @Override
     public List<CatalogItemView> catalogDivisions(
             int season
     ) {
