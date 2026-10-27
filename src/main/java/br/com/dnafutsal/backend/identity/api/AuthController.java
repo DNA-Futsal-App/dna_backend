@@ -26,7 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     private static final MessageResponse RESET_ACCEPTED = new MessageResponse(
-            "Se os dados estiverem cadastrados e o limite diário não tiver sido atingido, enviaremos as instruções por e-mail.");
+            "Se os dados estiverem cadastrados em nosso banco de dados e o limite diário não tiver sido atingido, enviaremos as instruções por e-mail.");
 
     private final RegistrationService registration;
     private final AuthenticationService authentication;
@@ -78,13 +78,13 @@ public class AuthController {
 
     @PostMapping("/login")
     AuthResponse login(@Valid @RequestBody LoginRequest request, HttpServletRequest servletRequest) {
-        return authentication.login(request, clientContext(servletRequest));
+        return authentication.login(request, extractClientContext(servletRequest));
     }
 
     @PostMapping("/refresh")
     AuthResponse refresh(@Valid @RequestBody RefreshTokenRequest request,
                          HttpServletRequest servletRequest) {
-        return authentication.refresh(request.refreshToken(), clientContext(servletRequest));
+        return authentication.refresh(request.refreshToken(), extractClientContext(servletRequest));
     }
 
     @PostMapping("/logout")
@@ -105,7 +105,7 @@ public class AuthController {
         return new MessageResponse("Senha alterada. Entre novamente em todos os seus dispositivos.");
     }
 
-    private ClientContext clientContext(HttpServletRequest request) {
+    private ClientContext extractClientContext(HttpServletRequest request) {
         return new ClientContext(request.getHeader("User-Agent"), request.getRemoteAddr());
     }
 }

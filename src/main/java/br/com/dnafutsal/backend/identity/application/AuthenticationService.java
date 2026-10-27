@@ -58,11 +58,16 @@ public class AuthenticationService {
     public AuthResponse login(LoginRequest request, ClientContext context) {
         String loginKey = request.login().trim().toLowerCase();
         attempts.checkAllowed(loginKey, context.ipAddress());
-        Optional<UserAccount> found = findByLogin(request.login());
+        Optional<UserAccount> found = Optional.of(findByLogin(request.login()).orElseThrow(
+                () -> {
+                    attempts.failed(loginKey, context.ipAddress());
+                    return Errors.badRequest("INVALID_CREDENTIALS", "Email/telefone ainda não cadastrado em nossa base de dados");
+                }
+        ));
         String hash = found.map(UserAccount::getPasswordHash).orElse(dummyPasswordHash);
-        if (!passwordEncoder.matches(request.password(), hash) || found.isEmpty()) {
+        if (!passwordEncoder.matches(request.password(), hash)) {
             attempts.failed(loginKey, context.ipAddress());
-            throw Errors.unauthorized("INVALID_CREDENTIALS", "E-mail/telefone ou senha inválidos.");
+            throw Errors.badRequest("INVALID_CREDENTIALS", "Senha inválida.");
         }
         UserAccount user = found.get();
         if (user.getStatus() == UserStatus.PENDING_DELETION
@@ -119,10 +124,7 @@ public class AuthenticationService {
         if (value.contains("@")) {
             return users.findByEmailForUpdate(normalizer.email(value));
         }
-        try {
-            return users.findByPhoneForUpdate(normalizer.phone(value));
-        } catch (RuntimeException exception) {
-            return Optional.empty();
-        }
+        return users.findByPhoneForUpdate(normalizer.phone(value));
+
     }
 }

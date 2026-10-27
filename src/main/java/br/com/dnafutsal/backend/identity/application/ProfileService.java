@@ -7,11 +7,14 @@ import br.com.dnafutsal.backend.identity.domain.UserAccount;
 import br.com.dnafutsal.backend.identity.domain.UserStatus;
 import br.com.dnafutsal.backend.identity.infrastructure.RefreshSessionRepository;
 import br.com.dnafutsal.backend.identity.infrastructure.UserAccountRepository;
+import br.com.dnafutsal.backend.sports.application.SportsPreferenceValidator;
+import br.com.dnafutsal.backend.sports.domain.SportsCompetitionCode;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -23,16 +26,19 @@ public class ProfileService {
     private final IdentityNormalizer normalizer;
     private final RegistrationService registrationService;
     private final Clock clock;
+    private final SportsPreferenceValidator sportsPreferenceValidator;
 
     public ProfileService(UserAccountRepository users, RefreshSessionRepository refreshSessions,
                           PasswordEncoder passwordEncoder, IdentityNormalizer normalizer,
-                          RegistrationService registrationService, Clock clock) {
+                          RegistrationService registrationService, Clock clock,
+                          SportsPreferenceValidator sportsPreferenceValidator) {
         this.users = users;
         this.refreshSessions = refreshSessions;
         this.passwordEncoder = passwordEncoder;
         this.normalizer = normalizer;
         this.registrationService = registrationService;
         this.clock = clock;
+        this.sportsPreferenceValidator = sportsPreferenceValidator;
     }
 
     @Transactional(readOnly = true)
@@ -59,9 +65,23 @@ public class ProfileService {
             throw Errors.conflict("PHONE_ALREADY_REGISTERED", "Este telefone já está cadastrado.");
         }
         boolean emailChanged = !user.getEmail().equals(email);
+        String categoryId = normalizer.optionalId(request.categoryId());
+        String divisionId = normalizer.optionalId(request.divisionId());
+        String teamId = normalizer.optionalId(request.teamId());
+        SportsCompetitionCode code = request.competitionCode();
+        boolean sameSportsSelection = Objects.equals(user.getFollowedEventId(), request.eventId())
+                && Objects.equals(user.getFollowedDivisionId(), divisionId)
+                && Objects.equals(user.getFollowedCategoryId(), categoryId)
+                && Objects.equals(user.getFollowedTeamId(), teamId);
+        if (code == null && sameSportsSelection) {
+            // Legacy clients editing personal data must not erase the saved preference.
+            code = user.getFollowedCompetitionCode();
+        }
+        if (code != null && (!sameSportsSelection || code != user.getFollowedCompetitionCode())) {
+            sportsPreferenceValidator.validate(code, request.eventId(), divisionId, categoryId, teamId);
+        }
         user.updateProfile(request.name().trim(), email, phone, normalizer.instagram(request.childInstagram()),
-                request.eventId(), normalizer.optionalId(request.categoryId()), normalizer.optionalId(request.divisionId()),
-                normalizer.optionalId(request.teamId()));
+                request.eventId(), categoryId, divisionId, teamId, code);
         if (emailChanged) {
             user.requireEmailVerification();
             refreshSessions.revokeAllByUserId(userId, clock.instant());

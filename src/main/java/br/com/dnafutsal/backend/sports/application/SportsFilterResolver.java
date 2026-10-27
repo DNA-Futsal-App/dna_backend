@@ -1,7 +1,9 @@
 package br.com.dnafutsal.backend.sports.application;
 
+import br.com.dnafutsal.backend.common.Errors;
 import br.com.dnafutsal.backend.identity.api.UserProfileResponse;
 import br.com.dnafutsal.backend.identity.application.ProfileService;
+import br.com.dnafutsal.backend.sports.domain.SportsCompetitionCode;
 import br.com.dnafutsal.backend.sports.domain.SportsFilter;
 import org.springframework.stereotype.Component;
 
@@ -54,11 +56,9 @@ public class SportsFilterResolver {
             canReuseProfileTeam =
                     true;
         } else {
-            selectedEventId =
-                    defaultEvents
-                            .resolveCurrentEventId();
-            canReuseProfileTeam =
-                    false;
+            // Do not bypass the female-selection guard when resolving My Team.
+            selectedEventId = selectEventId(profile, null);
+            canReuseProfileTeam = false;
         }
 
         String selectedTeamId =
@@ -107,6 +107,13 @@ public class SportsFilterResolver {
 
         if (profile.eventId() != null) {
             return profile.eventId();
+        }
+
+        if (profile.competitionCode() == SportsCompetitionCode.PAULISTA_FEMININO) {
+            throw Errors.badRequest(
+                    "SPORTS_PREFERENCE_INCOMPLETE",
+                    "Escolha uma divisão e categoria do Paulista Feminino no perfil antes de acompanhar os resultados."
+            );
         }
 
         return defaultEvents

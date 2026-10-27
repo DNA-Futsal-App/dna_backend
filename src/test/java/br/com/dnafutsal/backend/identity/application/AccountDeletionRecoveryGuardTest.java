@@ -45,7 +45,7 @@ class AccountDeletionRecoveryGuardTest {
                 new EmailVerificationToken(user.getId(), tokens.hash("old"), now.plusSeconds(60), now)));
         var service = new RegistrationService(users, verification, passwords, mock(IdentityNormalizer.class),
                 tokens, security, app,
-                mock(MailTemplateFactory.class), mail, clock, List.of());
+                mock(MailTemplateFactory.class), mail, clock, List.of(), null);
         assertThatThrownBy(() -> service.verifyEmail("old")).isInstanceOf(BusinessException.class);
         assertThat(user.getStatus()).isEqualTo(UserStatus.PENDING_DELETION);
         verifyNoInteractions(mail);

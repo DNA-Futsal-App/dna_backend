@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
+import br.com.dnafutsal.backend.sports.domain.SportsCompetitionCode;
 
 public record RegisterRequest(
         @NotBlank @Size(min = 2, max = 120) String name,
@@ -17,6 +18,14 @@ public record RegisterRequest(
         @Size(max = 100) String categoryId,
         @Size(max = 100) String divisionId,
         @Size(max = 100) String teamId,
-        @Size(max = 200) String coachAccessToken
+        @Size(max = 200) String coachAccessToken,
+        SportsCompetitionCode competitionCode
 ) {
+    // Backwards-compatible constructor for existing Java callers.
+    public RegisterRequest(String name, String email, String phone, String password,
+                           String childInstagram, Long eventId, String categoryId,
+                           String divisionId, String teamId, String coachAccessToken) {
+        this(name, email, phone, password, childInstagram, eventId, categoryId,
+                divisionId, teamId, coachAccessToken, null);
+    }
 }

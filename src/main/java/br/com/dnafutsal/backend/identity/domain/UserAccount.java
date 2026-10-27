@@ -1,5 +1,6 @@
 package br.com.dnafutsal.backend.identity.domain;
 
+import br.com.dnafutsal.backend.sports.domain.SportsCompetitionCode;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -49,6 +50,10 @@ public class UserAccount {
     private String followedTeamId;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "followed_competition_code", length = 40)
+    private SportsCompetitionCode followedCompetitionCode;
+
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private UserRole role;
 
@@ -86,6 +91,14 @@ public class UserAccount {
     public UserAccount(String name, String email, String phone, String passwordHash,
                        String childInstagram, Long followedEventId, String followedCategoryId,
                        String followedDivisionId, String followedTeamId) {
+        this(name, email, phone, passwordHash, childInstagram, followedEventId,
+                followedCategoryId, followedDivisionId, followedTeamId, null);
+    }
+
+    public UserAccount(String name, String email, String phone, String passwordHash,
+                       String childInstagram, Long followedEventId, String followedCategoryId,
+                       String followedDivisionId, String followedTeamId,
+                       SportsCompetitionCode competitionCode) {
         this.id = UUID.randomUUID();
         this.name = name;
         this.email = email;
@@ -96,6 +109,7 @@ public class UserAccount {
         this.followedCategoryId = followedCategoryId;
         this.followedDivisionId = followedDivisionId;
         this.followedTeamId = followedTeamId;
+        this.followedCompetitionCode = competitionCode;
         this.role = UserRole.USER;
         this.status = UserStatus.PENDING_EMAIL_VERIFICATION;
     }
@@ -122,6 +136,13 @@ public class UserAccount {
 
     public void updateProfile(String name, String email, String phone, String childInstagram,
                               Long eventId, String categoryId, String divisionId, String teamId) {
+        updateProfile(name, email, phone, childInstagram, eventId, categoryId,
+                divisionId, teamId, null);
+    }
+
+    public void updateProfile(String name, String email, String phone, String childInstagram,
+                              Long eventId, String categoryId, String divisionId, String teamId,
+                              SportsCompetitionCode competitionCode) {
         this.name = name;
         this.email = email;
         this.phone = phone;
@@ -130,6 +151,7 @@ public class UserAccount {
         this.followedCategoryId = categoryId;
         this.followedDivisionId = divisionId;
         this.followedTeamId = teamId;
+        this.followedCompetitionCode = competitionCode;
     }
 
     public void requireEmailVerification() {
@@ -203,6 +225,10 @@ public class UserAccount {
 
     public String getFollowedTeamId() {
         return followedTeamId;
+    }
+
+    public SportsCompetitionCode getFollowedCompetitionCode() {
+        return followedCompetitionCode;
     }
 
     public UserRole getRole() {

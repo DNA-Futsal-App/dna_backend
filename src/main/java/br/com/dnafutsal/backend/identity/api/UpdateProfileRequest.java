@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
+import br.com.dnafutsal.backend.sports.domain.SportsCompetitionCode;
 
 public record UpdateProfileRequest(
         @NotBlank @Size(min = 2, max = 120) String name,
@@ -16,6 +17,14 @@ public record UpdateProfileRequest(
         @Size(max = 100) String categoryId,
         @Size(max = 100) String divisionId,
         @Size(max = 100) String teamId,
-        @NotBlank @Size(max = 72) String currentPassword
+        @NotBlank @Size(max = 72) String currentPassword,
+        SportsCompetitionCode competitionCode
 ) {
+    // Requests without competitionCode use the record's canonical constructor.
+    public UpdateProfileRequest(String name, String email, String phone,
+                                String childInstagram, Long eventId, String categoryId,
+                                String divisionId, String teamId, String currentPassword) {
+        this(name, email, phone, childInstagram, eventId, categoryId,
+                divisionId, teamId, currentPassword, null);
+    }
 }

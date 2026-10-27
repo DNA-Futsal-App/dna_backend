@@ -11,6 +11,7 @@ import br.com.dnafutsal.backend.identity.infrastructure.EmailVerificationTokenRe
 import br.com.dnafutsal.backend.identity.infrastructure.UserAccountRepository;
 import br.com.dnafutsal.backend.mail.application.MailOutboxService;
 import br.com.dnafutsal.backend.mail.application.MailTemplateFactory;
+import br.com.dnafutsal.backend.sports.application.SportsPreferenceValidator;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,6 +35,7 @@ public class RegistrationService {
     private final MailOutboxService mailOutbox;
     private final Clock clock;
     private final List<RegistrationLifecycleHook> lifecycleHooks;
+    private final SportsPreferenceValidator sportsPreferenceValidator;
 
     public RegistrationService(UserAccountRepository users,
                                EmailVerificationTokenRepository verificationTokens,
@@ -45,7 +47,8 @@ public class RegistrationService {
                                MailTemplateFactory mailTemplates,
                                MailOutboxService mailOutbox,
                                Clock clock,
-                               List<RegistrationLifecycleHook> lifecycleHooks) {
+                               List<RegistrationLifecycleHook> lifecycleHooks,
+                               SportsPreferenceValidator sportsPreferenceValidator) {
         this.users = users;
         this.verificationTokens = verificationTokens;
         this.passwordEncoder = passwordEncoder;
@@ -57,6 +60,7 @@ public class RegistrationService {
         this.mailOutbox = mailOutbox;
         this.clock = clock;
         this.lifecycleHooks = List.copyOf(lifecycleHooks);
+        this.sportsPreferenceValidator = sportsPreferenceValidator;
     }
 
     @Transactional
@@ -69,10 +73,14 @@ public class RegistrationService {
         if (users.existsByPhone(phone)) {
             throw Errors.conflict("PHONE_ALREADY_REGISTERED", "Este telefone já está cadastrado.");
         }
+        String categoryId = normalizer.optionalId(request.categoryId());
+        String divisionId = normalizer.optionalId(request.divisionId());
+        String teamId = normalizer.optionalId(request.teamId());
+        sportsPreferenceValidator.validate(request.competitionCode(), request.eventId(),
+                divisionId, categoryId, teamId);
         UserAccount user = new UserAccount(request.name().trim(), email, phone,
                 passwordEncoder.encode(request.password()), normalizer.instagram(request.childInstagram()),
-                request.eventId(), normalizer.optionalId(request.categoryId()), normalizer.optionalId(request.divisionId()),
-                normalizer.optionalId(request.teamId()));
+                request.eventId(), categoryId, divisionId, teamId, request.competitionCode());
         users.save(user);
 
         lifecycleHooks.forEach(
