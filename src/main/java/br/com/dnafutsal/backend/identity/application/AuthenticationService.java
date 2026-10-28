@@ -113,6 +113,8 @@ public class AuthenticationService {
     private AuthResponse issue(UserAccount user, ClientContext context) {
         Instant now = clock.instant();
         String rawRefreshToken = tokenSupport.generate();
+        user.onLogin();
+        users.save(user);
         refreshSessions.save(new RefreshSession(user.getId(), tokenSupport.hash(rawRefreshToken),
                 now.plus(properties.refreshTokenTtl()), now, context.userAgent(), context.ipAddress()));
         return new AuthResponse("Bearer", jwtTokens.createAccessToken(user), jwtTokens.expiresInSeconds(),
