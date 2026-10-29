@@ -7,6 +7,7 @@ import br.com.dnafutsal.backend.config.AppProperties;
 import br.com.dnafutsal.backend.identity.api.RegisterRequest;
 import br.com.dnafutsal.backend.identity.domain.EmailVerificationToken;
 import br.com.dnafutsal.backend.identity.domain.UserAccount;
+import br.com.dnafutsal.backend.identity.domain.UserStatus;
 import br.com.dnafutsal.backend.identity.infrastructure.EmailVerificationTokenRepository;
 import br.com.dnafutsal.backend.identity.infrastructure.UserAccountRepository;
 import br.com.dnafutsal.backend.mail.application.MailOutboxService;
@@ -20,6 +21,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 public class RegistrationService {
@@ -94,7 +96,7 @@ public class RegistrationService {
     }
 
     @Transactional
-    public java.util.UUID verifyEmail(String rawToken) {
+    public void verifyEmail(String rawToken) {
         Instant now = clock.instant();
         EmailVerificationToken token = verificationTokens.findByTokenHash(tokenSupport.hash(rawToken))
                 .orElseThrow(() -> Errors.badRequest("INVALID_VERIFICATION_TOKEN", "O link de confirmação é inválido."));
@@ -103,7 +105,7 @@ public class RegistrationService {
         }
         UserAccount user = users.findByIdForUpdate(token.getUserId())
                 .orElseThrow(() -> Errors.notFound("USER_NOT_FOUND", "Usuário não encontrado."));
-        if (user.getStatus() != br.com.dnafutsal.backend.identity.domain.UserStatus.PENDING_EMAIL_VERIFICATION
+        if (user.getStatus() != UserStatus.PENDING_EMAIL_VERIFICATION
                 || verificationTokens.findByTokenHash(tokenSupport.hash(rawToken)).isEmpty()) {
             throw Errors.badRequest("INVALID_VERIFICATION_TOKEN", "O link de confirmação é inválido.");
         }
@@ -115,14 +117,12 @@ public class RegistrationService {
                         user
                 )
         );
-
-        return user.getId();
     }
 
     @Transactional
     public void resendVerification(String login) {
         findByLogin(login)
-                .filter(user -> user.getStatus() == br.com.dnafutsal.backend.identity.domain.UserStatus.PENDING_EMAIL_VERIFICATION)
+                .filter(user -> user.getStatus() == UserStatus.PENDING_EMAIL_VERIFICATION)
                 .ifPresent(user -> {
                     Instant startOfDay = clock.instant().atZone(appProperties.zoneId()).toLocalDate()
                             .atStartOfDay(appProperties.zoneId()).toInstant();

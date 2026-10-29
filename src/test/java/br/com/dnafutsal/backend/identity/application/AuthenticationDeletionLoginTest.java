@@ -39,7 +39,7 @@ class AuthenticationDeletionLoginTest {
         when(passwords.matches("correct", "hash")).thenReturn(true);
         service = new AuthenticationService(users, sessions, passwords, normalizer,
                 mock(TokenSupport.class), jwt, new SecurityProperties("test-secret".repeat(8), java.time.Duration.ofMinutes(10), java.time.Duration.ofDays(30), java.time.Duration.ofDays(1), java.time.Duration.ofHours(1)), attempts,
-                Clock.fixed(now, ZoneOffset.UTC));
+                Clock.fixed(now, ZoneOffset.UTC), new RegistrationService());
     }
 
     private void expectCode(String password, String code) {

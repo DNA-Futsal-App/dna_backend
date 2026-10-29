@@ -73,6 +73,9 @@ public class UserAccount {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    @Column(name = "last_login_at")
+    private Instant lastLoginAt;
+
     @Column(name = "deletion_requested_at")
     private Instant deletionRequestedAt;
 
@@ -132,6 +135,10 @@ public class UserAccount {
     public void activate(Instant now) {
         this.status = UserStatus.ACTIVE;
         this.emailVerifiedAt = now;
+    }
+
+    public void onLogin(){
+        lastLoginAt = Instant.now();
     }
 
     public void updateProfile(String name, String email, String phone, String childInstagram,

@@ -73,7 +73,7 @@ app:
     login-attempt-max-entries: ${LOGIN_ATTEMPT_CACHE_MAX_ENTRIES:50000}
   security:
     jwt-secret: ${JWT_SECRET}
-    access-token-ttl: ${ACCESS_TOKEN_TTL:PT15M}
+    access-token-ttl: ${ACCESS_TOKEN_TTL:PT24H}
     refresh-token-ttl: ${REFRESH_TOKEN_TTL:P30D}
     email-verification-ttl: ${EMAIL_VERIFICATION_TTL:PT24H}
     password-reset-ttl: ${PASSWORD_RESET_TTL:PT30M}
