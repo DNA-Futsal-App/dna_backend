@@ -137,8 +137,6 @@ public class UserAccount {
         this.emailVerifiedAt = now;
     }
 
-    public void onLogin() { lastLoginAt = Instant.now(); }
-
     public void updateProfile(String name, String email, String phone, String childInstagram,
                               Long eventId, String categoryId, String divisionId, String teamId) {
         updateProfile(name, email, phone, childInstagram, eventId, categoryId,

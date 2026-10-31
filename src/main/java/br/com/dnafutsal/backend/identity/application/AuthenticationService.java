@@ -32,6 +32,7 @@ public class AuthenticationService {
     private final LoginAttemptService attempts;
     private final Clock clock;
     private final String dummyPasswordHash;
+    private final RegistrationService registration;
 
     public AuthenticationService(UserAccountRepository users,
                                  RefreshSessionRepository refreshSessions,
@@ -41,7 +42,9 @@ public class AuthenticationService {
                                  JwtTokenService jwtTokens,
                                  SecurityProperties properties,
                                  LoginAttemptService attempts,
-                                 Clock clock) {
+                                 Clock clock,
+                                 RegistrationService registration
+    ) {
         this.users = users;
         this.refreshSessions = refreshSessions;
         this.passwordEncoder = passwordEncoder;
@@ -52,9 +55,12 @@ public class AuthenticationService {
         this.attempts = attempts;
         this.clock = clock;
         this.dummyPasswordHash = passwordEncoder.encode(tokenSupport.generate());
+        this.registration = registration;
     }
 
-    @Transactional
+    @Transactional(
+            noRollbackFor = EmailVerificationRequiredException.class
+    )
     public AuthResponse login(LoginRequest request, ClientContext context) {
         String loginKey = request.login().trim().toLowerCase();
         attempts.checkAllowed(loginKey, context.ipAddress());
@@ -77,12 +83,16 @@ public class AuthenticationService {
                     "Sua conta tem uma exclusão agendada. Confirme se deseja cancelar a exclusão e entrar.");
         }
         if (user.getStatus() == UserStatus.PENDING_EMAIL_VERIFICATION) {
-            throw Errors.forbidden("EMAIL_NOT_VERIFIED", "Confirme seu e-mail antes de entrar.");
+            attempts.failed(loginKey, context.ipAddress());
+            registration.resendVerification(request.login());
+            throw new EmailVerificationRequiredException();
         }
         if (user.getStatus() != UserStatus.ACTIVE) {
             throw Errors.forbidden("ACCOUNT_UNAVAILABLE", "A conta não está disponível.");
         }
         attempts.succeeded(loginKey, context.ipAddress());
+        user.onLogin();
+        users.save(user);
         return issue(user, context);
     }
 
@@ -99,7 +109,6 @@ public class AuthenticationService {
         if (user.getStatus() != UserStatus.ACTIVE) {
             throw Errors.forbidden("ACCOUNT_UNAVAILABLE", "A conta não está disponível.");
         }
-        session.revoke(now);
         return issue(user, context);
     }
 
