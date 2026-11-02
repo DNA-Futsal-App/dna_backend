@@ -12,6 +12,8 @@ import br.com.dnafutsal.backend.awards.domain.AwardVoteCategory;
 import br.com.dnafutsal.backend.awards.infrastructure.AwardCandidateRepository;
 import br.com.dnafutsal.backend.awards.infrastructure.AwardCoachVoterRepository;
 import br.com.dnafutsal.backend.awards.infrastructure.AwardEditionRepository;
+import br.com.dnafutsal.backend.awards.infrastructure.AwardPreVoteEditionLockRepository;
+import br.com.dnafutsal.backend.awards.infrastructure.AwardPreVoteFinalistRepository;
 import br.com.dnafutsal.backend.awards.infrastructure.AwardVoteCategoryRepository;
 import br.com.dnafutsal.backend.common.Errors;
 import org.springframework.stereotype.Service;
@@ -26,6 +28,8 @@ import java.util.UUID;
 public class AwardEditionAdminService {
 
     private final AwardEditionRepository editions;
+    private final AwardPreVoteEditionLockRepository editionLocks;
+    private final AwardPreVoteFinalistRepository finalists;
     private final AwardVoteCategoryRepository voteCategories;
     private final AwardCandidateRepository candidates;
     private final AwardCoachVoterRepository voters;
@@ -33,12 +37,16 @@ public class AwardEditionAdminService {
 
     public AwardEditionAdminService(
             AwardEditionRepository editions,
+            AwardPreVoteEditionLockRepository editionLocks,
+            AwardPreVoteFinalistRepository finalists,
             AwardVoteCategoryRepository voteCategories,
             AwardCandidateRepository candidates,
             AwardCoachVoterRepository voters,
             Clock clock
     ) {
         this.editions = editions;
+        this.editionLocks = editionLocks;
+        this.finalists = finalists;
         this.voteCategories = voteCategories;
         this.candidates = candidates;
         this.voters = voters;
@@ -208,10 +216,15 @@ public class AwardEditionAdminService {
     public AwardEditionAdminResponse openRegistrations(
             UUID editionId
     ) {
-        AwardEdition edition =
-                edition(
-                        editionId
-                );
+        AwardEdition edition = editionLocks.lockEdition(editionId)
+                .orElseThrow(() -> Errors.notFound(
+                        "AWARD_EDITION_NOT_FOUND", "Edição do prêmio não encontrada."));
+
+        // Não reabrir inscrições depois que qualquer grupo já possui finalistas.
+        if (finalists.existsByEditionId(editionId)) {
+            throw Errors.conflict("AWARD_PRE_VOTE_ALREADY_FINALIZED",
+                    "Não é possível reabrir inscrições após a confirmação de finalistas.");
+        }
 
         if (edition.isRegistrationsOpen()) {
             return AwardEditionAdminResponse.from(

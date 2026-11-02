@@ -9,6 +9,12 @@ import java.util.List;
 import java.util.UUID;
 
 public interface AwardPreVoteFinalistRepository extends JpaRepository<AwardPreVoteFinalist, UUID> {
+    boolean existsByEditionId(UUID editionId);
+
+    boolean existsByEditionIdAndEventIdAndDivisionIdAndCategoryIdAndGenderAndContestCategory(
+            UUID editionId, long eventId, long divisionId, long categoryId,
+            AwardRegistrationGender gender, AwardRegistrationContestCategory contestCategory);
+
     List<AwardPreVoteFinalist> findByEditionIdAndEventIdAndDivisionIdAndCategoryIdAndGenderAndContestCategoryOrderByRankAsc(
             UUID editionId, long eventId, long divisionId, long categoryId,
             AwardRegistrationGender gender, AwardRegistrationContestCategory contestCategory);

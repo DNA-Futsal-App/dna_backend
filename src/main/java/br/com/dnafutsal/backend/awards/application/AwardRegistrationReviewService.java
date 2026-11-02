@@ -12,6 +12,8 @@ import br.com.dnafutsal.backend.awards.domain.AwardRegistrationMediaStatus;
 import br.com.dnafutsal.backend.awards.domain.AwardRegistrationReviewStatus;
 import br.com.dnafutsal.backend.awards.domain.AwardRegistrationStatus;
 import br.com.dnafutsal.backend.awards.infrastructure.AwardEditionRepository;
+import br.com.dnafutsal.backend.awards.infrastructure.AwardPreVoteEditionLockRepository;
+import br.com.dnafutsal.backend.awards.infrastructure.AwardPreVoteFinalistRepository;
 import br.com.dnafutsal.backend.awards.infrastructure.AwardRegistrationEntryRepository;
 import br.com.dnafutsal.backend.awards.infrastructure.AwardRegistrationRepository;
 import br.com.dnafutsal.backend.common.Errors;
@@ -46,6 +48,8 @@ public class AwardRegistrationReviewService {
     private final CurrentUserService currentUser;
     private final UserAccountRepository users;
     private final AwardEditionRepository editions;
+    private final AwardPreVoteEditionLockRepository editionLocks;
+    private final AwardPreVoteFinalistRepository finalists;
     private final AwardRegistrationRepository registrations;
     private final AwardRegistrationEntryRepository entries;
     private final OracleAwardVideoStorage storage;
@@ -57,6 +61,8 @@ public class AwardRegistrationReviewService {
             CurrentUserService currentUser,
             UserAccountRepository users,
             AwardEditionRepository editions,
+            AwardPreVoteEditionLockRepository editionLocks,
+            AwardPreVoteFinalistRepository finalists,
             AwardRegistrationRepository registrations,
             AwardRegistrationEntryRepository entries,
             OracleAwardVideoStorage storage,
@@ -67,6 +73,8 @@ public class AwardRegistrationReviewService {
         this.currentUser = currentUser;
         this.users = users;
         this.editions = editions;
+        this.editionLocks = editionLocks;
+        this.finalists = finalists;
         this.registrations = registrations;
         this.entries = entries;
         this.storage = storage;
@@ -343,11 +351,23 @@ public class AwardRegistrationReviewService {
                         registrationId
                 );
 
+        // Mesma ordem de bloqueios da pré-votação: usuário -> edição -> candidatura.
+        UUID reviewerUserId = currentUser.userId();
+        AwardEdition edition = editionLocks.lockEdition(registration.getEditionId())
+                .orElseThrow(() -> Errors.notFound(
+                        "AWARD_EDITION_NOT_FOUND", "Edição do prêmio não encontrada."));
         AwardRegistrationEntry entry =
                 requireEntry(
                         registrationId,
                         entryId
                 );
+
+        if (finalists.existsByEditionIdAndEventIdAndDivisionIdAndCategoryIdAndGenderAndContestCategory(
+                registration.getEditionId(), registration.getEventId(), registration.getDivisionId(),
+                registration.getCategoryId(), registration.getGender(), entry.getContestCategory())) {
+            throw Errors.conflict("AWARD_PRE_VOTE_ALREADY_FINALIZED",
+                    "Não é possível revisar um grupo com finalistas já confirmados.");
+        }
 
         if (entry.getMediaStatus()
                 != AwardRegistrationMediaStatus.READY) {
@@ -365,9 +385,6 @@ public class AwardRegistrationReviewService {
             );
         }
 
-        UUID reviewerUserId =
-                currentUser.userId();
-
         UserAccount reviewer =
                 requireUser(
                         reviewerUserId
@@ -376,11 +393,6 @@ public class AwardRegistrationReviewService {
         UserAccount representative =
                 requireUser(
                         registration.getRepresentativeUserId()
-                );
-
-        AwardEdition edition =
-                requireEdition(
-                        registration.getEditionId()
                 );
 
         Instant reviewedAt =

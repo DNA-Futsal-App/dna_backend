@@ -3,6 +3,7 @@ package br.com.dnafutsal.backend.awards.application;
 import br.com.dnafutsal.backend.awards.api.*;
 import br.com.dnafutsal.backend.awards.domain.*;
 import br.com.dnafutsal.backend.awards.infrastructure.AwardEditionRepository;
+import br.com.dnafutsal.backend.awards.infrastructure.AwardPreVoteEditionLockRepository;
 import br.com.dnafutsal.backend.awards.infrastructure.AwardRegistrationEntryRepository;
 import br.com.dnafutsal.backend.awards.infrastructure.AwardRegistrationRepository;
 import br.com.dnafutsal.backend.common.Errors;
@@ -35,6 +36,7 @@ public class AwardRegistrationService {
     private final CurrentUserService currentUser;
     private final UserAccountRepository users;
     private final AwardEditionRepository editions;
+    private final AwardPreVoteEditionLockRepository editionLocks;
     private final AwardRegistrationRepository registrations;
     private final AwardRegistrationEntryRepository entries;
     private final SportsCatalogService catalog;
@@ -51,6 +53,7 @@ public class AwardRegistrationService {
             CurrentUserService currentUser,
             UserAccountRepository users,
             AwardEditionRepository editions,
+            AwardPreVoteEditionLockRepository editionLocks,
             AwardRegistrationRepository registrations,
             AwardRegistrationEntryRepository entries,
             SportsCatalogService catalog,
@@ -65,6 +68,7 @@ public class AwardRegistrationService {
         this.currentUser = currentUser;
         this.users = users;
         this.editions = editions;
+        this.editionLocks = editionLocks;
         this.registrations = registrations;
         this.entries = entries;
         this.catalog = catalog;
@@ -345,9 +349,12 @@ public class AwardRegistrationService {
                         registrationId
                 );
 
-        requireNotCancelled(
-                registration
-        );
+        // O upload é uma alteração da mídia: não pode ser iniciado após o fechamento.
+        // O mesmo lock serializa a publicação dos finalistas com a criação do ticket.
+        editionLocks.lockEdition(registration.getEditionId())
+                .orElseThrow(() -> Errors.notFound(
+                        "AWARD_EDITION_NOT_FOUND", "Edição do prêmio não encontrada."));
+        requireWritable(registration);
 
         AwardRegistrationEntry entry =
                 requireEntry(

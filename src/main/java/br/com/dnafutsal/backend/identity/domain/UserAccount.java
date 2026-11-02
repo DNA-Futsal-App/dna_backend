@@ -127,6 +127,10 @@ public class UserAccount {
         updatedAt = now;
     }
 
+    public void onLogin(){
+        lastLoginAt = Instant.now();
+    }
+
     @PreUpdate
     void onUpdate() {
         updatedAt = Instant.now();

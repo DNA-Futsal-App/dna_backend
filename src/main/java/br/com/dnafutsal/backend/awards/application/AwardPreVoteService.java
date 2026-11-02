@@ -89,7 +89,8 @@ public class AwardPreVoteService {
         if (value < 1 || value > 10) {
             throw Errors.badRequest("AWARD_PRE_VOTE_SCORE_INVALID", "A nota deve estar entre 1 e 10.");
         }
-        // Obrigatório usar a mesma trava no salvamento e na publicação.
+        // Bloqueio global sempre na ordem usuário -> edição, evitando inversões de locks.
+        UUID adminId = currentUser.userId();
         AwardEdition edition = lockEdition(editionId);
         AwardRegistrationEntry entry = entries.findById(entryId).orElseThrow(() ->
                 Errors.notFound("AWARD_PRE_VOTE_ENTRY_NOT_FOUND", "Vídeo não encontrado."));
@@ -105,7 +106,6 @@ public class AwardPreVoteService {
         if (!loadFinalists(editionId, context).isEmpty()) {
             throw Errors.conflict("AWARD_PRE_VOTE_ALREADY_FINALIZED", "Este grupo de finalistas já foi publicado.");
         }
-        UUID adminId = currentUser.userId();
         AwardPreVoteScore saved = scores.findByEntryIdAndAdminUserIdAndApprovalAt(
                         entryId, adminId, entry.getReviewedAt())
                 .orElseGet(() -> new AwardPreVoteScore(entryId, adminId, entry.getReviewedAt(), value));
@@ -116,6 +116,7 @@ public class AwardPreVoteService {
 
     @Transactional
     public AwardPreVoteBoardResponse finalizeContext(UUID editionId, AwardPreVoteContextRequest context) {
+        UUID administrator = currentUser.userId();
         AwardEdition edition = lockEdition(editionId);
         if (!loadFinalists(editionId, context).isEmpty()) {
             throw Errors.conflict("AWARD_PRE_VOTE_ALREADY_FINALIZED", "Este grupo de finalistas já foi publicado.");
@@ -137,7 +138,6 @@ public class AwardPreVoteService {
         if (ranking.size() > 3 && compareAverages(ranking.get(2), ranking.get(3)) == 0) {
             throw Errors.conflict("AWARD_PRE_VOTE_TIE_AT_CUTOFF", "Há empate na terceira colocação. Resolva o empate antes de publicar.");
         }
-        UUID administrator = currentUser.userId();
         for (int i = 0; i < 3; i++) {
             RatedEntry rated = ranking.get(i);
             finalists.save(new AwardPreVoteFinalist(
