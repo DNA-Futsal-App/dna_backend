@@ -140,11 +140,13 @@ public class AwardPreVoteService {
         }
         for (int i = 0; i < 3; i++) {
             RatedEntry rated = ranking.get(i);
-            finalists.save(new AwardPreVoteFinalist(
+            AwardPreVoteFinalist finalist = new AwardPreVoteFinalist(
                     editionId, context.eventId(), context.divisionId(), context.categoryId(),
                     context.gender(), context.contestCategory(), rated.entry().getId(), i + 1,
                     BigDecimal.valueOf(rated.sum()).divide(BigDecimal.valueOf(rated.count()), 4, RoundingMode.HALF_UP),
-                    rated.count(), clock.instant(), administrator));
+                    rated.count(), clock.instant(), administrator);
+            finalist.setApprovedAt(rated.entry().getReviewedAt());
+            finalists.save(finalist);
         }
         finalists.flush();
         return buildBoard(edition, context, administrator);

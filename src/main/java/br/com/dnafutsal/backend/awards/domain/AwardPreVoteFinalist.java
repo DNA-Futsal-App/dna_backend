@@ -42,6 +42,8 @@ public class AwardPreVoteFinalist {
     private Instant finalizedAt;
     @Column(name = "finalized_by_user_id", nullable = false)
     private UUID finalizedByUserId;
+    @Column(name = "approved_at")
+    private Instant approvedAt;
 
     protected AwardPreVoteFinalist() {}
 
@@ -66,4 +68,6 @@ public class AwardPreVoteFinalist {
 
     public UUID getEntryId() { return entryId; }
     public short getRank() { return rank; }
+    public Instant getApprovedAt() { return approvedAt; }
+    public void setApprovedAt(Instant approvedAt) { this.approvedAt = approvedAt; }
 }
