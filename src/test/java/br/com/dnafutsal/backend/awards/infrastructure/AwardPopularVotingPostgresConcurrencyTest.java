@@ -22,7 +22,7 @@ import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-/** Executa as migrations reais V20/V21 em PostgreSQL e testa unicidade sob concorrência. */
+/** Executa migrations reais V20/V21/V22 em PostgreSQL e testa janelas por contexto e concorrência. */
 @Testcontainers(disabledWithoutDocker = true)
 class AwardPopularVotingPostgresConcurrencyTest {
     @Container
@@ -62,7 +62,15 @@ class AwardPopularVotingPostgresConcurrencyTest {
             s.execute("INSERT INTO award_pre_vote_finalists(entry_id, finalized_at) VALUES ('" + ENTRY + "', '2026-11-01 10:00:00+00')");
             runMigration(c, "V20__award_popular_voting.sql");
             runMigration(c, "V21__award_popular_approval_snapshot.sql");
-            s.execute("INSERT INTO award_popular_voting_windows(edition_id, opens_at, closes_at) VALUES ('" + EDITION + "', '2026-11-01 10:00:00+00', '2026-11-30 10:00:00+00')");
+            runMigration(c, "V22__award_popular_context_windows.sql");
+            s.execute("INSERT INTO award_popular_context_windows "
+                    + "(id, edition_id, event_id, division_id, category_id, gender, contest_category, opens_at, closes_at) "
+                    + "VALUES ('" + UUID.randomUUID() + "', '" + EDITION + "', 908, 3, 12, 'MALE', 'BEST_DRIBBLE', "
+                    + "'2026-11-01 10:00:00+00', '2026-11-30 10:00:00+00')");
+            s.execute("INSERT INTO award_popular_context_windows "
+                    + "(id, edition_id, event_id, division_id, category_id, gender, contest_category, opens_at, closes_at) "
+                    + "VALUES ('" + UUID.randomUUID() + "', '" + EDITION + "', 908, 3, 12, 'MALE', 'BEST_SAVE', "
+                    + "'2026-11-15 10:00:00+00', '2026-12-30 10:00:00+00')");
         }
     }
 
@@ -72,6 +80,21 @@ class AwardPopularVotingPostgresConcurrencyTest {
              ResultSet r = s.executeQuery("SELECT approved_at FROM award_pre_vote_finalists WHERE entry_id = '" + ENTRY + "'")) {
             assertTrue(r.next());
             assertEquals(Instant.parse("2026-11-01T09:00:00Z"), r.getTimestamp(1).toInstant());
+        }
+    }
+
+    @Test
+    void differentContestCategoriesHaveIndependentWindowsAndSameContextIsUnique() throws Exception {
+        try (Connection c = connection(); Statement s = c.createStatement();
+             ResultSet r = s.executeQuery("SELECT count(*) FROM award_popular_context_windows WHERE edition_id = '" + EDITION + "'")) {
+            assertTrue(r.next());
+            assertEquals(2, r.getInt(1));
+        }
+        try (Connection c = connection(); Statement s = c.createStatement()) {
+            String duplicate = "INSERT INTO award_popular_context_windows(id,edition_id,event_id,division_id,category_id,gender,contest_category,opens_at,closes_at) "
+                    + "VALUES ('" + UUID.randomUUID() + "','" + EDITION + "',908,3,12,'MALE','BEST_SAVE',"
+                    + "'2026-11-15 10:00:00+00','2026-12-30 10:00:00+00')";
+            assertThrows(java.sql.SQLException.class, () -> s.execute(duplicate));
         }
     }
 
@@ -92,7 +115,9 @@ class AwardPopularVotingPostgresConcurrencyTest {
                 ready.countDown();
                 if (!go.await(15, TimeUnit.SECONDS)) throw new IllegalStateException("Tempo de espera excedido");
                 try (Statement s = c.createStatement()) {
-                    s.executeQuery("SELECT edition_id FROM award_popular_voting_windows WHERE edition_id = '" + EDITION + "' FOR SHARE").close();
+                    s.executeQuery("SELECT edition_id FROM award_popular_context_windows WHERE edition_id = '" + EDITION + "' "
+                        + "AND event_id = 908 AND division_id = 3 AND category_id = 12 "
+                        + "AND gender = 'MALE' AND contest_category = 'BEST_DRIBBLE' FOR SHARE").close();
                 }
                 int updated;
                 try (PreparedStatement p = c.prepareStatement(insert)) {

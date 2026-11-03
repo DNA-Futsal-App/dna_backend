@@ -3,8 +3,10 @@ package br.com.dnafutsal.backend.awards.application;
 import br.com.dnafutsal.backend.awards.api.*;
 import br.com.dnafutsal.backend.awards.domain.*;
 import br.com.dnafutsal.backend.awards.infrastructure.*;
+import br.com.dnafutsal.backend.common.BusinessException;
 import br.com.dnafutsal.backend.common.Errors;
 import br.com.dnafutsal.backend.identity.application.CurrentUserService;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,8 +21,11 @@ import java.util.stream.Collectors;
 public class AwardPopularVotingService {
     private final AwardEditionRepository editions;
     private final AwardPreVoteEditionLockRepository editionLocks;
-    private final AwardPopularVotingWindowRepository windows;
+    private final AwardPopularContextWindowRepository windows;
     private final AwardPopularVotingFinalistRepository finalistQueries;
+    private final AwardPreVoteQueryRepository preVoteQueries;
+    private final AwardPopularReadinessService readiness;
+    private final AwardPreVoteService preVote;
     private final AwardPopularVoteRepository votes;
     private final AwardRegistrationEntryRepository entries;
     private final AwardRegistrationRepository registrations;
@@ -28,15 +33,24 @@ public class AwardPopularVotingService {
     private final OracleAwardVideoStorage storage;
     private final Clock clock;
 
-    public AwardPopularVotingService(AwardEditionRepository editions, AwardPreVoteEditionLockRepository editionLocks,
-                                     AwardPopularVotingWindowRepository windows,
-                                     AwardPopularVotingFinalistRepository finalistQueries, AwardPopularVoteRepository votes,
-                                     AwardRegistrationEntryRepository entries, AwardRegistrationRepository registrations,
-                                     CurrentUserService currentUser, OracleAwardVideoStorage storage, Clock clock) {
+    public AwardPopularVotingService(AwardEditionRepository editions,
+            AwardPreVoteEditionLockRepository editionLocks,
+            AwardPopularContextWindowRepository windows,
+            AwardPopularVotingFinalistRepository finalistQueries,
+            AwardPreVoteQueryRepository preVoteQueries,
+            AwardPopularReadinessService readiness,
+            AwardPreVoteService preVote,
+            AwardPopularVoteRepository votes,
+            AwardRegistrationEntryRepository entries,
+            AwardRegistrationRepository registrations,
+            CurrentUserService currentUser, OracleAwardVideoStorage storage, Clock clock) {
         this.editions = editions;
         this.editionLocks = editionLocks;
         this.windows = windows;
         this.finalistQueries = finalistQueries;
+        this.preVoteQueries = preVoteQueries;
+        this.readiness = readiness;
+        this.preVote = preVote;
         this.votes = votes;
         this.entries = entries;
         this.registrations = registrations;
@@ -47,50 +61,135 @@ public class AwardPopularVotingService {
 
     @Transactional(readOnly = true)
     public List<AwardPopularVotingWindowResponse> editions() {
-        Map<UUID, AwardPopularVotingWindow> byEdition = windows.findAll().stream()
-                .collect(Collectors.toMap(AwardPopularVotingWindow::getEditionId, Function.identity()));
+        Map<UUID, List<AwardPopularContextWindow>> windowsByEdition = windows.findAll().stream()
+                .collect(Collectors.groupingBy(AwardPopularContextWindow::getEditionId));
+        Instant now = clock.instant();
         return editions.findAllByOrderBySeasonDescNameAsc().stream()
-                .filter(edition -> byEdition.containsKey(edition.getId()))
-                .map(edition -> windowResponse(edition, byEdition.get(edition.getId())))
-                .toList();
+                .filter(edition -> windowsByEdition.containsKey(edition.getId()))
+                .map(edition -> {
+                    var rows = windowsByEdition.get(edition.getId());
+                    String status = rows.stream().anyMatch(w -> w.isOpen(now)) ? "OPEN"
+                            : rows.stream().anyMatch(w -> "SCHEDULED".equals(w.statusAt(now)))
+                            ? "SCHEDULED" : "CLOSED";
+                    // Datas globais não existem mais. Cada grupo possui o seu próprio calendário.
+                    return new AwardPopularVotingWindowResponse(edition.getId(), edition.getName(),
+                            edition.getSeason(), status, null, null, null);
+                }).toList();
     }
 
     @Transactional(readOnly = true)
     public List<AwardPopularContextResponse> contexts(UUID editionId) {
-        requireVisible(window(editionId));
-        return finalistQueries.contexts(editionId).stream().map(row -> {
-            AwardRegistrationContestCategory contest = (AwardRegistrationContestCategory) row[6];
-            return new AwardPopularContextResponse(((Number) row[0]).longValue(),
-                    ((Number) row[1]).longValue(), (String) row[2], ((Number) row[3]).longValue(),
-                    (String) row[4], (AwardRegistrationGender) row[5], contest, contest.label());
-        }).sorted(Comparator.comparingLong(AwardPopularContextResponse::eventId)
-                .thenComparingLong(AwardPopularContextResponse::divisionId)
-                .thenComparingLong(AwardPopularContextResponse::categoryId)
-                .thenComparing(AwardPopularContextResponse::gender)
-                .thenComparing(AwardPopularContextResponse::contestCategory)).toList();
+        edition(editionId);
+        Map<AwardPopularContext, AwardPopularContextWindow> scheduled = windows.findByEditionId(editionId)
+                .stream().collect(Collectors.toMap(AwardPopularContextWindow::context, Function.identity()));
+        return finalistQueries.contexts(editionId).stream()
+                .map(row -> contextResponse(row, scheduled.get(contextFrom(row))))
+                .filter(c -> c.status() != null && !"NOT_SCHEDULED".equals(c.status()))
+                .sorted(contextOrder()).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<AwardPopularContextResponse> adminContexts(UUID editionId) {
+        edition(editionId);
+        Map<AwardPopularContext, AwardPopularContextWindow> scheduled = windows.findByEditionId(editionId)
+                .stream().collect(Collectors.toMap(AwardPopularContextWindow::context, Function.identity()));
+        return preVoteQueries.findContexts(editionId).stream()
+                .map(row -> contextResponse(row, scheduled.get(contextFrom(row))))
+                .sorted(contextOrder()).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public AwardPopularReadinessResponse readiness(UUID editionId, AwardPopularContext context) {
+        return readiness.assess(editionId, context);
+    }
+
+    @Transactional(readOnly = true)
+    public AwardPopularContextWindowResponse adminWindow(UUID editionId, AwardPopularContext context) {
+        edition(editionId);
+        return windowResponse(context, windows.findByEditionIdAndEventIdAndDivisionIdAndCategoryIdAndGenderAndContestCategory(
+                editionId, context.eventId(), context.divisionId(), context.categoryId(),
+                context.gender(), context.contestCategory()).orElse(null));
+    }
+
+    @Transactional
+    public AwardPopularContextWindowResponse schedule(UUID editionId, AwardPopularContextWindowRequest request) {
+        // A mesma linha de edição sincroniza atribuição de notas, publicação do Top 3 e agendamento.
+        AwardEdition edition = editionLocks.lockEdition(editionId).orElseThrow(() ->
+                Errors.notFound("AWARD_EDITION_NOT_FOUND", "Edição não encontrada."));
+        Instant now = clock.instant();
+        if (request.opensAt() == null || request.closesAt() == null
+                || !request.closesAt().isAfter(request.opensAt()) || !request.opensAt().isAfter(now)) {
+            throw Errors.badRequest("AWARD_POPULAR_INVALID_WINDOW",
+                    "A abertura deve ser futura e o encerramento deve ocorrer depois da abertura.");
+        }
+        AwardPopularContext context = request.context();
+        if (windows.findByEditionIdAndEventIdAndDivisionIdAndCategoryIdAndGenderAndContestCategory(
+                editionId, context.eventId(), context.divisionId(), context.categoryId(),
+                context.gender(), context.contestCategory()).isPresent()) {
+            throw Errors.conflict("AWARD_POPULAR_ALREADY_SCHEDULED",
+                    "Este grupo já possui janela configurada. Não é possível programar duas vezes.");
+        }
+        AwardPopularReadinessResponse state = readiness.assess(editionId, context);
+        if (!state.ready()) {
+            String names = state.missingAdmins().stream()
+                    .map(AwardMissingAdminResponse::adminName).collect(Collectors.joining(", "));
+            String detail = names.isBlank()
+                    ? "Ainda existem pendências para agendar este grupo: " + String.join(", ", state.blockers())
+                    : "Faltam notas dos administradores: " + names + ". Confira os vídeos pendentes.";
+            throw new BusinessException(HttpStatus.CONFLICT, "AWARD_POPULAR_NOT_READY", detail,
+                    null, Map.of("missingAdmins", state.missingAdmins(),
+                            "blockers", state.blockers(), "approvedVideos", state.approvedVideos(),
+                            "pendingReview", state.pendingReview()));
+        }
+        if (edition.isRegistrationsOpen()) {
+            throw Errors.conflict("AWARD_POPULAR_REGISTRATIONS_OPEN", "Encerre as inscrições antes de agendar.");
+        }
+        // Consolida o Top 3 somente quando TODOS os administradores ativos avaliaram TODOS os vídeos.
+        if (!state.finalistsConfirmed()) {
+            preVote.finalizeContext(editionId, new AwardPreVoteContextRequest(context.eventId(),
+                    context.divisionId(), context.categoryId(), context.gender(), context.contestCategory()));
+        }
+        requireFinalists(editionId, context);
+        AwardPopularContextWindow saved = windows.saveAndFlush(
+                new AwardPopularContextWindow(editionId, context, request.opensAt(), request.closesAt()));
+        return windowResponse(context, saved);
+    }
+
+    @Transactional
+    public AwardPopularContextWindowResponse close(UUID editionId, AwardPopularContext context) {
+        AwardPopularContextWindow window = windows.lockForClose(editionId, context.eventId(),
+                context.divisionId(), context.categoryId(), context.gender(), context.contestCategory())
+                .orElseThrow(() -> Errors.notFound("AWARD_POPULAR_NOT_SCHEDULED",
+                        "Não existe votação programada para este grupo."));
+        if (clock.instant().isBefore(window.getOpensAt())) {
+            throw Errors.conflict("AWARD_POPULAR_NOT_STARTED",
+                    "Esta votação ainda não começou. Não é possível encerrá-la antecipadamente.");
+        }
+        window.close(clock.instant());
+        return windowResponse(context, windows.saveAndFlush(window));
     }
 
     @Transactional(readOnly = true)
     public AwardPopularBoardResponse board(UUID editionId, AwardPopularContext context) {
-        AwardPopularVotingWindow window = window(editionId);
+        AwardPopularContextWindow window = requireWindow(editionId, context);
         requireVisible(window);
         List<FinalistData> candidates = requireFinalists(editionId, context);
         String status = window.statusAt(clock.instant());
-        // Ocultar parciais enquanto a votação está aberta.
         Map<UUID, Long> counts = "CLOSED".equals(status) ? tally(editionId, context) : Map.of();
         List<AwardPopularFinalistResponse> response = candidates.stream().map(candidate ->
                 new AwardPopularFinalistResponse(candidate.entry().getId(),
                         candidate.registration().getAthleteName(), candidate.registration().getTeamName(),
-                        candidate.entry().getSourceType(), candidate.entry().getSourceType() == AwardRegistrationMediaSource.LINK
-                            ? candidate.entry().getExternalUrl() : null,
-                        "CLOSED".equals(status) ? counts.getOrDefault(candidate.entry().getId(), 0L) : null)).toList();
+                        candidate.entry().getSourceType(),
+                        candidate.entry().getSourceType() == AwardRegistrationMediaSource.LINK
+                                ? candidate.entry().getExternalUrl() : null,
+                        "CLOSED".equals(status) ? counts.getOrDefault(candidate.entry().getId(), 0L) : null))
+                .toList();
         Long total = "CLOSED".equals(status) ? counts.values().stream().mapToLong(Long::longValue).sum() : null;
         return new AwardPopularBoardResponse(status, response, total);
     }
 
     @Transactional(readOnly = true)
     public AwardMediaTicketResponse mediaTicket(UUID editionId, UUID entryId) {
-        requireVisible(window(editionId));
         AwardRegistrationEntry entry = entries.findById(entryId).orElseThrow(() ->
                 Errors.notFound("AWARD_POPULAR_MEDIA_NOT_FOUND", "Vídeo não encontrado."));
         AwardRegistration registration = registrations.findById(entry.getRegistrationId()).orElseThrow(() ->
@@ -98,9 +197,11 @@ public class AwardPopularVotingService {
         if (!editionId.equals(registration.getEditionId())) {
             throw Errors.notFound("AWARD_POPULAR_MEDIA_NOT_FOUND", "Vídeo não encontrado nesta edição.");
         }
-        List<FinalistData> group = requireFinalists(editionId, contextOf(registration, entry));
+        AwardPopularContext context = contextOf(registration, entry);
+        requireVisible(requireWindow(editionId, context));
+        List<FinalistData> group = requireFinalists(editionId, context);
         if (group.stream().noneMatch(f -> f.entry().getId().equals(entryId))) {
-            throw Errors.notFound("AWARD_POPULAR_NOT_FINALIST", "O vídeo não pertence aos finalistas.");
+            throw Errors.notFound("AWARD_POPULAR_NOT_FINALIST", "Este vídeo não pertence ao Top 3.");
         }
         if (entry.getSourceType() != AwardRegistrationMediaSource.UPLOAD
                 || entry.getObjectName() == null || entry.getObjectName().isBlank()) {
@@ -124,13 +225,14 @@ public class AwardPopularVotingService {
 
     @Transactional
     public AwardPopularVoteResponse vote(UUID editionId, AwardPopularVoteRequest request) {
-        // FOR SHARE permite votos paralelos; CLOSE usa FOR UPDATE na mesma linha.
-        AwardPopularVotingWindow window = windows.lockForVoting(editionId).orElseThrow(() ->
-                Errors.conflict("AWARD_POPULAR_NOT_SCHEDULED", "A votação popular ainda não foi programada."));
-        if (!window.isOpen(clock.instant())) {
-            throw Errors.conflict("AWARD_POPULAR_VOTING_CLOSED", "A votação popular não está aberta.");
-        }
         AwardPopularContext context = request.context();
+        AwardPopularContextWindow window = windows.lockForVote(editionId, context.eventId(),
+                context.divisionId(), context.categoryId(), context.gender(), context.contestCategory())
+                .orElseThrow(() -> Errors.conflict("AWARD_POPULAR_NOT_SCHEDULED",
+                        "Esta disputa ainda não foi programada."));
+        if (!window.isOpen(clock.instant())) {
+            throw Errors.conflict("AWARD_POPULAR_VOTING_CLOSED", "Esta votação não está aberta.");
+        }
         List<FinalistData> group = requireFinalists(editionId, context);
         if (group.stream().noneMatch(f -> f.entry().getId().equals(request.entryId()))) {
             throw Errors.badRequest("AWARD_POPULAR_INVALID_FINALIST", "Escolha um dos três finalistas deste grupo.");
@@ -140,96 +242,78 @@ public class AwardPopularVotingService {
                 context.divisionId(), context.categoryId(), context.gender().name(),
                 context.contestCategory().name(), request.entryId(), voterId);
         if (created == 0) {
-            throw Errors.conflict("AWARD_POPULAR_ALREADY_VOTED", "Você já votou nesta categoria. O voto é definitivo.");
+            throw Errors.conflict("AWARD_POPULAR_ALREADY_VOTED",
+                    "Você já votou nesta categoria. O voto é definitivo.");
         }
         return new AwardPopularVoteResponse(request.entryId(), "VOTED");
     }
 
-    @Transactional(readOnly = true)
-    public AwardPopularVotingWindowResponse adminWindow(UUID editionId) {
-        AwardEdition edition = edition(editionId);
-        return windowResponse(edition, windows.findById(editionId).orElse(null));
+    private AwardPopularContext contextFrom(Object[] row) {
+        return new AwardPopularContext(((Number) row[0]).longValue(), ((Number) row[1]).longValue(),
+                ((Number) row[3]).longValue(), (AwardRegistrationGender) row[5],
+                (AwardRegistrationContestCategory) row[6]);
     }
-
-    @Transactional
-    public AwardPopularVotingWindowResponse schedule(UUID editionId, AwardPopularWindowRequest request) {
-        AwardEdition edition = editionLocks.lockEdition(editionId).orElseThrow(() ->
-                Errors.notFound("AWARD_EDITION_NOT_FOUND", "Edição do prêmio não encontrada."));
-        Instant now = clock.instant();
-        if (edition.isRegistrationsOpen()) {
-            throw Errors.conflict("AWARD_POPULAR_REGISTRATIONS_OPEN", "Encerre as inscrições antes de programar a votação popular.");
-        }
-        if (!request.closesAt().isAfter(request.opensAt()) || !request.closesAt().isAfter(now)) {
-            throw Errors.badRequest("AWARD_POPULAR_INVALID_WINDOW", "Defina uma janela com encerramento futuro e após a abertura.");
-        }
-        if (!finalistQueries.existsByEditionId(editionId)) {
-            throw Errors.conflict("AWARD_POPULAR_NO_FINALISTS", "Confirme os finalistas antes de abrir a votação popular.");
-        }
-        if (windows.existsById(editionId)) {
-            throw Errors.conflict("AWARD_POPULAR_ALREADY_SCHEDULED", "A votação já foi configurada e não pode ser reaberta.");
-        }
-        AwardPopularVotingWindow saved = windows.saveAndFlush(
-                new AwardPopularVotingWindow(editionId, request.opensAt(), request.closesAt()));
-        return windowResponse(edition, saved);
-    }
-
-    @Transactional
-    public AwardPopularVotingWindowResponse close(UUID editionId) {
-        AwardEdition edition = edition(editionId);
-        AwardPopularVotingWindow window = windows.lock(editionId).orElseThrow(() ->
-                Errors.notFound("AWARD_POPULAR_NOT_SCHEDULED", "Não existe votação popular configurada."));
-        if (clock.instant().isBefore(window.getOpensAt())) {
-            throw Errors.conflict("AWARD_POPULAR_NOT_STARTED", "A votação ainda não começou e não pode ser encerrada antecipadamente.");
-        }
-        window.close(clock.instant());
-        return windowResponse(edition, windows.saveAndFlush(window));
-    }
-
-    private AwardPopularContext contextOf(AwardRegistration registration, AwardRegistrationEntry entry) {
-        return new AwardPopularContext(registration.getEventId(), registration.getDivisionId(),
-                registration.getCategoryId(), registration.getGender(), entry.getContestCategory());
-    }
-
-    private AwardEdition edition(UUID editionId) {
-        return editions.findById(editionId).orElseThrow(() ->
-                Errors.notFound("AWARD_EDITION_NOT_FOUND", "Edição do prêmio não encontrada."));
-    }
-
-    private AwardPopularVotingWindow window(UUID editionId) {
-        return windows.findById(editionId).orElseThrow(() ->
-                Errors.notFound("AWARD_POPULAR_NOT_SCHEDULED", "A votação popular ainda não foi programada."));
-    }
-
-    private AwardPopularVotingWindowResponse windowResponse(AwardEdition edition, AwardPopularVotingWindow window) {
-        return new AwardPopularVotingWindowResponse(edition.getId(), edition.getName(), edition.getSeason(),
+    private AwardPopularContextResponse contextResponse(Object[] row, AwardPopularContextWindow window) {
+        AwardRegistrationContestCategory contest = (AwardRegistrationContestCategory) row[6];
+        return new AwardPopularContextResponse(((Number) row[0]).longValue(),
+                ((Number) row[1]).longValue(), (String) row[2], ((Number) row[3]).longValue(),
+                (String) row[4], (AwardRegistrationGender) row[5], contest, contest.label(),
                 window == null ? "NOT_SCHEDULED" : window.statusAt(clock.instant()),
-                window == null ? null : window.getOpensAt(), window == null ? null : window.getClosesAt(),
+                window == null ? null : window.getOpensAt(), window == null ? null : window.getClosesAt());
+    }
+    private Comparator<AwardPopularContextResponse> contextOrder() {
+        return Comparator.comparingLong(AwardPopularContextResponse::eventId)
+                .thenComparingLong(AwardPopularContextResponse::divisionId)
+                .thenComparingLong(AwardPopularContextResponse::categoryId)
+                .thenComparing(AwardPopularContextResponse::gender)
+                .thenComparing(AwardPopularContextResponse::contestCategory);
+    }
+    private AwardPopularContextWindowResponse windowResponse(AwardPopularContext context,
+                                                               AwardPopularContextWindow window) {
+        return new AwardPopularContextWindowResponse(context,
+                window == null ? "NOT_SCHEDULED" : window.statusAt(clock.instant()),
+                window == null ? null : window.getOpensAt(),
+                window == null ? null : window.getClosesAt(),
                 window == null ? null : window.getManuallyClosedAt());
     }
-
-    private void requireVisible(AwardPopularVotingWindow window) {
+    private AwardPopularContextWindow requireWindow(UUID editionId, AwardPopularContext context) {
+        return windows.findByEditionIdAndEventIdAndDivisionIdAndCategoryIdAndGenderAndContestCategory(
+                editionId, context.eventId(), context.divisionId(), context.categoryId(),
+                context.gender(), context.contestCategory()).orElseThrow(() ->
+                Errors.notFound("AWARD_POPULAR_NOT_SCHEDULED", "Este grupo ainda não possui votação programada."));
+    }
+    private void requireVisible(AwardPopularContextWindow window) {
         if (clock.instant().isBefore(window.getOpensAt())) {
-            throw Errors.conflict("AWARD_POPULAR_NOT_STARTED", "Os finalistas serão exibidos após a abertura da votação.");
+            throw Errors.conflict("AWARD_POPULAR_NOT_STARTED",
+                    "Os vídeos dos finalistas serão exibidos depois da abertura desta votação.");
         }
     }
-
+    private AwardPopularContext contextOf(AwardRegistration r, AwardRegistrationEntry e) {
+        return new AwardPopularContext(r.getEventId(), r.getDivisionId(), r.getCategoryId(),
+                r.getGender(), e.getContestCategory());
+    }
+    private AwardEdition edition(UUID id) {
+        return editions.findById(id).orElseThrow(() ->
+                Errors.notFound("AWARD_EDITION_NOT_FOUND", "Edição não encontrada."));
+    }
     private List<FinalistData> requireFinalists(UUID editionId, AwardPopularContext context) {
         List<AwardPreVoteFinalist> published = finalistQueries.finalists(editionId, context.eventId(),
                 context.divisionId(), context.categoryId(), context.gender(), context.contestCategory());
         if (published.size() != 3 || published.get(0).getRank() != 1 || published.get(1).getRank() != 2
                 || published.get(2).getRank() != 3) {
-            throw Errors.notFound("AWARD_POPULAR_FINALISTS_UNAVAILABLE", "Este grupo ainda não possui três finalistas confirmados.");
+            throw Errors.notFound("AWARD_POPULAR_FINALISTS_UNAVAILABLE",
+                    "Este grupo ainda não possui três finalistas confirmados.");
         }
         List<UUID> ids = published.stream().map(AwardPreVoteFinalist::getEntryId).toList();
         Map<UUID, AwardRegistrationEntry> entryMap = entries.findAllById(ids).stream()
                 .collect(Collectors.toMap(AwardRegistrationEntry::getId, Function.identity()));
-        Map<UUID, AwardRegistration> registrationMap = registrations.findAllById(
+        Map<UUID, AwardRegistration> registrationsById = registrations.findAllById(
                 entryMap.values().stream().map(AwardRegistrationEntry::getRegistrationId).distinct().toList())
                 .stream().collect(Collectors.toMap(AwardRegistration::getId, Function.identity()));
         List<FinalistData> result = new ArrayList<>();
         for (AwardPreVoteFinalist finalist : published) {
             AwardRegistrationEntry entry = entryMap.get(finalist.getEntryId());
-            AwardRegistration registration = entry == null ? null : registrationMap.get(entry.getRegistrationId());
+            AwardRegistration registration = entry == null ? null : registrationsById.get(entry.getRegistrationId());
             if (registration == null || !editionId.equals(registration.getEditionId())
                     || !context.equals(contextOf(registration, entry))
                     || registration.getStatus() != AwardRegistrationStatus.SUBMITTED
@@ -237,13 +321,13 @@ public class AwardPopularVotingService {
                     || entry.getMediaStatus() != AwardRegistrationMediaStatus.READY
                     || finalist.getApprovedAt() == null
                     || !finalist.getApprovedAt().equals(entry.getReviewedAt())) {
-                throw Errors.conflict("AWARD_POPULAR_FINALIST_CHANGED", "A aprovação de um dos vídeos mudou depois da pré-votação. Solicite uma revalidação à organização.");
+                throw Errors.conflict("AWARD_POPULAR_FINALIST_CHANGED",
+                        "Um vídeo foi alterado depois da pré-votação. Solicite revalidação administrativa.");
             }
             result.add(new FinalistData(entry, registration));
         }
         return result;
     }
-
     private Map<UUID, Long> tally(UUID editionId, AwardPopularContext context) {
         Map<UUID, Long> result = new HashMap<>();
         for (Object[] row : votes.tally(editionId, context.eventId(), context.divisionId(),
@@ -252,6 +336,5 @@ public class AwardPopularVotingService {
         }
         return result;
     }
-
     private record FinalistData(AwardRegistrationEntry entry, AwardRegistration registration) { }
 }
