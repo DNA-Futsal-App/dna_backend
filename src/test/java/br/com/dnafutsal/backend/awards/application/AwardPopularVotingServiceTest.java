@@ -68,6 +68,49 @@ class AwardPopularVotingServiceTest {
     }
 
     @Test
+    void batchIsAtomicWhenAnotherAwardModalityHasPendingNotes() {
+        UUID edition = UUID.randomUUID();
+        when(locks.lockEdition(edition)).thenReturn(Optional.of(mock(AwardEdition.class)));
+        var selection = new AwardPopularBatchSelection(1, 2, 3, AwardRegistrationGender.MALE, null);
+        var missingContext = selection.contexts().get(1);
+        for (var context : selection.contexts()) {
+            boolean blocked = context.equals(missingContext);
+            when(readiness.assess(edition, context)).thenReturn(new AwardPopularReadinessResponse(
+                    context, 4, 0L, 2, false, false, !blocked,
+                    blocked ? List.of("NOTAS_PENDENTES") : List.of(),
+                    blocked ? List.of(new AwardMissingAdminResponse(UUID.randomUUID(), "Admin",
+                            "admin@exemplo.com", List.of(new AwardMissingVideoResponse(
+                                    UUID.randomUUID(), "Atleta", 101)))) : List.of()));
+        }
+        var request = new AwardPopularBatchWindowRequest(selection,
+                NOW.plusSeconds(60), NOW.plusSeconds(3600));
+        BusinessException error = assertThrows(BusinessException.class,
+                () -> service().scheduleBatch(edition, request));
+        assertEquals("AWARD_POPULAR_BATCH_NOT_READY", error.code());
+        assertEquals(4, ((List<?>) error.diagnostics().get("items")).size());
+        verifyNoInteractions(preVote);
+        verify(windows, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void batchRefusesToOverwriteExistingIndividualWindow() {
+        UUID edition = UUID.randomUUID();
+        when(locks.lockEdition(edition)).thenReturn(Optional.of(mock(AwardEdition.class)));
+        var selection = new AwardPopularBatchSelection(1, 2, 3, AwardRegistrationGender.MALE,
+                AwardRegistrationContestCategory.BEST_DRIBBLE);
+        var context = selection.contexts().get(0);
+        when(windows.findByEditionIdAndEventIdAndDivisionIdAndCategoryIdAndGenderAndContestCategory(
+                edition, 1, 2, 3, context.gender(), context.contestCategory()))
+                .thenReturn(Optional.of(new AwardPopularContextWindow(edition, context,
+                        NOW.plusSeconds(60), NOW.plusSeconds(3600))));
+        when(readiness.assess(edition, context)).thenReturn(new AwardPopularReadinessResponse(
+                context, 4, 0L, 2, true, false, true, List.of(), List.of()));
+        assertThrows(BusinessException.class, () -> service().scheduleBatch(edition,
+                new AwardPopularBatchWindowRequest(selection, NOW.plusSeconds(120), NOW.plusSeconds(7200))));
+        verify(windows, never()).saveAndFlush(any());
+    }
+
+    @Test
     void refusesSchedulingTheSameContextTwice() {
         UUID edition = UUID.randomUUID();
         when(locks.lockEdition(edition)).thenReturn(Optional.of(mock(AwardEdition.class)));

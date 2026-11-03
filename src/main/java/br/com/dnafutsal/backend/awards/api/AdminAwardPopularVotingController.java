@@ -40,6 +40,22 @@ public class AdminAwardPopularVotingController {
                 new AwardPopularContext(eventId, divisionId, categoryId, gender, contestCategory));
     }
 
+    @GetMapping("/batch/readiness")
+    public AwardPopularBatchReadinessResponse batchReadiness(@PathVariable UUID editionId,
+            @RequestParam @Min(1) long eventId, @RequestParam @Min(1) long divisionId,
+            @RequestParam @Min(1) long categoryId,
+            @RequestParam(required = false) AwardRegistrationGender gender,
+            @RequestParam(required = false) AwardRegistrationContestCategory contestCategory) {
+        return service.batchReadiness(editionId,
+                new AwardPopularBatchSelection(eventId, divisionId, categoryId, gender, contestCategory));
+    }
+
+    @PostMapping("/batch")
+    public List<AwardPopularContextWindowResponse> scheduleBatch(@PathVariable UUID editionId,
+            @Valid @RequestBody AwardPopularBatchWindowRequest request) {
+        return service.scheduleBatch(editionId, request);
+    }
+
     @PostMapping("/window")
     public AwardPopularContextWindowResponse schedule(@PathVariable UUID editionId,
             @Valid @RequestBody AwardPopularContextWindowRequest request) {

@@ -111,6 +111,69 @@ public class AwardPopularVotingService {
                 context.gender(), context.contestCategory()).orElse(null));
     }
 
+    @Transactional(readOnly = true)
+    public AwardPopularBatchReadinessResponse batchReadiness(UUID editionId,
+                                                              AwardPopularBatchSelection selection) {
+        edition(editionId);
+        return assessBatch(editionId, selection);
+    }
+
+    private AwardPopularBatchReadinessResponse assessBatch(UUID editionId,
+                                                            AwardPopularBatchSelection selection) {
+        List<AwardPopularBatchItemResponse> items = selection.contexts().stream().map(context -> {
+            var existing = windows.findByEditionIdAndEventIdAndDivisionIdAndCategoryIdAndGenderAndContestCategory(
+                    editionId, context.eventId(), context.divisionId(), context.categoryId(),
+                    context.gender(), context.contestCategory());
+            return new AwardPopularBatchItemResponse(context,
+                    existing.map(window -> window.statusAt(clock.instant())).orElse("NOT_SCHEDULED"),
+                    readiness.assess(editionId, context));
+        }).toList();
+        boolean allReady = !items.isEmpty() && items.stream()
+                .allMatch(item -> "NOT_SCHEDULED".equals(item.status()) && item.readiness().ready());
+        return new AwardPopularBatchReadinessResponse(selection, allReady, items);
+    }
+
+    /**
+     * All-or-nothing scheduling. Locks the edition before rechecking every selected context;
+     * no finalist or window is persisted when any category is incomplete.
+     */
+    @Transactional
+    public List<AwardPopularContextWindowResponse> scheduleBatch(UUID editionId,
+                                                                   AwardPopularBatchWindowRequest request) {
+        editionLocks.lockEdition(editionId).orElseThrow(() ->
+                Errors.notFound("AWARD_EDITION_NOT_FOUND", "Edição não encontrada."));
+        if (request.opensAt() == null || request.closesAt() == null
+                || !request.opensAt().isAfter(clock.instant())
+                || !request.closesAt().isAfter(request.opensAt())) {
+            throw Errors.badRequest("AWARD_POPULAR_INVALID_WINDOW",
+                    "A abertura deve ser futura e o encerramento deve ser posterior.");
+        }
+
+        AwardPopularBatchReadinessResponse state = assessBatch(editionId, request.selection());
+        if (!state.ready()) {
+            // Preserve every missing administrator, video, and blocker for each selected modality.
+            throw new BusinessException(HttpStatus.CONFLICT, "AWARD_POPULAR_BATCH_NOT_READY",
+                    "Não é possível abrir todas as disputas selecionadas. Confira as pendências por modalidade.",
+                    null, Map.of("items", state.items()));
+        }
+
+        // The preflight is complete. Keep both finalists and all windows in this transaction.
+        List<AwardPopularContextWindowResponse> scheduled = new ArrayList<>();
+        for (AwardPopularBatchItemResponse item : state.items()) {
+            AwardPopularContext context = item.context();
+            if (!item.readiness().finalistsConfirmed()) {
+                preVote.finalizeContext(editionId, new AwardPreVoteContextRequest(context.eventId(),
+                        context.divisionId(), context.categoryId(), context.gender(), context.contestCategory()));
+            }
+            requireFinalists(editionId, context);
+            AwardPopularContextWindow saved = windows.saveAndFlush(
+                    new AwardPopularContextWindow(editionId, context,
+                            request.opensAt(), request.closesAt()));
+            scheduled.add(windowResponse(context, saved));
+        }
+        return List.copyOf(scheduled);
+    }
+
     @Transactional
     public AwardPopularContextWindowResponse schedule(UUID editionId, AwardPopularContextWindowRequest request) {
         // A mesma linha de edição sincroniza atribuição de notas, publicação do Top 3 e agendamento.
