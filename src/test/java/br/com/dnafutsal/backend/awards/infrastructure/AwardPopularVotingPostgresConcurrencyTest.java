@@ -1,13 +1,13 @@
 package br.com.dnafutsal.backend.awards.infrastructure;
 
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.jdbc.datasource.init.ScriptUtils;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -36,17 +36,8 @@ class AwardPopularVotingPostgresConcurrencyTest {
         return DriverManager.getConnection(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword());
     }
 
-    private static void runMigration(Connection connection, String name) throws Exception {
-        try (InputStream stream = AwardPopularVotingPostgresConcurrencyTest.class
-                .getClassLoader().getResourceAsStream("db/migration/" + name)) {
-            assertNotNull(stream, "Migration ausente: " + name);
-            String script = new String(stream.readAllBytes(), StandardCharsets.UTF_8);
-            try (Statement statement = connection.createStatement()) {
-                for (String sql : script.split(";")) {
-                    if (!sql.isBlank()) statement.execute(sql);
-                }
-            }
-        }
+    private static void runMigration(Connection connection, String name) {
+        ScriptUtils.executeSqlScript(connection, new ClassPathResource("db/migration/" + name));
     }
 
     @BeforeAll
