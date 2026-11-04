@@ -100,9 +100,24 @@ public class AwardPopularReadinessService {
             boolean tiedAtThird = sums.getOrDefault(ranking.get(2).getId(), 0L).equals(
                     sums.getOrDefault(ranking.get(3).getId(), 0L));
             if (tiedAtThird && !fourAllowed) blockers.add("EMPATE_NO_CORTE_TOP3");
-            if (fourAllowed && !tiedAtThird) blockers.add("EXCECAO_SEM_EMPATE_NO_CORTE");
-            if (fourAllowed && ranking.size() > 4 && sums.getOrDefault(ranking.get(3).getId(), 0L).equals(
-                    sums.getOrDefault(ranking.get(4).getId(), 0L))) blockers.add("EMPATE_COM_MAIS_DE_QUATRO");
+            if (fourAllowed && !finalistsConfirmed) {
+                List<UUID> chosen = finalists.selectedFourFinalists(editionId);
+                boolean exactlyTripleTie = ranking.size() >= 5 && tiedAtThird
+                        && sums.getOrDefault(ranking.get(3).getId(), 0L).equals(
+                           sums.getOrDefault(ranking.get(4).getId(), 0L))
+                        && (ranking.size() == 5 || !sums.getOrDefault(ranking.get(4).getId(), 0L).equals(
+                           sums.getOrDefault(ranking.get(5).getId(), 0L)));
+                boolean valid = exactlyTripleTie && chosen.size() == 4
+                        && chosen.get(0).equals(ranking.get(0).getId())
+                        && chosen.get(1).equals(ranking.get(1).getId())
+                        && !chosen.get(2).equals(chosen.get(3));
+                if (valid) {
+                    Set<UUID> tied = Set.of(ranking.get(2).getId(),
+                            ranking.get(3).getId(), ranking.get(4).getId());
+                    valid = tied.contains(chosen.get(2)) && tied.contains(chosen.get(3));
+                }
+                if (!valid) blockers.add("DESEMPATE_ADMINISTRATIVO_INVALIDO");
+            }
         }
         return new AwardPopularReadinessResponse(context, approved.size(), pending, activeAdmins.size(),
                 finalistsConfirmed, edition.isRegistrationsOpen(), blockers.isEmpty(),

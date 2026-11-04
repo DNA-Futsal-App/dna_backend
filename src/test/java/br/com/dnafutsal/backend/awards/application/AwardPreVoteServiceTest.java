@@ -100,9 +100,12 @@ class AwardPreVoteServiceTest {
 
     @Test
     void publishesFourCandidatesOnlyForAuthorizedTie() {
-        List<AwardRegistrationEntry> approved = prepareEntries(10, 9, 8, 8);
+        List<AwardRegistrationEntry> approved = prepareEntries(10, 9, 8, 8, 8, 7);
         when(finalists.allowsFourFinalists(editionId, 908, 3, 12, "MALE", "BEST_DRIBBLE"))
                 .thenReturn(true);
+        when(finalists.selectedFourFinalists(editionId)).thenReturn(List.of(
+                approved.get(0).getId(), approved.get(1).getId(),
+                approved.get(2).getId(), approved.get(4).getId()));
         when(currentUser.userId()).thenReturn(adminId);
         when(edition.getId()).thenReturn(editionId);
         List<AwardRegistration> registrationMocks = new ArrayList<>();
@@ -119,6 +122,22 @@ class AwardPreVoteServiceTest {
         verify(finalists, times(4)).save(capture.capture());
         assertThat(capture.getAllValues()).extracting(AwardPreVoteFinalist::getRank)
                 .containsExactly((short) 1, (short) 2, (short) 3, (short) 4);
+        assertThat(capture.getAllValues()).extracting(AwardPreVoteFinalist::getEntryId)
+                .containsExactly(approved.get(0).getId(), approved.get(1).getId(),
+                        approved.get(2).getId(), approved.get(4).getId());
+    }
+
+    @Test
+    void rejectsManualTieDecisionThatIncludesTopFiveThirdPerson() {
+        List<AwardRegistrationEntry> approved = prepareEntries(10, 9, 8, 8, 8, 7);
+        when(finalists.allowsFourFinalists(editionId, 908, 3, 12, "MALE", "BEST_DRIBBLE"))
+                .thenReturn(true);
+        when(finalists.selectedFourFinalists(editionId)).thenReturn(List.of(
+                approved.get(0).getId(), approved.get(1).getId(),
+                approved.get(2).getId(), approved.get(5).getId()));
+        assertThatThrownBy(() -> service.finalizeContext(editionId, context))
+                .hasMessageContaining("decisao administrativa");
+        verify(finalists, never()).save(any());
     }
 
     @Test
@@ -127,7 +146,7 @@ class AwardPreVoteServiceTest {
         when(finalists.allowsFourFinalists(editionId, 908, 3, 12, "MALE", "BEST_DRIBBLE"))
                 .thenReturn(true);
         assertThatThrownBy(() -> service.finalizeContext(editionId, context))
-                .hasMessageContaining("quatro finalistas");
+                .hasMessageContaining("decisao administrativa");
         verify(finalists, never()).save(any());
     }
 

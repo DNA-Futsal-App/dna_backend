@@ -12,6 +12,18 @@ import java.util.UUID;
 public interface AwardPopularVotingFinalistRepository extends Repository<AwardPreVoteFinalist, UUID> {
     boolean existsByEditionId(UUID editionId);
 
+    @org.springframework.data.jpa.repository.Query(nativeQuery = true, value = """
+        SELECT chosen.entry_id
+        FROM award_four_finalist_decisions d
+        CROSS JOIN LATERAL UNNEST(ARRAY[
+          d.rank_1_entry_id, d.rank_2_entry_id, d.rank_3_entry_id, d.rank_4_entry_id
+        ]) WITH ORDINALITY AS chosen(entry_id, selected_position)
+        WHERE d.edition_id = :editionId
+        ORDER BY chosen.selected_position
+        """)
+    List<UUID> selectedFourFinalists(
+            @org.springframework.data.repository.query.Param("editionId") UUID editionId);
+
     @org.springframework.data.jpa.repository.Query(value = """
         SELECT EXISTS (
           SELECT 1 FROM award_four_finalist_exceptions x

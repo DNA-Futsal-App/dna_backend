@@ -135,19 +135,22 @@ public class AwardPreVoteService {
         if (!completePanel(ranking)) {
             throw Errors.conflict("AWARD_PRE_VOTE_INCOMPLETE", "Todos os vídeos precisam receber notas do mesmo conjunto de administradores.");
         }
-        boolean fourAllowed = allowsFour(editionId, context);
-        boolean tiedAtThird = ranking.size() > 3 && compareAverages(ranking.get(2), ranking.get(3)) == 0;
-        if (tiedAtThird && !fourAllowed) {
-            throw Errors.conflict("AWARD_PRE_VOTE_TIE_AT_CUTOFF", "Há empate na terceira colocação. Resolva o empate antes de publicar.");
+        List<RatedEntry> chosen;
+        if (allowsFour(editionId, context)) {
+            // A comissao decidiu quais dois dos tres empatados seguem adiante.
+            // O ID persistido da decisao e a unica fonte da ordem manual; jamais UUID alfabetico.
+            chosen = exceptionalSelection(editionId, ranking).orElseThrow(() ->
+                    Errors.conflict("AWARD_PRE_VOTE_MANUAL_TIE_INVALID",
+                            "A decisao administrativa do empate triplo nao confere com as notas atuais."));
+        } else {
+            if (ranking.size() > 3 && compareAverages(ranking.get(2), ranking.get(3)) == 0) {
+                throw Errors.conflict("AWARD_PRE_VOTE_TIE_AT_CUTOFF",
+                        "Ha empate na terceira colocacao. Resolva o empate antes de publicar.");
+            }
+            chosen = ranking.subList(0, 3);
         }
-        if (fourAllowed && (!tiedAtThird ||
-                (ranking.size() > 4 && compareAverages(ranking.get(3), ranking.get(4)) == 0))) {
-            throw Errors.conflict("AWARD_PRE_VOTE_EXCEPTION_INVALID",
-                    "A exceção autoriza exatamente quatro finalistas empatados no corte, nunca cinco ou um Top 4 sem empate.");
-        }
-        int finalCount = fourAllowed ? 4 : 3;
-        for (int i = 0; i < finalCount; i++) {
-            RatedEntry rated = ranking.get(i);
+        for (int i = 0; i < chosen.size(); i++) {
+            RatedEntry rated = chosen.get(i);
             AwardPreVoteFinalist finalist = new AwardPreVoteFinalist(
                     editionId, context.eventId(), context.divisionId(), context.categoryId(),
                     context.gender(), context.contestCategory(), rated.entry().getId(), i + 1,
@@ -190,10 +193,10 @@ public class AwardPreVoteService {
         int fullyScored = (int) ranking.stream().filter(r -> r.count() > 0).count();
         int panel = ranking.isEmpty() ? 0 : ranking.get(0).count();
         boolean fourAllowed = allowsFour(edition.getId(), context);
-        boolean tiedAtThird = ranking.size() > 3 && compareAverages(ranking.get(2), ranking.get(3)) == 0;
         boolean cutoffValid = fourAllowed
-                ? tiedAtThird && (ranking.size() == 4 || compareAverages(ranking.get(3), ranking.get(4)) != 0)
-                : !tiedAtThird;
+                ? exceptionalSelection(edition.getId(), ranking).isPresent()
+                : ranking.size() >= 3 && (ranking.size() == 3
+                    || compareAverages(ranking.get(2), ranking.get(3)) != 0);
         boolean ready = published.isEmpty() && !edition.isRegistrationsOpen() && pending == 0
                 && ranking.size() >= (fourAllowed ? 4 : 3) && completePanel(ranking) && cutoffValid;
         return new AwardPreVoteBoardResponse(mapped, pending, ranking.size(), fullyScored,
@@ -245,6 +248,33 @@ public class AwardPreVoteService {
     private boolean allowsFour(UUID editionId, AwardPreVoteContextRequest context) {
         return finalists.allowsFourFinalists(editionId, context.eventId(), context.divisionId(),
                 context.categoryId(), context.gender().name(), context.contestCategory().name());
+    }
+
+    /**
+     * Somente a excecao assinada da edicao pode escolher os dois entre os tres
+     * empatados na nota de corte. O primeiro e segundo devem permanecer os lideres
+     * reais; outros empates (inclusive um sexto na mesma nota) nao sao admitidos.
+     */
+    private java.util.Optional<List<RatedEntry>> exceptionalSelection(UUID editionId, List<RatedEntry> ranking) {
+        if (ranking.size() < 5 || compareAverages(ranking.get(2), ranking.get(3)) != 0
+                || compareAverages(ranking.get(3), ranking.get(4)) != 0
+                || (ranking.size() > 5 && compareAverages(ranking.get(4), ranking.get(5)) == 0)) {
+            return java.util.Optional.empty();
+        }
+        List<UUID> ids = finalists.selectedFourFinalists(editionId);
+        if (ids.size() != 4 || !ids.get(0).equals(ranking.get(0).entry().getId())
+                || !ids.get(1).equals(ranking.get(1).entry().getId())
+                || ids.get(2).equals(ids.get(3))) {
+            return java.util.Optional.empty();
+        }
+        Set<UUID> tied = Set.of(ranking.get(2).entry().getId(),
+                ranking.get(3).entry().getId(), ranking.get(4).entry().getId());
+        if (!tied.contains(ids.get(2)) || !tied.contains(ids.get(3))) {
+            return java.util.Optional.empty();
+        }
+        Map<UUID, RatedEntry> candidates = ranking.stream()
+                .collect(Collectors.toMap(v -> v.entry().getId(), Function.identity()));
+        return java.util.Optional.of(ids.stream().map(candidates::get).toList());
     }
 
     private List<AwardPreVoteFinalist> loadFinalists(UUID editionId, AwardPreVoteContextRequest context) {
