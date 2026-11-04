@@ -234,20 +234,33 @@ public class AwardPopularVotingService {
 
     @Transactional(readOnly = true)
     public AwardPopularBoardResponse board(UUID editionId, AwardPopularContext context) {
+        // A API publica nunca entrega apuracao, inclusive depois do encerramento.
+        return buildBoard(editionId, context, false);
+    }
+
+    @Transactional(readOnly = true)
+    public AwardPopularBoardResponse adminResults(UUID editionId, AwardPopularContext context) {
+        // Somente o controller /api/v1/admin/** deve expor esta chamada.
+        return buildBoard(editionId, context, true);
+    }
+
+    private AwardPopularBoardResponse buildBoard(UUID editionId, AwardPopularContext context,
+                                                  boolean administrative) {
         AwardPopularContextWindow window = requireWindow(editionId, context);
         requireVisible(window);
         List<FinalistData> candidates = requireFinalists(editionId, context);
         String status = window.statusAt(clock.instant());
-        Map<UUID, Long> counts = "CLOSED".equals(status) ? tally(editionId, context) : Map.of();
+        boolean showResults = administrative && "CLOSED".equals(status);
+        Map<UUID, Long> counts = showResults ? tally(editionId, context) : Map.of();
         List<AwardPopularFinalistResponse> response = candidates.stream().map(candidate ->
                 new AwardPopularFinalistResponse(candidate.entry().getId(),
                         candidate.registration().getAthleteName(), candidate.registration().getTeamName(),
                         candidate.entry().getSourceType(),
                         candidate.entry().getSourceType() == AwardRegistrationMediaSource.LINK
                                 ? candidate.entry().getExternalUrl() : null,
-                        "CLOSED".equals(status) ? counts.getOrDefault(candidate.entry().getId(), 0L) : null))
+                        showResults ? counts.getOrDefault(candidate.entry().getId(), 0L) : null))
                 .toList();
-        Long total = "CLOSED".equals(status) ? counts.values().stream().mapToLong(Long::longValue).sum() : null;
+        Long total = showResults ? counts.values().stream().mapToLong(Long::longValue).sum() : null;
         return new AwardPopularBoardResponse(status, response, total);
     }
 

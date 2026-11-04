@@ -114,7 +114,7 @@ public class UserAccount {
         this.followedTeamId = followedTeamId;
         this.followedCompetitionCode = competitionCode;
         this.role = UserRole.USER;
-        this.status = UserStatus.PENDING_EMAIL_VERIFICATION;
+        this.status = UserStatus.ACTIVE;
     }
 
     @PrePersist

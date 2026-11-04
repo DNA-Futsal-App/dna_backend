@@ -31,12 +31,14 @@ public class PublicAwardPopularVotingController {
     }
 
     @GetMapping("/editions/{editionId}/board")
-    public AwardPopularBoardResponse board(@PathVariable UUID editionId,
+    public ResponseEntity<AwardPopularBoardResponse> board(@PathVariable UUID editionId,
              @RequestParam @Min(1) long eventId, @RequestParam @Min(1) long divisionId,
              @RequestParam @Min(1) long categoryId,
              @RequestParam AwardRegistrationGender gender,
              @RequestParam AwardRegistrationContestCategory contestCategory) {
-        return service.board(editionId, new AwardPopularContext(eventId, divisionId, categoryId, gender, contestCategory));
+        return ResponseEntity.ok().header("Cache-Control", "no-store")
+                .body(service.board(editionId, new AwardPopularContext(
+                        eventId, divisionId, categoryId, gender, contestCategory)));
     }
 
     @GetMapping("/editions/{editionId}/media/{entryId}")

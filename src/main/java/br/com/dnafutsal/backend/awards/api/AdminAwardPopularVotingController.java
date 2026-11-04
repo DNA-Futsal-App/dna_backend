@@ -5,6 +5,7 @@ import br.com.dnafutsal.backend.awards.domain.AwardRegistrationContestCategory;
 import br.com.dnafutsal.backend.awards.domain.AwardRegistrationGender;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
+import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
@@ -16,6 +17,16 @@ import java.util.UUID;
 public class AdminAwardPopularVotingController {
     private final AwardPopularVotingService service;
     public AdminAwardPopularVotingController(AwardPopularVotingService service) { this.service = service; }
+
+    @GetMapping("/results")
+    public ResponseEntity<AwardPopularBoardResponse> results(@PathVariable UUID editionId,
+            @RequestParam @Min(1) long eventId, @RequestParam @Min(1) long divisionId,
+            @RequestParam @Min(1) long categoryId, @RequestParam AwardRegistrationGender gender,
+            @RequestParam AwardRegistrationContestCategory contestCategory) {
+        return ResponseEntity.ok().header("Cache-Control", "private, no-store")
+                .body(service.adminResults(editionId,
+                        new AwardPopularContext(eventId, divisionId, categoryId, gender, contestCategory)));
+    }
 
     @GetMapping("/contexts")
     public List<AwardPopularContextResponse> contexts(@PathVariable UUID editionId) {
