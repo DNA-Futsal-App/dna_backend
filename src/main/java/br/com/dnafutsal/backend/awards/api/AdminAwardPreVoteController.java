@@ -22,9 +22,28 @@ import java.util.UUID;
 @RequestMapping("/api/v1/admin/awards/editions/{editionId}/pre-vote")
 public class AdminAwardPreVoteController {
     private final AwardPreVoteService preVote;
+    private final br.com.dnafutsal.backend.awards.application.AwardPreVoteAssessmentService assessment;
 
-    public AdminAwardPreVoteController(AwardPreVoteService preVote) {
+    public AdminAwardPreVoteController(AwardPreVoteService preVote,
+            br.com.dnafutsal.backend.awards.application.AwardPreVoteAssessmentService assessment) {
         this.preVote = preVote;
+        this.assessment = assessment;
+    }
+
+    @GetMapping("/assessment-contexts")
+    public List<AwardPreVoteContextResponse> assessmentContexts(@PathVariable UUID editionId) {
+        return assessment.contexts(editionId);
+    }
+
+    @GetMapping("/assessment-report")
+    public AwardPreVoteAssessmentReportResponse assessmentReport(@PathVariable UUID editionId,
+                                           @RequestParam @Min(1) long eventId,
+                                           @RequestParam @Min(1) long divisionId,
+                                           @RequestParam @Min(1) long categoryId,
+                                           @RequestParam AwardRegistrationGender gender,
+                                           @RequestParam AwardRegistrationContestCategory contestCategory) {
+        return assessment.report(editionId,
+                new AwardPreVoteContextRequest(eventId, divisionId, categoryId, gender, contestCategory));
     }
 
     @GetMapping("/contexts")

@@ -58,4 +58,32 @@ public interface AwardPreVoteQueryRepository extends Repository<AwardRegistratio
             @Param("divisionId") long divisionId, @Param("categoryId") long categoryId,
             @Param("gender") AwardRegistrationGender gender,
             @Param("contestCategory") AwardRegistrationContestCategory contestCategory);
+
+    // Inclui todas as inscrições enviadas, mesmo sem aprovação ou notas.
+    @Query("""
+        select distinct r.eventId, r.divisionId, r.divisionName,
+                        r.categoryId, r.categoryName, r.gender, e.contestCategory
+        from AwardRegistration r, AwardRegistrationEntry e
+        where e.registrationId = r.id
+          and r.editionId = :editionId
+          and r.status = br.com.dnafutsal.backend.awards.domain.AwardRegistrationStatus.SUBMITTED
+        order by r.eventId, r.divisionId, r.categoryId, r.gender, e.contestCategory
+        """)
+    List<Object[]> findAssessmentContexts(@Param("editionId") UUID editionId);
+
+    @Query("""
+        select r, e from AwardRegistration r, AwardRegistrationEntry e
+        where e.registrationId = r.id
+          and r.editionId = :editionId
+          and r.eventId = :eventId and r.divisionId = :divisionId
+          and r.categoryId = :categoryId and r.gender = :gender
+          and e.contestCategory = :contestCategory
+          and r.status = br.com.dnafutsal.backend.awards.domain.AwardRegistrationStatus.SUBMITTED
+        order by r.registrationNumber, e.id
+        """)
+    List<Object[]> findAssessmentEntries(
+            @Param("editionId") UUID editionId, @Param("eventId") long eventId,
+            @Param("divisionId") long divisionId, @Param("categoryId") long categoryId,
+            @Param("gender") AwardRegistrationGender gender,
+            @Param("contestCategory") AwardRegistrationContestCategory contestCategory);
 }
