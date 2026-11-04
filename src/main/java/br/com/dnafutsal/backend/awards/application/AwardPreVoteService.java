@@ -135,10 +135,18 @@ public class AwardPreVoteService {
         if (!completePanel(ranking)) {
             throw Errors.conflict("AWARD_PRE_VOTE_INCOMPLETE", "Todos os vídeos precisam receber notas do mesmo conjunto de administradores.");
         }
-        if (ranking.size() > 3 && compareAverages(ranking.get(2), ranking.get(3)) == 0) {
+        boolean fourAllowed = allowsFour(editionId, context);
+        boolean tiedAtThird = ranking.size() > 3 && compareAverages(ranking.get(2), ranking.get(3)) == 0;
+        if (tiedAtThird && !fourAllowed) {
             throw Errors.conflict("AWARD_PRE_VOTE_TIE_AT_CUTOFF", "Há empate na terceira colocação. Resolva o empate antes de publicar.");
         }
-        for (int i = 0; i < 3; i++) {
+        if (fourAllowed && (!tiedAtThird ||
+                (ranking.size() > 4 && compareAverages(ranking.get(3), ranking.get(4)) == 0))) {
+            throw Errors.conflict("AWARD_PRE_VOTE_EXCEPTION_INVALID",
+                    "A exceção autoriza exatamente quatro finalistas empatados no corte, nunca cinco ou um Top 4 sem empate.");
+        }
+        int finalCount = fourAllowed ? 4 : 3;
+        for (int i = 0; i < finalCount; i++) {
             RatedEntry rated = ranking.get(i);
             AwardPreVoteFinalist finalist = new AwardPreVoteFinalist(
                     editionId, context.eventId(), context.divisionId(), context.categoryId(),
@@ -181,9 +189,13 @@ public class AwardPreVoteService {
         long pending = countPending(edition.getId(), context);
         int fullyScored = (int) ranking.stream().filter(r -> r.count() > 0).count();
         int panel = ranking.isEmpty() ? 0 : ranking.get(0).count();
+        boolean fourAllowed = allowsFour(edition.getId(), context);
+        boolean tiedAtThird = ranking.size() > 3 && compareAverages(ranking.get(2), ranking.get(3)) == 0;
+        boolean cutoffValid = fourAllowed
+                ? tiedAtThird && (ranking.size() == 4 || compareAverages(ranking.get(3), ranking.get(4)) != 0)
+                : !tiedAtThird;
         boolean ready = published.isEmpty() && !edition.isRegistrationsOpen() && pending == 0
-                && ranking.size() >= 3 && completePanel(ranking)
-                && (ranking.size() == 3 || compareAverages(ranking.get(2), ranking.get(3)) != 0);
+                && ranking.size() >= (fourAllowed ? 4 : 3) && completePanel(ranking) && cutoffValid;
         return new AwardPreVoteBoardResponse(mapped, pending, ranking.size(), fullyScored,
                 panel, edition.isRegistrationsOpen(), !published.isEmpty(), ready);
     }
@@ -228,6 +240,11 @@ public class AwardPreVoteService {
 
     private static int compareAverages(RatedEntry a, RatedEntry b) {
         return Long.compare(a.sum() * b.count(), b.sum() * a.count());
+    }
+
+    private boolean allowsFour(UUID editionId, AwardPreVoteContextRequest context) {
+        return finalists.allowsFourFinalists(editionId, context.eventId(), context.divisionId(),
+                context.categoryId(), context.gender().name(), context.contestCategory().name());
     }
 
     private List<AwardPreVoteFinalist> loadFinalists(UUID editionId, AwardPreVoteContextRequest context) {

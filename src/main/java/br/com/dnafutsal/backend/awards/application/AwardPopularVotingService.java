@@ -298,7 +298,7 @@ public class AwardPopularVotingService {
         }
         List<FinalistData> group = requireFinalists(editionId, context);
         if (group.stream().noneMatch(f -> f.entry().getId().equals(request.entryId()))) {
-            throw Errors.badRequest("AWARD_POPULAR_INVALID_FINALIST", "Escolha um dos três finalistas deste grupo.");
+            throw Errors.badRequest("AWARD_POPULAR_INVALID_FINALIST", "Escolha um dos finalistas desta disputa.");
         }
         UUID voterId = currentUser.userId();
         int created = votes.insertIfAbsent(UUID.randomUUID(), editionId, context.eventId(),
@@ -362,10 +362,18 @@ public class AwardPopularVotingService {
     private List<FinalistData> requireFinalists(UUID editionId, AwardPopularContext context) {
         List<AwardPreVoteFinalist> published = finalistQueries.finalists(editionId, context.eventId(),
                 context.divisionId(), context.categoryId(), context.gender(), context.contestCategory());
-        if (published.size() != 3 || published.get(0).getRank() != 1 || published.get(1).getRank() != 2
-                || published.get(2).getRank() != 3) {
+        boolean fourAllowed = finalistQueries.allowsFourFinalists(editionId, context.eventId(),
+                context.divisionId(), context.categoryId(), context.gender().name(), context.contestCategory().name());
+        int target = fourAllowed ? 4 : 3;
+        if (published.size() != target) {
             throw Errors.notFound("AWARD_POPULAR_FINALISTS_UNAVAILABLE",
-                    "Este grupo ainda não possui três finalistas confirmados.");
+                    "Esta disputa ainda não possui o número correto de finalistas confirmados.");
+        }
+        for (int i = 0; i < published.size(); i++) {
+            if (published.get(i).getRank() != i + 1) {
+                throw Errors.conflict("AWARD_POPULAR_FINALIST_RANK_INVALID",
+                        "A classificação publicada possui posições inconsistentes.");
+            }
         }
         List<UUID> ids = published.stream().map(AwardPreVoteFinalist::getEntryId).toList();
         Map<UUID, AwardRegistrationEntry> entryMap = entries.findAllById(ids).stream()

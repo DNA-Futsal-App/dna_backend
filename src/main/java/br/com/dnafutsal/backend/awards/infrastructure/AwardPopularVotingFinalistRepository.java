@@ -12,6 +12,21 @@ import java.util.UUID;
 public interface AwardPopularVotingFinalistRepository extends Repository<AwardPreVoteFinalist, UUID> {
     boolean existsByEditionId(UUID editionId);
 
+    @org.springframework.data.jpa.repository.Query(value = """
+        SELECT EXISTS (
+          SELECT 1 FROM award_four_finalist_exceptions x
+          WHERE x.edition_id = :editionId AND x.event_id = :eventId
+            AND x.division_id = :divisionId AND x.category_id = :categoryId
+            AND x.gender = :gender AND x.contest_category = :contestCategory AND x.contest_category = 'FREE_KICK_GOAL'
+        )
+        """, nativeQuery = true)
+    boolean allowsFourFinalists(@org.springframework.data.repository.query.Param("editionId") UUID editionId,
+                                @org.springframework.data.repository.query.Param("eventId") long eventId,
+                                @org.springframework.data.repository.query.Param("divisionId") long divisionId,
+                                @org.springframework.data.repository.query.Param("categoryId") long categoryId,
+                                @org.springframework.data.repository.query.Param("gender") String gender,
+                                @org.springframework.data.repository.query.Param("contestCategory") String contestCategory);
+
     @Query("""
         select r.eventId, r.divisionId, r.divisionName,
                r.categoryId, r.categoryName, r.gender, f.contestCategory
@@ -20,7 +35,7 @@ public interface AwardPopularVotingFinalistRepository extends Repository<AwardPr
           and f.editionId = :editionId and r.editionId = :editionId
         group by r.eventId, r.divisionId, r.divisionName,
                  r.categoryId, r.categoryName, r.gender, f.contestCategory
-        having count(f) = 3
+        having count(f) in (3, 4)
         """)
     List<Object[]> contexts(@Param("editionId") UUID editionId);
 

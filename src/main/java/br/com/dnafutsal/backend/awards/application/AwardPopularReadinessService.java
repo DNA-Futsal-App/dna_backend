@@ -73,12 +73,20 @@ public class AwardPopularReadinessService {
             if (!unscored.isEmpty()) missing.add(new AwardMissingAdminResponse(
                     admin.getId(), admin.getName(), admin.getEmail(), unscored));
         }
-        boolean finalistsConfirmed = finalists.finalists(editionId, context.eventId(), context.divisionId(),
-                context.categoryId(), context.gender(), context.contestCategory()).size() == 3;
+        boolean fourAllowed = finalists.allowsFourFinalists(editionId, context.eventId(), context.divisionId(),
+                context.categoryId(), context.gender().name(), context.contestCategory().name());
+        int target = fourAllowed ? 4 : 3;
+        List<AwardPreVoteFinalist> published = finalists.finalists(editionId, context.eventId(),
+                context.divisionId(), context.categoryId(), context.gender(), context.contestCategory());
+        boolean finalistsConfirmed = published.size() == target;
+        for (int i = 0; i < published.size(); i++) {
+            if (published.get(i).getRank() != i + 1) finalistsConfirmed = false;
+        }
         List<String> blockers = new ArrayList<>();
         if (edition.isRegistrationsOpen()) blockers.add("INSCRICOES_ABERTAS");
         if (pending > 0) blockers.add("REVISOES_PENDENTES");
-        if (approved.size() < 3) blockers.add("MENOS_DE_TRES_VIDEOS_APROVADOS");
+        if (approved.size() < target) blockers.add(fourAllowed
+                ? "MENOS_DE_QUATRO_VIDEOS_APROVADOS" : "MENOS_DE_TRES_VIDEOS_APROVADOS");
         if (activeAdmins.isEmpty()) blockers.add("NENHUM_ADMIN_ATIVO");
         if (!missing.isEmpty()) blockers.add("NOTAS_PENDENTES");
         if (missing.isEmpty() && !approved.isEmpty() && activeAdmins.size() > 0 && approved.size() > 3) {
@@ -89,8 +97,12 @@ public class AwardPopularReadinessService {
                 int c = Long.compare(sb, sa); // Mesmo número de jurados em todos os vídeos.
                 return c == 0 ? a.getId().compareTo(b.getId()) : c;
             });
-            if (sums.getOrDefault(ranking.get(2).getId(), 0L).equals(
-                    sums.getOrDefault(ranking.get(3).getId(), 0L))) blockers.add("EMPATE_NO_CORTE_TOP3");
+            boolean tiedAtThird = sums.getOrDefault(ranking.get(2).getId(), 0L).equals(
+                    sums.getOrDefault(ranking.get(3).getId(), 0L));
+            if (tiedAtThird && !fourAllowed) blockers.add("EMPATE_NO_CORTE_TOP3");
+            if (fourAllowed && !tiedAtThird) blockers.add("EXCECAO_SEM_EMPATE_NO_CORTE");
+            if (fourAllowed && ranking.size() > 4 && sums.getOrDefault(ranking.get(3).getId(), 0L).equals(
+                    sums.getOrDefault(ranking.get(4).getId(), 0L))) blockers.add("EMPATE_COM_MAIS_DE_QUATRO");
         }
         return new AwardPopularReadinessResponse(context, approved.size(), pending, activeAdmins.size(),
                 finalistsConfirmed, edition.isRegistrationsOpen(), blockers.isEmpty(),

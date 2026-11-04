@@ -99,6 +99,39 @@ class AwardPreVoteServiceTest {
     }
 
     @Test
+    void publishesFourCandidatesOnlyForAuthorizedTie() {
+        List<AwardRegistrationEntry> approved = prepareEntries(10, 9, 8, 8);
+        when(finalists.allowsFourFinalists(editionId, 908, 3, 12, "MALE", "BEST_DRIBBLE"))
+                .thenReturn(true);
+        when(currentUser.userId()).thenReturn(adminId);
+        when(edition.getId()).thenReturn(editionId);
+        List<AwardRegistration> registrationMocks = new ArrayList<>();
+        for (int index = 0; index < approved.size(); index++) {
+            AwardRegistration registration = mock(AwardRegistration.class);
+            when(registration.getId()).thenReturn(approved.get(index).getRegistrationId());
+            when(registration.getRegistrationNumber()).thenReturn(index + 1L);
+            lenient().when(registration.getAthleteName()).thenReturn("Atleta " + index);
+            registrationMocks.add(registration);
+        }
+        when(registrations.findAllById(any())).thenReturn(registrationMocks);
+        service.finalizeContext(editionId, context);
+        ArgumentCaptor<AwardPreVoteFinalist> capture = ArgumentCaptor.forClass(AwardPreVoteFinalist.class);
+        verify(finalists, times(4)).save(capture.capture());
+        assertThat(capture.getAllValues()).extracting(AwardPreVoteFinalist::getRank)
+                .containsExactly((short) 1, (short) 2, (short) 3, (short) 4);
+    }
+
+    @Test
+    void rejectsFifthCandidateTiedUnderExceptionalRule() {
+        prepareEntries(10, 9, 8, 8, 8);
+        when(finalists.allowsFourFinalists(editionId, 908, 3, 12, "MALE", "BEST_DRIBBLE"))
+                .thenReturn(true);
+        assertThatThrownBy(() -> service.finalizeContext(editionId, context))
+                .hasMessageContaining("quatro finalistas");
+        verify(finalists, never()).save(any());
+    }
+
+    @Test
     void publishesOnlyThreeBestCandidatesWithAverageSnapshot() {
         List<AwardRegistrationEntry> approved = prepareEntries(8, 10, 7, 9);
         when(currentUser.userId()).thenReturn(adminId);
