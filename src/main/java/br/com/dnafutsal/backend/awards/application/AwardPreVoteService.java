@@ -46,6 +46,7 @@ public class AwardPreVoteService {
     private final AwardPreVoteScoreRepository scores;
     private final AwardPreVoteFinalistRepository finalists;
     private final Clock clock;
+    private final AwardRegistrationReopeningService reopenings;
 
     public AwardPreVoteService(CurrentUserService currentUser, AwardEditionRepository editions,
                                AwardPreVoteEditionLockRepository editionLocks,
@@ -53,7 +54,8 @@ public class AwardPreVoteService {
                                AwardRegistrationEntryRepository entries,
                                AwardPreVoteQueryRepository queries,
                                AwardPreVoteScoreRepository scores,
-                               AwardPreVoteFinalistRepository finalists, Clock clock) {
+                               AwardPreVoteFinalistRepository finalists, Clock clock,
+                               AwardRegistrationReopeningService reopenings) {
         this.currentUser = currentUser;
         this.editions = editions;
         this.editionLocks = editionLocks;
@@ -63,6 +65,7 @@ public class AwardPreVoteService {
         this.scores = scores;
         this.finalists = finalists;
         this.clock = clock;
+        this.reopenings = reopenings;
     }
 
     @Transactional(readOnly = true)
@@ -121,8 +124,8 @@ public class AwardPreVoteService {
         if (!loadFinalists(editionId, context).isEmpty()) {
             throw Errors.conflict("AWARD_PRE_VOTE_ALREADY_FINALIZED", "Este grupo de finalistas já foi publicado.");
         }
-        if (edition.isRegistrationsOpen()) {
-            throw Errors.conflict("AWARD_PRE_VOTE_REGISTRATIONS_OPEN", "Encerre as inscrições antes de publicar os finalistas.");
+        if (edition.isRegistrationsOpen() || reopenings.blocksFinalization(editionId, context)) {
+            throw Errors.conflict("AWARD_PRE_VOTE_REGISTRATIONS_OPEN", "Encerre as inscrições desta modalidade antes de publicar os finalistas.");
         }
         long pending = countPending(editionId, context);
         if (pending > 0) {

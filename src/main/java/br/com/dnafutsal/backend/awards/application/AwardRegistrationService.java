@@ -48,6 +48,7 @@ public class AwardRegistrationService {
     private static final Duration MEDIA_READ_TTL = Duration.ofMinutes(30);
     private final AwardVideoProcessingService videoProcessing;
     private final AccountMediaTracker mediaTracker;
+    private final AwardRegistrationReopeningService reopenings;
 
     public AwardRegistrationService(
             CurrentUserService currentUser,
@@ -63,7 +64,8 @@ public class AwardRegistrationService {
             AwardRegistrationProperties properties,
             Clock clock,
             AwardVideoProcessingService videoProcessing,
-            AccountMediaTracker mediaTracker
+            AccountMediaTracker mediaTracker,
+            AwardRegistrationReopeningService reopenings
     ) {
         this.currentUser = currentUser;
         this.users = users;
@@ -79,6 +81,7 @@ public class AwardRegistrationService {
         this.clock = clock;
         this.videoProcessing = videoProcessing;
         this.mediaTracker = mediaTracker;
+        this.reopenings = reopenings;
     }
 
     @Transactional(readOnly = true)
@@ -104,7 +107,8 @@ public class AwardRegistrationService {
                 edition.isRegistrationsOpen(),
                 properties.effectiveMaxUploadBytes(),
                 properties.effectiveMaxDurationSeconds(),
-                contestCategories
+                contestCategories,
+                reopenings.active(edition.getId())
         );
     }
 
@@ -144,12 +148,8 @@ public class AwardRegistrationService {
         UUID userId =
                 currentUser.userId();
 
-        AwardEdition edition =
-                requireEdition();
-
-        requireRegistrationsOpen(
-                edition
-        );
+        AwardEdition edition = editionLocks.lockEdition(requireEdition().getId())
+                .orElseThrow(() -> Errors.notFound("AWARD_EDITION_NOT_FOUND", "Edição não encontrada."));
 
         UserAccount user =
                 users.findById(
@@ -225,6 +225,18 @@ public class AwardRegistrationService {
                         request.categoryId(),
                         request.teamId()
                 );
+
+        // A reabertura é por modalidade, não por edição nem apenas por categoria esportiva.
+        if (!edition.isRegistrationsOpen()) {
+            for (CreateAwardRegistrationEntryRequest requested : request.entries()) {
+                if (!reopenings.allows(edition.getId(), sports.category().eventId(),
+                        sports.division().id(), sports.category().id(),
+                        request.gender(), requested.contestCategory())) {
+                    throw Errors.conflict("AWARD_REGISTRATION_REOPENING_NOT_ALLOWED",
+                            "Esta modalidade não está liberada para novas inscrições.");
+                }
+            }
+        }
 
         AwardRegistration registration =
                 new AwardRegistration(
@@ -349,18 +361,15 @@ public class AwardRegistrationService {
                         registrationId
                 );
 
-        // O upload é uma alteração da mídia: não pode ser iniciado após o fechamento.
-        // O mesmo lock serializa a publicação dos finalistas com a criação do ticket.
+        // Preserva a ordenação do lock original antes de carregar a entry.
         editionLocks.lockEdition(registration.getEditionId())
-                .orElseThrow(() -> Errors.notFound(
-                        "AWARD_EDITION_NOT_FOUND", "Edição do prêmio não encontrada."));
-        requireWritable(registration);
-
+                .orElseThrow(() -> Errors.notFound("AWARD_EDITION_NOT_FOUND", "Edição não encontrada."));
         AwardRegistrationEntry entry =
                 requireEntry(
                         registrationId,
                         entryId
                 );
+        requireEntryWritable(registration, entry);
 
         storage.deleteObjectQuietly(
                 entry.getPendingObjectName()
@@ -422,15 +431,12 @@ public class AwardRegistrationService {
                         registrationId
                 );
 
-        requireWritable(
-                registration
-        );
-
         AwardRegistrationEntry entry =
                 requireEntry(
                         registrationId,
                         entryId
                 );
+        requireEntryWritable(registration, entry);
 
         if (
                 entry.getSourceType()
@@ -553,15 +559,12 @@ public class AwardRegistrationService {
                         registrationId
                 );
 
-        requireWritable(
-                registration
-        );
-
         AwardRegistrationEntry entry =
                 requireEntry(
                         registrationId,
                         entryId
                 );
+        requireEntryWritable(registration, entry);
 
         StorageCleanup cleanup =
                 storageCleanup(
@@ -609,14 +612,16 @@ public class AwardRegistrationService {
             );
         }
 
-        requireWritable(
-                registration
-        );
-
+        requireNotCancelled(registration);
         List<AwardRegistrationEntry> mediaEntries =
                 entries.findByRegistrationIdOrderByCreatedAtAsc(
                         registrationId
                 );
+        // Um rascunho extraordinário só pode ser enviado enquanto TODAS as suas modalidades
+        // estiverem autorizadas; nenhuma candidatura de outra disputa pode ser desbloqueada.
+        for (AwardRegistrationEntry entry : mediaEntries) {
+            requireEntryWritable(registration, entry);
+        }
 
         if (mediaEntries.isEmpty()
                 || mediaEntries.size() > 4) {
@@ -1069,6 +1074,19 @@ public class AwardRegistrationService {
                                 "Categoria da inscrição não encontrada."
                         )
                 );
+    }
+
+    private void requireEntryWritable(AwardRegistration registration, AwardRegistrationEntry entry) {
+        requireNotCancelled(registration);
+        AwardEdition edition = editionLocks.lockEdition(registration.getEditionId())
+                .orElseThrow(() -> Errors.notFound("AWARD_EDITION_NOT_FOUND", "Edição não encontrada."));
+        if (edition.isRegistrationsOpen()) return;
+        if (!reopenings.allows(edition.getId(), registration.getEventId(),
+                registration.getDivisionId(), registration.getCategoryId(),
+                registration.getGender(), entry.getContestCategory())) {
+            throw Errors.conflict("AWARD_REGISTRATION_REOPENING_NOT_ALLOWED",
+                    "A edição desta candidatura não está permitida nesta reabertura.");
+        }
     }
 
     private void requireWritable(

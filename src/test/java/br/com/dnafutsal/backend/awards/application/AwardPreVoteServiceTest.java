@@ -58,7 +58,7 @@ class AwardPreVoteServiceTest {
     @BeforeEach
     void prepare() {
         service = new AwardPreVoteService(currentUser, editions, editionLocks, registrations, entries,
-                queries, scores, finalists, Clock.systemUTC());
+                queries, scores, finalists, Clock.systemUTC(), mock(AwardRegistrationReopeningService.class));
     }
 
     private List<AwardRegistrationEntry> prepareEntries(int... grades) {

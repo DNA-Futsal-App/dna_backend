@@ -8,6 +8,7 @@ public record AwardRegistrationContextResponse(
         boolean registrationsOpen,
         long maxUploadBytes,
         int maxDurationSeconds,
-        List<AwardRegistrationContestCategoryResponse> contestCategories
+        List<AwardRegistrationContestCategoryResponse> contestCategories,
+        List<AwardRegistrationReopeningResponse> reopenings
 ) {
 }

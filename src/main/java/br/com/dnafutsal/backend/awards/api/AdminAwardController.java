@@ -6,6 +6,8 @@ import br.com.dnafutsal.backend.awards.application.AwardCandidateImportService;
 import br.com.dnafutsal.backend.awards.application.AwardCoachSyncService;
 import br.com.dnafutsal.backend.awards.application.AwardEditionAdminService;
 import br.com.dnafutsal.backend.awards.application.AwardRegistrationReviewService;
+import br.com.dnafutsal.backend.awards.application.AwardRegistrationReopeningService;
+import br.com.dnafutsal.backend.awards.domain.AwardRegistrationGender;
 import br.com.dnafutsal.backend.awards.application.AwardResultsService;
 import br.com.dnafutsal.backend.awards.application.AwardVotingResetService;
 import jakarta.validation.Valid;
@@ -37,6 +39,7 @@ public class AdminAwardController {
     private final AwardResultsService results;
     private final AwardVotingResetService votingReset;
     private final AwardRegistrationReviewService registrationReviews;
+    private final AwardRegistrationReopeningService reopenings;
 
     public AdminAwardController(
             AwardEditionAdminService editions,
@@ -46,7 +49,8 @@ public class AdminAwardController {
             AwardAdminDashboardService dashboard,
             AwardResultsService results,
             AwardVotingResetService votingReset,
-            AwardRegistrationReviewService registrationReviews
+            AwardRegistrationReviewService registrationReviews,
+            AwardRegistrationReopeningService reopenings
     ) {
         this.editions = editions;
         this.importer = importer;
@@ -56,6 +60,7 @@ public class AdminAwardController {
         this.results = results;
         this.votingReset = votingReset;
         this.registrationReviews = registrationReviews;
+        this.reopenings = reopenings;
     }
 
     @GetMapping("/editions")
@@ -146,6 +151,39 @@ public class AdminAwardController {
         return editions.closeRegistrations(
                 editionId
         );
+    }
+
+    @GetMapping("/editions/{editionId}/registration-reopenings")
+    List<AwardRegistrationReopeningResponse> listReopenings(@PathVariable UUID editionId) {
+        return reopenings.list(editionId);
+    }
+
+    @GetMapping("/editions/{editionId}/registration-reopenings/eligibility")
+    List<AwardRegistrationReopeningEligibilityResponse> reopeningEligibility(
+            @PathVariable UUID editionId,
+            @RequestParam @Min(1) long eventId,
+            @RequestParam @Min(1) long divisionId,
+            @RequestParam @Min(1) long categoryId,
+            @RequestParam AwardRegistrationGender gender) {
+        return reopenings.eligibility(editionId, eventId, divisionId, categoryId, gender);
+    }
+
+    @PostMapping("/editions/{editionId}/registration-reopenings")
+    AwardRegistrationReopeningResponse reopenRegistration(@PathVariable UUID editionId,
+            @Valid @RequestBody AwardRegistrationReopeningRequest request) {
+        return reopenings.open(editionId, request);
+    }
+
+    @PostMapping("/editions/{editionId}/registration-reopenings/{reopeningId}/close")
+    AwardRegistrationReopeningResponse closeRegistrationReopening(
+            @PathVariable UUID editionId, @PathVariable UUID reopeningId) {
+        return reopenings.close(editionId, reopeningId);
+    }
+
+    @PostMapping("/editions/{editionId}/registration-reopenings/batch")
+    List<AwardRegistrationReopeningResponse> reopenBatch(@PathVariable UUID editionId,
+            @Valid @RequestBody AwardRegistrationReopeningBatchRequest request) {
+        return reopenings.openBatch(editionId, request.items());
     }
 
     @PostMapping("/editions/{editionId}/reset-voting")
