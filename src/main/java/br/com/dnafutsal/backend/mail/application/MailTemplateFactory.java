@@ -25,9 +25,14 @@ public class MailTemplateFactory {
                         "Confirmar e-mail", link));
     }
 
-    public MailMessage passwordReset(String name, String email, String rawToken) {
-        String link = properties.frontendBaseUrl() + "/redefinir-senha?token="
+    /** Link publico do fluxo existente, sem enviar e-mail. */
+    public String passwordResetLink(String rawToken) {
+        return properties.frontendBaseUrl() + "/redefinir-senha?token="
                 + URLEncoder.encode(rawToken, StandardCharsets.UTF_8);
+    }
+
+    public MailMessage passwordReset(String name, String email, String rawToken) {
+        String link = passwordResetLink(rawToken);
         return new MailMessage(email, "Redefinição de senha do DNA Futsal",
                 layout(name, "Redefina sua senha",
                         "Recebemos uma solicitação para alterar sua senha. O link expira em breve. "

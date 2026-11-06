@@ -80,6 +80,38 @@ public class PasswordResetService {
         });
     }
 
+    /**
+     * Gera um link para compartilhamento manual pelo administrador. Nunca enfileira e-mail.
+     * O token segue as mesmas regras de prazo, limite diario e consumo do fluxo publico.
+     */
+    @Transactional
+    public AdminResetLink generateForAdministrator(String email) {
+        UserAccount user = users.findByEmailForUpdate(normalizer.email(email))
+                .orElseThrow(() -> Errors.notFound("PASSWORD_RESET_USER_NOT_FOUND",
+                        "Nao encontramos uma conta com este e-mail."));
+        if (user.getStatus() != UserStatus.ACTIVE) {
+            throw Errors.conflict("PASSWORD_RESET_ACCOUNT_INACTIVE",
+                    "A redefinicao nao esta disponivel para esta conta.");
+        }
+
+        Instant now = clock.instant();
+        Instant startOfDay = now.atZone(appProperties.zoneId()).toLocalDate()
+                .atStartOfDay(appProperties.zoneId()).toInstant();
+        if (resetTokens.countByUserIdAndCreatedAtGreaterThanEqual(user.getId(), startOfDay) >= DAILY_LIMIT) {
+            throw Errors.conflict("PASSWORD_RESET_DAILY_LIMIT",
+                    "O limite de tres links de redefinicao por dia foi atingido para esta conta.");
+        }
+
+        String rawToken = tokenSupport.generate();
+        Instant expiresAt = now.plus(securityProperties.passwordResetTtl());
+        resetTokens.save(new PasswordResetToken(user.getId(), tokenSupport.hash(rawToken), expiresAt, now));
+
+        return new AdminResetLink(mailTemplates.passwordResetLink(rawToken), expiresAt, user.getId());
+    }
+
+    /** userId serve somente para auditoria; nao e exposto pela API. */
+    public record AdminResetLink(String link, Instant expiresAt, java.util.UUID userId) { }
+
     @Transactional
     public java.util.UUID confirm(String rawToken, String newPassword) {
         Instant now = clock.instant();
