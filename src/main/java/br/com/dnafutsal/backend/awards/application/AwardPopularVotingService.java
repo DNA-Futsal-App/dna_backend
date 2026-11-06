@@ -250,7 +250,7 @@ public class AwardPopularVotingService {
         requireVisible(window);
         List<FinalistData> candidates = requireFinalists(editionId, context);
         String status = window.statusAt(clock.instant());
-        boolean showResults = administrative && "CLOSED".equals(status);
+        boolean showResults = administrative && ("OPEN".equals(status) || "CLOSED".equals(status));
         Map<UUID, Long> counts = showResults ? tally(editionId, context) : Map.of();
         List<AwardPopularFinalistResponse> response = candidates.stream().map(candidate ->
                 new AwardPopularFinalistResponse(candidate.entry().getId(),
