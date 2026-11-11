@@ -28,21 +28,23 @@ public class CoachVotingV2Service {
     private final AwardBallotRepository ballots;
     private final AwardBallotVoteRepository ballotVotes;
     private final AwardLiveRosterService liveRoster;
+    private final AwardGoldEligibilityService eligibility;
     private final UserAccountRepository users;
     private final Clock clock;
 
     public CoachVotingV2Service(CurrentUserService currentUser,AwardCoachCredentialRepository credentials,AwardCoachVoterRepository contexts,
                                 AwardEditionRepository editions,AwardVoteCategoryRepository voteCategories,AwardCandidateRepository candidates,
                                 AwardBallotRepository ballots,AwardBallotVoteRepository ballotVotes,AwardLiveRosterService liveRoster,
-                                UserAccountRepository users,Clock clock){
+                                AwardGoldEligibilityService eligibility, UserAccountRepository users,Clock clock){
         this.currentUser=currentUser;this.credentials=credentials;this.contexts=contexts;this.editions=editions;this.voteCategories=voteCategories;
-        this.candidates=candidates;this.ballots=ballots;this.ballotVotes=ballotVotes;this.liveRoster=liveRoster;this.users=users;this.clock=clock;
+        this.candidates=candidates;this.ballots=ballots;this.ballotVotes=ballotVotes;this.liveRoster=liveRoster;this.eligibility=eligibility;this.users=users;this.clock=clock;
     }
 
     @Transactional(readOnly=true)
     public CoachVotingContextResponse context(UUID contextId){
         Access a=access(contextId,false);
-        List<CoachVotingTeamResponse> teams=liveRoster.teams(a.context.getEventId()).stream().map(t->new CoachVotingTeamResponse(t.id(),t.name(),t.logoUrl())).toList();
+        Set<String> goldTeams=eligibility.eligibleTeamIds(a.edition.getId(),a.context.getEventId(),a.context.getDivisionId(),a.context.getCategoryId());
+        List<CoachVotingTeamResponse> teams=liveRoster.teams(a.context.getEventId()).stream().map(t->new CoachVotingTeamResponse(t.id(),t.name(),t.logoUrl(),goldTeams.contains(t.id()))).toList();
         return new CoachVotingContextResponse(a.edition.getId(),a.edition.getSlug(),a.edition.getName(),a.edition.getSeason(),state(a.edition,a.submitted,a.now).name(),
                 a.edition.getVotingOpensAt(),a.edition.getVotingClosesAt(),a.context.getId(),a.user.getName(),a.context.getEventId(),a.context.getDivisionId(),a.context.getCategoryId(),
                 a.context.getTeamId(),ownTeamName(a.context),a.submitted,voteCategories.findByEditionIdOrderByDisplayOrderAsc(a.edition.getId()).stream().map(CoachVotingCategoryResponse::from).toList(),teams);
@@ -55,7 +57,9 @@ public class CoachVotingV2Service {
         if(!category.getEditionId().equals(a.edition.getId())) throw Errors.badRequest("AWARD_VOTE_CATEGORY_INVALID","A categoria não pertence a esta edição.");
         List<AwardCandidate> available;
         if(category.getTargetType()==AwardCandidateType.ATHLETE){
-            available=liveRoster.athletes(a.edition.getId(),a.context.getEventId(),a.context.getDivisionId(),a.context.getCategoryId(),teamId);
+            eligibility.requireEligible(a.edition.getId(),a.context.getEventId(),a.context.getDivisionId(),a.context.getCategoryId(),teamId);
+            available=candidates.findByEditionIdAndEventIdAndDivisionIdAndCategoryIdAndTeamIdAndActiveTrueOrderByNameAsc(
+                    a.edition.getId(),a.context.getEventId(),a.context.getDivisionId(),a.context.getCategoryId(),teamId.trim());
         } else {
             String normalized=teamId==null?"":teamId.trim();
             if(normalized.equals(a.context.getTeamId())) throw Errors.badRequest("AWARD_SELF_COACH_VOTE_FORBIDDEN","O treinador não pode votar na própria equipe para Técnico.");
@@ -121,6 +125,9 @@ public class CoachVotingV2Service {
         boolean same=candidate.isActive()&&candidate.getEditionId().equals(a.edition.getId())&&candidate.getEventId()==a.context.getEventId()&&candidate.getDivisionId()==a.context.getDivisionId()&&candidate.getCategoryId()==a.context.getCategoryId();
         if(!same) throw Errors.badRequest("AWARD_CANDIDATE_OUT_OF_CONTEXT","Um candidato não pertence a este contexto.");
         if(candidate.getCandidateType()!=category.getTargetType()) throw Errors.badRequest("AWARD_CANDIDATE_TYPE_MISMATCH","O candidato não corresponde à categoria de votação.");
+        if(category.getTargetType()==AwardCandidateType.ATHLETE){
+            eligibility.requireEligible(a.edition.getId(),a.context.getEventId(),a.context.getDivisionId(),a.context.getCategoryId(),candidate.getTeamId());
+        }
         if(category.getTargetType()==AwardCandidateType.COACH){ if(!candidate.isTeamCoachVoteCandidate())throw Errors.badRequest("AWARD_COACH_TEAM_SELECTION_REQUIRED","Selecione uma equipe válida."); if(candidate.getTeamId().equals(a.context.getTeamId()))throw Errors.badRequest("AWARD_SELF_COACH_VOTE_FORBIDDEN","O treinador não pode votar na própria equipe."); }
     }
     private String ownTeamName(AwardCoachVoter c){return candidates.findById(c.getSelfCoachCandidateId()).map(AwardCandidate::getTeamName).orElse(c.getTeamId());}

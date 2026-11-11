@@ -39,6 +39,7 @@ public class CoachBallotService {
     private final AwardCandidateRepository candidates;
     private final AwardBallotRepository ballots;
     private final AwardBallotVoteRepository ballotVotes;
+    private final AwardGoldEligibilityService eligibility;
     private final Clock clock;
 
     public CoachBallotService(
@@ -47,6 +48,7 @@ public class CoachBallotService {
             AwardCandidateRepository candidates,
             AwardBallotRepository ballots,
             AwardBallotVoteRepository ballotVotes,
+            AwardGoldEligibilityService eligibility,
             Clock clock
     ) {
         this.access = access;
@@ -54,6 +56,7 @@ public class CoachBallotService {
         this.candidates = candidates;
         this.ballots = ballots;
         this.ballotVotes = ballotVotes;
+        this.eligibility = eligibility;
         this.clock = clock;
     }
 
@@ -277,6 +280,11 @@ public class CoachBallotService {
                     "AWARD_CANDIDATE_TYPE_MISMATCH",
                     "Um dos candidatos selecionados não corresponde à categoria de votação."
             );
+        }
+
+        if (category.getTargetType() == AwardCandidateType.ATHLETE) {
+            eligibility.requireEligible(current.edition().getId(), current.voter().getEventId(),
+                    current.voter().getDivisionId(), current.voter().getCategoryId(), candidate.getTeamId());
         }
 
         if (category.getTargetType()

@@ -49,6 +49,9 @@ class CoachBallotServiceTest {
     @Mock
     AwardBallotVoteRepository ballotVotes;
 
+    @Mock
+    AwardGoldEligibilityService eligibility;
+
     CoachBallotService service;
 
     final Instant now =
@@ -64,6 +67,7 @@ class CoachBallotServiceTest {
                 candidates,
                 ballots,
                 ballotVotes,
+                eligibility,
                 Clock.fixed(
                         now,
                         ZoneOffset.UTC

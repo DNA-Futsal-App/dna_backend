@@ -33,6 +33,7 @@ public class CoachVotingQueryService {
     private final AwardBallotRepository ballots;
     private final AwardBallotVoteRepository ballotVotes;
     private final AwardLiveRosterService liveRoster;
+    private final AwardGoldEligibilityService eligibility;
 
     public CoachVotingQueryService(
             CoachVotingAccessService access,
@@ -40,7 +41,8 @@ public class CoachVotingQueryService {
             AwardCandidateRepository candidates,
             AwardBallotRepository ballots,
             AwardBallotVoteRepository ballotVotes,
-            AwardLiveRosterService liveRoster
+            AwardLiveRosterService liveRoster,
+            AwardGoldEligibilityService eligibility
     ) {
         this.access = access;
         this.voteCategories = voteCategories;
@@ -48,6 +50,7 @@ public class CoachVotingQueryService {
         this.ballots = ballots;
         this.ballotVotes = ballotVotes;
         this.liveRoster = liveRoster;
+        this.eligibility = eligibility;
     }
 
     @Transactional(readOnly = true)
@@ -61,6 +64,9 @@ public class CoachVotingQueryService {
                                 .getId()
                 );
 
+        var eligibleTeams = eligibility.eligibleTeamIds(
+                current.edition().getId(), current.voter().getEventId(),
+                current.voter().getDivisionId(), current.voter().getCategoryId());
         List<CoachVotingTeamResponse> teams =
                 liveRoster.teams(
                                 current.voter()
@@ -71,7 +77,8 @@ public class CoachVotingQueryService {
                                 new CoachVotingTeamResponse(
                                         team.id(),
                                         team.name(),
-                                        team.logoUrl()
+                                        team.logoUrl(),
+                                        eligibleTeams.contains(team.id())
                                 )
                         )
                         .toList();
@@ -146,13 +153,11 @@ public class CoachVotingQueryService {
 
         if (category.getTargetType()
                 == AwardCandidateType.ATHLETE) {
-            available = liveRoster.athletes(
-                    current.edition().getId(),
-                    current.voter().getEventId(),
-                    current.voter().getDivisionId(),
-                    current.voter().getCategoryId(),
-                    teamId
-            );
+            eligibility.requireEligible(current.edition().getId(), current.voter().getEventId(),
+                    current.voter().getDivisionId(), current.voter().getCategoryId(), teamId);
+            available = candidates.findByEditionIdAndEventIdAndDivisionIdAndCategoryIdAndTeamIdAndActiveTrueOrderByNameAsc(
+                    current.edition().getId(), current.voter().getEventId(),
+                    current.voter().getDivisionId(), current.voter().getCategoryId(), teamId.trim());
         } else {
             String normalizedTeamId =
                     teamId == null

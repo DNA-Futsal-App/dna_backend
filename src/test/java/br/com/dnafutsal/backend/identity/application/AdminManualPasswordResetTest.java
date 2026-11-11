@@ -32,12 +32,26 @@ class AdminManualPasswordResetTest {
     private final PasswordResetTokenRepository tokens = mock(PasswordResetTokenRepository.class);
     private final IdentityNormalizer normalizer = mock(IdentityNormalizer.class);
     private final TokenSupport tokenSupport = mock(TokenSupport.class);
-    private final SecurityProperties security = mock(SecurityProperties.class);
-    private final AppProperties app = mock(AppProperties.class);
     private final MailTemplateFactory templates = mock(MailTemplateFactory.class);
     private final MailOutboxService outbox = mock(MailOutboxService.class);
     private final Clock clock = Clock.fixed(Instant.parse("2026-11-06T18:00:00Z"), ZoneId.of("UTC"));
     private final UserAccount user = mock(UserAccount.class);
+
+
+    private final SecurityProperties security = new SecurityProperties(
+            "test-only-secret-01234567890123456789012345678901234567890123456789",
+            Duration.ofMinutes(15),
+            Duration.ofDays(30),
+            Duration.ofHours(24),
+            Duration.ofMinutes(25)
+    );
+
+    private final AppProperties app = new AppProperties(
+            "http://localhost:3000",
+            java.util.List.of("http://localhost:3000"),
+            "America/Sao_Paulo"
+    );
+
 
     private PasswordResetService service() {
         return new PasswordResetService(users, tokens, mock(RefreshSessionRepository.class), normalizer,
@@ -49,7 +63,6 @@ class AdminManualPasswordResetTest {
         when(users.findByEmailForUpdate("pessoa@exemplo.com")).thenReturn(Optional.of(user));
         when(user.getStatus()).thenReturn(UserStatus.ACTIVE);
         when(user.getId()).thenReturn(UUID.fromString("0dcafc16-503d-42b5-aed9-6f54131a7677"));
-        when(app.zoneId()).thenReturn(ZoneId.of("America/Sao_Paulo"));
         when(tokens.countByUserIdAndCreatedAtGreaterThanEqual(any(), any())).thenReturn(issuedToday);
     }
 
@@ -58,7 +71,6 @@ class AdminManualPasswordResetTest {
         activeUser(0);
         when(tokenSupport.generate()).thenReturn("secure-token");
         when(tokenSupport.hash("secure-token")).thenReturn("somehash");
-        when(security.passwordResetTtl()).thenReturn(Duration.ofMinutes(25));
         when(templates.passwordResetLink("secure-token"))
                 .thenReturn("https://dna.test/redefinir-senha?token=secure-token");
 
