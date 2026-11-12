@@ -29,10 +29,11 @@ public class JwtTokenService {
 
     public String createAccessToken(UserAccount user) {
         Instant now = clock.instant();
-        String scope =
-                user.getRole() == UserRole.ADMIN
-                        ? "USER ADMIN"
-                        : "USER";
+        String scope = switch (user.getRole()) {
+            case ADMIN -> "USER ADMIN COACH";
+            case COACH -> "USER COACH";
+            case USER -> "USER";
+        };
 
         JwtClaimsSet claims = JwtClaimsSet.builder()
                 .issuer("dna-futsal")

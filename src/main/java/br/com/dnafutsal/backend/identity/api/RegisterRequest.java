@@ -1,5 +1,6 @@
 package br.com.dnafutsal.backend.identity.api;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
@@ -19,13 +20,29 @@ public record RegisterRequest(
         @Size(max = 100) String divisionId,
         @Size(max = 100) String teamId,
         @Size(max = 200) String coachAccessToken,
-        SportsCompetitionCode competitionCode
+        SportsCompetitionCode competitionCode,
+        @Valid CoachCategoryRegistration coachCategoryRegistration
 ) {
     // Backwards-compatible constructor for existing Java callers.
     public RegisterRequest(String name, String email, String phone, String password,
                            String childInstagram, Long eventId, String categoryId,
                            String divisionId, String teamId, String coachAccessToken) {
         this(name, email, phone, password, childInstagram, eventId, categoryId,
-                divisionId, teamId, coachAccessToken, null);
+                divisionId, teamId, coachAccessToken, null, null);
     }
+    // Keep the previous 11-argument canonical constructor for old tests/callers.
+    public RegisterRequest(String name, String email, String phone, String password,
+                           String childInstagram, Long eventId, String categoryId,
+                           String divisionId, String teamId, String coachAccessToken,
+                           SportsCompetitionCode competitionCode) {
+        this(name, email, phone, password, childInstagram, eventId, categoryId,
+                divisionId, teamId, coachAccessToken, competitionCode, null);
+    }
+
+    public record CoachCategoryRegistration(
+            @NotBlank @Size(min = 20, max = 200) String token,
+            @NotBlank @Size(max = 100) String teamId,
+            @NotBlank @Size(max = 80) String role,
+            @Size(max = 500) String evidenceUrl
+    ) { }
 }

@@ -242,6 +242,20 @@ public class UserAccount {
         return role;
     }
 
+    public void promoteToCoach() {
+        if (role == UserRole.USER) {
+            role = UserRole.COACH;
+            tokenVersion++;
+        }
+    }
+
+    public void demoteFromCoach() {
+        if (role == UserRole.COACH) {
+            role = UserRole.USER;
+            tokenVersion++;
+        }
+    }
+
     public UserStatus getStatus() {
         return status;
     }
