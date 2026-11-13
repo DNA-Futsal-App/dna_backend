@@ -5,6 +5,7 @@ import br.com.dnafutsal.backend.config.AppProperties;
 import br.com.dnafutsal.backend.config.SportsDefaultsProperties;
 import br.com.dnafutsal.backend.sports.domain.CatalogCategoryView;
 import br.com.dnafutsal.backend.sports.domain.CatalogItemView;
+import br.com.dnafutsal.backend.sports.infrastructure.SportsSnapshotArchive;
 import org.junit.jupiter.api.Test;
 
 import java.time.Clock;
@@ -22,6 +23,7 @@ class SportsDefaultEventResolverTest {
 
     private final SportsCatalogService catalog =
             mock(SportsCatalogService.class);
+    private final SportsSnapshotArchive archive = mock(SportsSnapshotArchive.class);
 
     private final SportsDefaultsProperties defaults =
             new SportsDefaultsProperties(
@@ -284,6 +286,17 @@ class SportsDefaultEventResolverTest {
                 );
     }
 
+    @Test
+    void usesArchivedEventWhenCatalogIsUnavailable() {
+        Clock clock = Clock.fixed(Instant.parse("2026-11-13T12:00:00Z"), ZoneOffset.UTC);
+        when(catalog.divisions(2026)).thenThrow(
+                new BusinessException(org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE,
+                        "SPORTS_DATA_UNAVAILABLE", "source unavailable"));
+        when(archive.findDefaultEventId(2026, "A1", "Principal"))
+                .thenReturn(java.util.OptionalLong.of(917L));
+        assertThat(resolver(clock).resolveCurrentEventId()).isEqualTo(917L);
+    }
+
     private SportsDefaultEventResolver resolver(
             Clock clock
     ) {
@@ -291,7 +304,8 @@ class SportsDefaultEventResolverTest {
                 catalog,
                 defaults,
                 appProperties,
-                clock
+                clock,
+                archive
         );
     }
 }

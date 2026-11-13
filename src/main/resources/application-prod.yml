@@ -64,6 +64,8 @@ app:
   cors-allowed-origins: ${CORS_ALLOWED_ORIGINS}
   timezone: ${APP_TIMEZONE:America/Sao_Paulo}
   sports:
+    archive:
+      max-age: ${SPORTS_STALE_MAX_AGE:P14D}
     defaults:
       division: A1
       category: Principal

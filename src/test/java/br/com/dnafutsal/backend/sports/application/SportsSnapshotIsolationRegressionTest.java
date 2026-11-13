@@ -4,6 +4,7 @@ import br.com.dnafutsal.backend.common.BusinessException;
 import br.com.dnafutsal.backend.sports.domain.SportsDataGateway;
 import br.com.dnafutsal.backend.sports.domain.SportsEventView;
 import br.com.dnafutsal.backend.sports.domain.SportsSnapshot;
+import br.com.dnafutsal.backend.sports.infrastructure.SportsSnapshotArchive;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
@@ -15,7 +16,8 @@ import static org.mockito.Mockito.*;
 
 class SportsSnapshotIsolationRegressionTest {
     private final SportsDataGateway gateway = mock(SportsDataGateway.class);
-    private final SportsSnapshotService snapshots = new SportsSnapshotService(gateway);
+    private final SportsSnapshotArchive archive = mock(SportsSnapshotArchive.class);
+    private final SportsSnapshotService snapshots = new SportsSnapshotService(gateway, archive);
 
     @Test
     void refusesSnapshotFromAnotherCompetition() {

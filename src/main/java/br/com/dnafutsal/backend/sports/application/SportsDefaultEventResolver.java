@@ -1,10 +1,12 @@
 package br.com.dnafutsal.backend.sports.application;
 
+import br.com.dnafutsal.backend.common.BusinessException;
 import br.com.dnafutsal.backend.common.Errors;
 import br.com.dnafutsal.backend.config.AppProperties;
 import br.com.dnafutsal.backend.config.SportsDefaultsProperties;
 import br.com.dnafutsal.backend.sports.domain.CatalogCategoryView;
 import br.com.dnafutsal.backend.sports.domain.CatalogItemView;
+import br.com.dnafutsal.backend.sports.infrastructure.SportsSnapshotArchive;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -26,22 +28,43 @@ public class SportsDefaultEventResolver {
     private final SportsDefaultsProperties defaults;
     private final AppProperties appProperties;
     private final Clock clock;
+    private final SportsSnapshotArchive archive;
 
     public SportsDefaultEventResolver(
             SportsCatalogService catalog,
             SportsDefaultsProperties defaults,
             AppProperties appProperties,
-            Clock clock
+            Clock clock,
+            SportsSnapshotArchive archive
     ) {
         this.catalog = catalog;
         this.defaults = defaults;
         this.appProperties = appProperties;
         this.clock = clock;
+        this.archive = archive;
     }
 
     public long resolveCurrentEventId() {
         int season = currentSeason();
+        try {
+            return resolveFromCatalog(season);
+        } catch (BusinessException exception) {
+            // Recover only upstream/catalog outages or a missing default selection.
+            // Never replace unrelated errors or return an event from another season.
+            if (!exception.status().is5xxServerError()) {
+                throw exception;
+            }
+            var previous = archive.findDefaultEventId(season, defaults.division(), defaults.category());
+            if (previous.isPresent()) {
+                log.warn("Using archived default sports event season={} eventId={} upstreamCode={}",
+                        season, previous.getAsLong(), exception.code());
+                return previous.getAsLong();
+            }
+            throw exception;
+        }
+    }
 
+    private long resolveFromCatalog(int season) {
         CatalogItemView division =
                 catalog.divisions(season)
                         .stream()
