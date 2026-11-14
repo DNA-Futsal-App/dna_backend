@@ -3,6 +3,7 @@ package br.com.dnafutsal.backend.awards.application;
 import br.com.dnafutsal.backend.awards.api.AwardEditionAdminResponse;
 import br.com.dnafutsal.backend.awards.api.AwardVoteCategoryResponse;
 import br.com.dnafutsal.backend.awards.api.OpenAwardEditionRequest;
+import br.com.dnafutsal.backend.awards.api.ResetAwardVotingResponse;
 import br.com.dnafutsal.backend.awards.domain.AwardCandidate;
 import br.com.dnafutsal.backend.awards.domain.AwardCandidateType;
 import br.com.dnafutsal.backend.awards.domain.AwardCoachVoter;
@@ -33,6 +34,7 @@ public class AwardEditionAdminService {
     private final AwardVoteCategoryRepository voteCategories;
     private final AwardCandidateRepository candidates;
     private final AwardCoachVoterRepository voters;
+    private final AwardVotingResetService votingReset;
     private final Clock clock;
 
     public AwardEditionAdminService(
@@ -42,6 +44,7 @@ public class AwardEditionAdminService {
             AwardVoteCategoryRepository voteCategories,
             AwardCandidateRepository candidates,
             AwardCoachVoterRepository voters,
+            AwardVotingResetService votingReset,
             Clock clock
     ) {
         this.editions = editions;
@@ -50,6 +53,7 @@ public class AwardEditionAdminService {
         this.voteCategories = voteCategories;
         this.candidates = candidates;
         this.voters = voters;
+        this.votingReset = votingReset;
         this.clock = clock;
     }
 
@@ -141,29 +145,22 @@ public class AwardEditionAdminService {
             );
         }
 
-        List<AwardCandidate> activeCoaches =
-                candidates.findByEditionIdOrderByTeamNameAscNameAsc(
-                                editionId
-                        )
+        // Synthetic team candidates may have been deactivated by older syncs.
+        // Restore them only when an active voter still references the same context.
+        List<AwardCandidate> coachCandidates =
+                candidates.findByEditionIdOrderByTeamNameAscNameAsc(editionId)
                         .stream()
-                        .filter(AwardCandidate::isActive)
-                        .filter(candidate ->
-                                candidate.getCandidateType()
-                                        == AwardCandidateType.COACH
-                        )
+                        .filter(candidate -> candidate.getCandidateType() == AwardCandidateType.COACH)
                         .toList();
 
-        if (activeCoaches.isEmpty()) {
+        validateCoachBindings(editionId, coachCandidates);
+
+        if (coachCandidates.stream().noneMatch(AwardCandidate::isActive)) {
             throw Errors.conflict(
                     "AWARD_COACHES_EMPTY",
-                    "Sincronize os treinadores da divisão e categoria antes de abrir a votação."
+                    "Não há candidatos técnicos ativos para esta edição."
             );
         }
-
-        validateCoachBindings(
-                editionId,
-                activeCoaches
-        );
 
         edition.openVoting(
                 request.votingOpensAt(),
@@ -175,6 +172,40 @@ public class AwardEditionAdminService {
                         edition
                 )
         );
+    }
+
+    /**
+     * Reopens a finished voting window and discards ballots from its previous run.
+     * Reset and subsequent opening share a single transaction. Any validation
+     * failure rolls back the deletions and the edition state change.
+     */
+    @Transactional
+    public ResetAwardVotingResponse reopen(UUID editionId, OpenAwardEditionRequest request) {
+        AwardEdition edition = editionLocks.lockEdition(editionId)
+                .orElseThrow(() -> Errors.notFound(
+                        "AWARD_EDITION_NOT_FOUND", "Edição do prêmio não encontrada."));
+        Instant now = clock.instant();
+        if (edition.getStatus() == AwardEditionStatus.DRAFT) {
+            throw Errors.conflict("AWARD_EDITION_NOT_CLOSED",
+                    "A edição está em rascunho. Utilize Abrir votação.");
+        }
+        if (edition.getStatus() == AwardEditionStatus.OPEN
+                && (edition.getVotingClosesAt() == null
+                    || now.isBefore(edition.getVotingClosesAt()))) {
+            throw Errors.conflict("AWARD_VOTING_STILL_ACTIVE",
+                    "Encerre a votação atual antes de reabri-la.");
+        }
+        if (!request.votingOpensAt().isBefore(request.votingClosesAt())
+                || !request.votingClosesAt().isAfter(now)) {
+            throw Errors.badRequest("AWARD_VOTING_WINDOW_INVALID",
+                    "Informe um período válido, com encerramento no futuro.");
+        }
+
+        ResetAwardVotingResponse cleared = votingReset.reset(editionId);
+        // Reuses existing snapshot and context validation; rollback is atomic.
+        AwardEditionAdminResponse opened = open(editionId, request);
+        return new ResetAwardVotingResponse(
+                editionId, cleared.ballotsDeleted(), cleared.votesDeleted(), opened);
     }
 
     @Transactional
@@ -269,50 +300,33 @@ public class AwardEditionAdminService {
         );
     }
 
-    private void validateCoachBindings(
-            UUID editionId,
-            List<AwardCandidate> activeCandidates
-    ) {
-        java.util.Map<UUID, AwardCandidate> activeCoaches =
-                activeCandidates.stream()
-                        .filter(candidate ->
-                                candidate.getCandidateType()
-                                        == AwardCandidateType.COACH
-                        )
-                        .collect(
-                                java.util.stream.Collectors.toMap(
-                                        AwardCandidate::getId,
-                                        candidate -> candidate
-                                )
-                        );
+    private void validateCoachBindings(UUID editionId, List<AwardCandidate> coachCandidates) {
+        java.util.Map<UUID, AwardCandidate> byId = coachCandidates.stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        AwardCandidate::getId, candidate -> candidate));
 
-        for (AwardCoachVoter voter
-                : voters.findByEditionId(
-                        editionId
-                )) {
-            AwardCandidate coach =
-                    activeCoaches.get(
-                            voter.getSelfCoachCandidateId()
-                    );
-
-            boolean consistent =
-                    coach != null
-                            && coach.getEventId()
-                            == voter.getEventId()
-                            && coach.getDivisionId()
-                            == voter.getDivisionId()
-                            && coach.getCategoryId()
-                            == voter.getCategoryId()
-                            && coach.getTeamId()
-                            .equals(
-                                    voter.getTeamId()
-                            );
+        for (AwardCoachVoter voter : voters.findByEditionId(editionId)) {
+            // Revoked contexts remain in the database for audit purposes.
+            if (!voter.isActive()) {
+                continue;
+            }
+            AwardCandidate coach = byId.get(voter.getSelfCoachCandidateId());
+            boolean consistent = coach != null
+                    && (coach.isActive() || coach.isTeamCoachVoteCandidate())
+                    && coach.getEventId() == voter.getEventId()
+                    && coach.getDivisionId() == voter.getDivisionId()
+                    && coach.getCategoryId() == voter.getCategoryId()
+                    && coach.getTeamId().equals(voter.getTeamId());
 
             if (!consistent) {
                 throw Errors.conflict(
                         "AWARD_COACH_VOTER_INCONSISTENT",
                         "Existe treinador habilitado para votar que não corresponde mais ao snapshot."
                 );
+            }
+            // Older syncs could deactivate TEAM_VOTE rows; restore only these.
+            if (!coach.isActive()) {
+                coach.reactivate();
             }
         }
     }

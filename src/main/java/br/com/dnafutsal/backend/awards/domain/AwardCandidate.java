@@ -214,6 +214,10 @@ public class AwardCandidate {
                 false;
     }
 
+    public void reactivate() {
+        this.active = true;
+    }
+
     @PrePersist
     void onCreate() {
         if (createdAt == null) {

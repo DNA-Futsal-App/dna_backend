@@ -15,6 +15,7 @@ import br.com.dnafutsal.backend.awards.infrastructure.AwardRegistrationEntryRepo
 import br.com.dnafutsal.backend.awards.infrastructure.AwardRegistrationRepository;
 import br.com.dnafutsal.backend.awards.infrastructure.AwardVoteCategoryRepository;
 import br.com.dnafutsal.backend.identity.application.CurrentUserService;
+import br.com.dnafutsal.backend.common.BusinessException;
 import br.com.dnafutsal.backend.identity.infrastructure.UserAccountRepository;
 import br.com.dnafutsal.backend.mail.application.MailOutboxService;
 import br.com.dnafutsal.backend.mail.application.MailTemplateFactory;
@@ -22,12 +23,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
 
 import java.time.Clock;
 import java.util.Optional;
 import java.util.UUID;
 
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -38,6 +41,7 @@ class AwardPreVoteLifecycleGuardsTest {
     @Mock AwardVoteCategoryRepository voteCategories;
     @Mock AwardCandidateRepository candidates;
     @Mock AwardCoachVoterRepository voters;
+    @Mock AwardVotingResetService votingReset;
     @Mock AwardEdition edition;
     @Mock CurrentUserService currentUser;
     @Mock UserAccountRepository users;
@@ -56,11 +60,17 @@ class AwardPreVoteLifecycleGuardsTest {
         when(finalists.existsByEditionId(editionId)).thenReturn(true);
 
         var service = new AwardEditionAdminService(editions, editionLocks, finalists,
-                voteCategories, candidates, voters, Clock.systemUTC());
+                voteCategories, candidates, voters, votingReset, Clock.systemUTC());
 
-        assertThatThrownBy(() -> service.openRegistrations(editionId))
-                .hasMessageContaining("Não é possível reabrir inscrições");
+        assertThatExceptionOfType(BusinessException.class)
+                .isThrownBy(() -> service.openRegistrations(editionId))
+                .withMessageContaining("Não é possível reabrir inscrições")
+                .satisfies(error -> {
+                    assertThat(error.code()).isEqualTo("AWARD_PRE_VOTE_ALREADY_FINALIZED");
+                    assertThat(error.status()).isEqualTo(HttpStatus.CONFLICT);
+                });
         verify(edition, never()).openRegistrations(any());
+        verifyNoInteractions(editions, votingReset);
     }
 
     @Test
@@ -90,8 +100,15 @@ class AwardPreVoteLifecycleGuardsTest {
                 editionLocks, finalists, registrations, entries, storage, mailTemplates,
                 mailOutbox, Clock.systemUTC());
 
-        assertThatThrownBy(() -> service.approve(registrationId, entryId))
-                .hasMessageContaining("finalistas já confirmados");
+        assertThatExceptionOfType(BusinessException.class)
+                .isThrownBy(() -> service.approve(registrationId, entryId))
+                .withMessageContaining("finalistas já confirmados")
+                .satisfies(error -> {
+                    assertThat(error.code()).isEqualTo("AWARD_PRE_VOTE_ALREADY_FINALIZED");
+                    assertThat(error.status()).isEqualTo(HttpStatus.CONFLICT);
+                });
+        verify(entry, never()).approveReview(any(), any());
         verify(entries, never()).saveAndFlush(any());
+        verifyNoInteractions(mailTemplates, mailOutbox);
     }
 }
