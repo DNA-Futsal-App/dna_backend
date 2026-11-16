@@ -179,7 +179,7 @@ public class CoachSharedAccessService {
             String teamName=candidates.findById(c.getSelfCoachCandidateId()).map(AwardCandidate::getTeamName).orElse(c.getTeamId());
             return new CoachVoterContextResponse(c.getId(),c.getEventId(),c.getDivisionId(),c.getCategoryId(),c.getTeamId(),teamName,c.getContextSource().name(),c.isActive(),ballots.existsByEditionIdAndCoachVoterId(edition.getId(),c.getId()),c.getCreatedAt());
         }).toList();
-        return new CoachCredentialResponse(credential.getId(),edition.getId(),edition.getSlug(),edition.getName(),edition.getSeason(),user.getId(),user.getName(),user.getEmail(),credential.isActive(),credential.getCreatedAt(),list);
+        return new CoachCredentialResponse(credential.getId(),edition.getId(),edition.getSlug(),edition.getName(),edition.getSeason(),user.getId(),user.getName(),user.getEmail(),user.getPhone(),credential.isActive(),credential.getCreatedAt(),list);
     }
 
     private AwardCoachAccessLink requireLink(String raw){ if(raw==null||raw.isBlank()) throw Errors.badRequest("COACH_ACCESS_TOKEN_REQUIRED","Token obrigatório."); return links.findByTokenHash(tokens.hash(raw.trim())).orElseThrow(()->Errors.notFound("COACH_ACCESS_LINK_NOT_FOUND","Link de credenciamento não encontrado.")); }
