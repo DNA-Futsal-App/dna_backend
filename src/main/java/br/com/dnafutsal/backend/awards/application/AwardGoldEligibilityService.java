@@ -5,9 +5,14 @@ import br.com.dnafutsal.backend.awards.domain.AwardEditionStatus;
 import br.com.dnafutsal.backend.awards.infrastructure.AwardEditionRepository;
 import br.com.dnafutsal.backend.common.Errors;
 import br.com.dnafutsal.backend.sports.application.SportsCatalogService;
+import br.com.dnafutsal.backend.sports.application.SportsQueryService;
 import br.com.dnafutsal.backend.sports.application.SportsSnapshotService;
 import br.com.dnafutsal.backend.sports.domain.CatalogCategoryView;
+import br.com.dnafutsal.backend.sports.domain.CompetitionKey;
+import br.com.dnafutsal.backend.sports.domain.CompetitionKeyView;
+import br.com.dnafutsal.backend.sports.domain.SportsFilter;
 import br.com.dnafutsal.backend.sports.domain.SportsSnapshot;
+import br.com.dnafutsal.backend.sports.domain.TeamView;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -26,16 +31,19 @@ public class AwardGoldEligibilityService {
     private final AwardEditionRepository editions;
     private final SportsCatalogService sports;
     private final SportsSnapshotService snapshots;
+    private final SportsQueryService sportsKeys;
     private final AwardLiveRosterService rosters;
     private final JdbcTemplate jdbc;
     private final Clock clock;
 
     public AwardGoldEligibilityService(AwardEditionRepository editions, SportsCatalogService sports,
-                                       SportsSnapshotService snapshots, AwardLiveRosterService rosters,
+                                       SportsSnapshotService snapshots, SportsQueryService sportsKeys,
+                                       AwardLiveRosterService rosters,
                                        JdbcTemplate jdbc, Clock clock) {
         this.editions = editions;
         this.sports = sports;
         this.snapshots = snapshots;
+        this.sportsKeys = sportsKeys;
         this.rosters = rosters;
         this.jdbc = jdbc;
         this.clock = clock;
@@ -45,12 +53,33 @@ public class AwardGoldEligibilityService {
     public Report preview(UUID editionId, long eventId, long divisionId, long categoryId, String stage) {
         String normalizedStage = stage(stage);
         SportsSnapshot data = requireContext(editionId, eventId, divisionId, categoryId);
-        GoldKeyClassifier.Analysis analysis = GoldKeyClassifier.analyze(
-                data, normalizedStage, sports.teams(eventId));
+
+        // The prize uses the exact classification source of /api/v1/standings/keys.
+        // Do not maintain a second Ouro/Prata/Bronze classifier for awards.
+        List<CompetitionKeyView> classified = sportsKeys.competitionKeys(
+                new SportsFilter(eventId, null), normalizedStage);
+        Map<String, TeamView> official = new HashMap<>();
+        for (TeamView team : sports.teams(eventId)) {
+            if (team != null && team.id() != null && !team.id().isBlank()) {
+                official.putIfAbsent(team.id(), team);
+            }
+        }
+        List<Team> gold = new ArrayList<>();
+        Set<String> unresolved = new TreeSet<>();
+        for (CompetitionKeyView entry : classified) {
+            if (entry.key() != CompetitionKey.GOLD) continue;
+            TeamView team = official.get(entry.teamId());
+            if (team == null) {
+                unresolved.add(entry.teamId());
+            } else {
+                gold.add(new Team(team.id(), team.name(), null));
+            }
+        }
+        gold.sort(Comparator.comparing(Team::name, String.CASE_INSENSITIVE_ORDER)
+                .thenComparing(Team::id));
         return new Report(editionId, eventId, divisionId, categoryId, normalizedStage,
                 data.collectedAt(), null, false,
-                analysis.teams().stream().map(t -> new Team(t.id(), t.name(), null)).toList(),
-                analysis.ambiguousTeamIds(), analysis.unresolvedTeams());
+                List.copyOf(gold), List.of(), List.copyOf(unresolved));
     }
 
     /** Prepare and persist ALL athletes, or roll back the entire category; never partially release it. */

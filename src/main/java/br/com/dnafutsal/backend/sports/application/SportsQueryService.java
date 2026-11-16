@@ -200,6 +200,14 @@ public class SportsQueryService {
     public List<CompetitionKeyView> competitionKeys(
             SportsFilter filter
     ) {
+        return competitionKeys(filter, null);
+    }
+
+    /** Same classification used by /standings/keys, optionally limited to a competition. */
+    public List<CompetitionKeyView> competitionKeys(SportsFilter filter, String stage) {
+        if (stage != null && !stage.equals("PAULISTA") && !stage.equals("UNIAO")) {
+            throw Errors.badRequest("SPORTS_STAGE_INVALID", "Use PAULISTA ou UNIAO.");
+        }
         SportsSnapshot snapshot =
                 snapshots.snapshot(
                         filter.eventId()
@@ -209,6 +217,7 @@ public class SportsQueryService {
                 new java.util.LinkedHashMap<String, CompetitionKeyView>();
 
         for (MatchView match : snapshot.matches()) {
+            if (!matchesStage(snapshot, match.phase(), stage)) continue;
             CompetitionKey key =
                     competitionKey(
                             match.phase()
@@ -232,6 +241,7 @@ public class SportsQueryService {
         }
 
         for (StandingView row : snapshot.standings()) {
+            if (!matchesStage(snapshot, row.phase(), stage)) continue;
             CompetitionKey key =
                     competitionKey(
                             row.group()
@@ -272,6 +282,14 @@ public class SportsQueryService {
                                 )
                 )
                 .toList();
+    }
+
+    private boolean matchesStage(SportsSnapshot snapshot, String phase, String stage) {
+        if (stage == null) return true;
+        // Match the Paulista/Uniao scoping already used by SportsCompetitionService.
+        boolean union = normalize(snapshot.event().title()).contains("torneio uniao")
+                || normalize(phase).startsWith("torneio uniao");
+        return stage.equals(union ? "UNIAO" : "PAULISTA");
     }
 
     public List<TopScorerView> topScorers(
