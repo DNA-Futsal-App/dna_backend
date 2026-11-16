@@ -21,6 +21,7 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -102,6 +103,21 @@ class CoachCategoryApplicationServiceTest {
                 .hasMessageContaining("convite");
     }
     @Test
+    void rejectsActiveAccountWhenThereAreNoGoldTeams() {
+        validInvite();
+        when(currentUser.userId()).thenReturn(user.getId());
+        when(users.findByIdForUpdate(user.getId())).thenReturn(Optional.of(user));
+        when(gold.eligibleTeamIds(editionId, 917L, 3L, 7L))
+                .thenReturn(Set.of());
+
+        assertThatThrownBy(() -> service.applyCurrentUser(
+                "token-para-categoria-com-primeiro-uso", "10", "Treinador", null))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("Chave Ouro");
+        verifyNoInteractions(credentials, contexts, rosters);
+    }
+
+    @Test
     void existingActiveAccountIsAutomaticallyEnrolledAndGetsCoachRole() {
         validInvite();
         when(currentUser.userId()).thenReturn(user.getId());
@@ -115,6 +131,8 @@ class CoachCategoryApplicationServiceTest {
         var ownTeam = mock(br.com.dnafutsal.backend.awards.domain.AwardCandidate.class);
         when(ownTeam.getId()).thenReturn(UUID.randomUUID());
         when(rosters.coachTeamVote(editionId, 917L, 3L, 7L, "10")).thenReturn(ownTeam);
+        when(gold.eligibleTeamIds(editionId, 917L, 3L, 7L))
+                .thenReturn(Set.of("11"));
 
         var application = service.applyCurrentUser("token-para-categoria-com-primeiro-uso",
                 "10", "Treinador", null);

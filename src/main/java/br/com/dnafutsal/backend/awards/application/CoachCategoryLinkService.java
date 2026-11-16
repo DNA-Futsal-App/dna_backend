@@ -97,12 +97,11 @@ public class CoachCategoryLinkService {
             throw Errors.badRequest("COACH_CATEGORY_CONTEXT_INVALID",
                     "A categoria e o evento não pertencem à modalidade/divisão informada.");
         }
-        // Phase-1 frozen Gold roster is a prerequisite to issuing an invitation.
-        AwardGoldEligibilityService.Report prepared = gold.prepared(
-                editionId, request.eventId(), request.divisionId(), request.categoryId());
-        if (prepared == null || !prepared.prepared() || prepared.teams().isEmpty()) {
-            throw Errors.conflict("AWARD_GOLD_NOT_PREPARED",
-                    "Prepare a relação oficial da Chave Ouro antes de gerar o convite.");
+        // Eligibility comes from the sports classification; no administrative approval.
+        if (gold.eligibleTeamIds(editionId, request.eventId(),
+                request.divisionId(), request.categoryId()).isEmpty()) {
+            throw Errors.conflict("AWARD_GOLD_CLASSIFICATION_EMPTY",
+                    "A categoria não possui equipes classificadas na Chave Ouro.");
         }
 
         String raw = tokens.generate();

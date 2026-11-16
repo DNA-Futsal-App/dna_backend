@@ -18,6 +18,7 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -52,13 +53,12 @@ class CoachCategoryLinkServiceTest {
     }
 
     @Test
-    void doesNotIssueLinkWhenGoldEligibilityHasNotBeenFrozen() {
+    void doesNotIssueLinkWhenThereAreNoGoldTeams() {
         when(editions.findById(edition.getId())).thenReturn(Optional.of(edition));
         when(catalog.categories(2026, "Paulista", 4)).thenReturn(List.of(
                 new CatalogCategoryView(71, "Sub-12", 901)));
-        when(gold.prepared(edition.getId(), 901, 4, 71)).thenReturn(
-                new AwardGoldEligibilityService.Report(edition.getId(), 901, 4, 71,
-                        "PAULISTA", now, null, false, List.of(), List.of(), List.of()));
+        when(gold.eligibleTeamIds(edition.getId(), 901, 4, 71))
+                .thenReturn(Set.of());
         assertThatThrownBy(() -> service.create(edition.getId(), new CoachCategoryLinkService.CreateRequest(
                 901, 4, 71, AwardRegistrationGender.MALE, now.plusSeconds(3600))))
                 .isInstanceOf(BusinessException.class)
@@ -67,15 +67,12 @@ class CoachCategoryLinkServiceTest {
     }
 
     @Test
-    void generatesOpaqueInvitationOnlyForPreparedGoldCategory() {
+    void generatesOpaqueInvitationWhenGoldIsClassifiedAutomatically() {
         when(editions.findById(edition.getId())).thenReturn(Optional.of(edition));
         when(catalog.categories(2026, "Paulista", 4)).thenReturn(List.of(
                 new CatalogCategoryView(71, "Sub-12", 901)));
-        when(gold.prepared(edition.getId(), 901, 4, 71)).thenReturn(
-                new AwardGoldEligibilityService.Report(edition.getId(), 901, 4, 71,
-                        "PAULISTA", now, now, true,
-                        List.of(new AwardGoldEligibilityService.Team("11", "Equipe Ouro", 12)),
-                        List.of(), List.of()));
+        when(gold.eligibleTeamIds(edition.getId(), 901, 4, 71))
+                .thenReturn(Set.of("11"));
         when(user.userId()).thenReturn(UUID.randomUUID());
         var created = service.create(edition.getId(), new CoachCategoryLinkService.CreateRequest(
                 901, 4, 71, AwardRegistrationGender.MALE, now.plusSeconds(3600)));

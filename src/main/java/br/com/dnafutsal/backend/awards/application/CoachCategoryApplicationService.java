@@ -199,8 +199,11 @@ public class CoachCategoryApplicationService {
 
     private void createVotingContext(UserAccount user, UUID editionId, long eventId,
                                      long divisionId, long categoryId, String teamId) {
-        // A frozen Gold list must still exist, but the represented coach's team need not be Gold.
-        gold.prepared(editionId, eventId, divisionId, categoryId);
+        // The coach can represent any team; only Gold teams can receive votes.
+        if (gold.eligibleTeamIds(editionId, eventId, divisionId, categoryId).isEmpty()) {
+            throw Errors.conflict("AWARD_GOLD_CLASSIFICATION_EMPTY",
+                    "A categoria não possui equipes classificadas na Chave Ouro.");
+        }
         AwardCoachCredential credential = credentials.findByEditionIdAndUserId(editionId, user.getId())
                 .orElseGet(() -> credentials.saveAndFlush(
                         new AwardCoachCredential(editionId, user.getId(), null)));
@@ -251,18 +254,24 @@ public class CoachCategoryApplicationService {
         AwardCoachCredential credential = credentials.findByIdAndActiveTrue(credentialId)
                 .orElseThrow(() -> Errors.notFound("COACH_CREDENTIAL_NOT_FOUND", "Credencial não encontrada."));
         AwardEdition edition = requireEdition(credential.getEditionId());
-        List<AwardRegistrationGender> genders = java.util.Arrays.stream(AwardRegistrationGender.values())
-                .filter(gender -> catalog.categories(edition.getSeason(), gender.catalogTitle(),
-                        request.divisionId()).stream().anyMatch(category ->
-                        category.id() == request.categoryId() && category.eventId() == request.eventId()))
-                .toList();
-        if (genders.size() != 1) {
-            throw Errors.badRequest("COACH_CATEGORY_GENDER_REQUIRED",
-                    "Modalidade indefinida. Use a gestão de técnicos para adicionar esta categoria.");
+        AwardRegistrationGender gender = request.gender();
+        if (gender == null) {
+            // Compatibility with older clients that do not send gender.
+            List<AwardRegistrationGender> matches = java.util.Arrays.stream(AwardRegistrationGender.values())
+                    .filter(value -> catalog.categories(edition.getSeason(), value.catalogTitle(),
+                            request.divisionId()).stream().anyMatch(category ->
+                            category.id() == request.categoryId() && category.eventId() == request.eventId()))
+                    .toList();
+            if (matches.size() != 1) {
+                throw Errors.badRequest("COACH_CATEGORY_GENDER_REQUIRED",
+                        "Selecione a modalidade Masculino ou Feminino para liberar esta categoria.");
+            }
+            gender = matches.get(0);
         }
+        // adminAddCategory validates that eventId/categoryId really belong to gender.
         return adminAddCategory(credential.getEditionId(), credentialId,
                 new ExtraCategoryRequest(request.eventId(), request.divisionId(),
-                        request.categoryId(), genders.get(0), request.teamId()));
+                        request.categoryId(), gender, request.teamId()));
     }
 
     /** Adds an extra category directly, with no invitation and no manual approval. */
@@ -295,7 +304,6 @@ public class CoachCategoryApplicationService {
                 request.divisionId(), request.categoryId())) {
             throw Errors.conflict("COACH_CATEGORY_ALREADY_REQUESTED", "Treinador já possui esta categoria.");
         }
-        gold.prepared(editionId, request.eventId(), request.divisionId(), request.categoryId());
         UUID id = UUID.randomUUID();
         UUID adminId = currentUser.userId();
         Instant now = clock.instant();
