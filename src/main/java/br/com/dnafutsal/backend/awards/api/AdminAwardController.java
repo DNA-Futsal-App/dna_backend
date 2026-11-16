@@ -126,6 +126,14 @@ public class AdminAwardController {
         );
     }
 
+    @PostMapping("/editions/{editionId}/reopen")
+    ResetAwardVotingResponse reopen(
+            @PathVariable UUID editionId,
+            @Valid @RequestBody OpenAwardEditionRequest request
+    ) {
+        return editions.reopen(editionId, request);
+    }
+
     @PostMapping("/editions/{editionId}/close")
     AwardEditionAdminResponse close(
             @PathVariable UUID editionId

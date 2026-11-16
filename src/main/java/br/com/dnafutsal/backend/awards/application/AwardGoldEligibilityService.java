@@ -57,9 +57,10 @@ public class AwardGoldEligibilityService {
     @Transactional
     public Report prepare(UUID editionId, long eventId, long divisionId, long categoryId, String stage) {
         AwardEdition edition = requireEdition(editionId);
-        if (edition.getStatus() != AwardEditionStatus.DRAFT) {
+        if (edition.getStatus() != AwardEditionStatus.DRAFT
+                && edition.getStatus() != AwardEditionStatus.OPEN) {
             throw Errors.conflict("AWARD_GOLD_PREPARATION_LOCKED",
-                    "A Chave Ouro só pode ser preparada antes da abertura da votação.");
+                    "A Chave Ouro só pode ser preparada em uma edição em rascunho ou aberta.");
         }
         if (isPrepared(editionId, eventId, divisionId, categoryId)) {
             throw Errors.conflict("AWARD_GOLD_ALREADY_PREPARED",
@@ -70,6 +71,26 @@ public class AwardGoldEligibilityService {
                 || !report.unresolvedTeams().isEmpty()) {
             throw Errors.conflict("AWARD_GOLD_REVIEW_REQUIRED",
                     "Chave Ouro não confirmada: reveja as equipes e as informações da federação.");
+        }
+        if (edition.getStatus() == AwardEditionStatus.OPEN) {
+            // FK inserts into award_ballots acquire KEY SHARE on the coach context.
+            // Lock contexts before checking ballots, preventing a concurrent submission
+            // from slipping between the no-votes check and the eligibility snapshot.
+            jdbc.queryForList("""
+                    SELECT id FROM award_coach_voters
+                     WHERE edition_id=? AND event_id=? AND division_id=? AND category_id=?
+                     ORDER BY id FOR UPDATE
+                    """, UUID.class, editionId, eventId, divisionId, categoryId);
+            Long submittedBallots = jdbc.queryForObject("""
+                    SELECT COUNT(*) FROM award_ballots b
+                    JOIN award_coach_voters v ON v.id = b.coach_voter_id
+                     WHERE b.edition_id=? AND v.edition_id=b.edition_id
+                       AND v.event_id=? AND v.division_id=? AND v.category_id=?
+                    """, Long.class, editionId, eventId, divisionId, categoryId);
+            if (submittedBallots != null && submittedBallots > 0) {
+                throw Errors.conflict("AWARD_GOLD_BALLOTS_EXIST",
+                        "Não é permitido preparar a Chave Ouro após o registro de votos nesta categoria.");
+            }
         }
         Instant preparedAt = clock.instant();
         try {

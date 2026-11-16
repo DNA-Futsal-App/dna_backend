@@ -157,7 +157,9 @@ public class AwardCandidateSnapshotWriter {
 
         if (deactivateMissing) {
             for (AwardCandidate stale : remaining.values()) {
-                if (stale.isActive()) {
+                // A synthetic TEAM_VOTE candidate represents a team ballot option,
+                // not a person returned in the latest FPFS staff roster.
+                if (stale.isActive() && !stale.isTeamCoachVoteCandidate()) {
                     stale.deactivate();
                     deactivated++;
                 }
