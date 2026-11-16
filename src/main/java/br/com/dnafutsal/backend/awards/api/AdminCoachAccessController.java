@@ -67,6 +67,16 @@ public class AdminCoachAccessController {
         return categoryApplications.revokeByCredential(credentialId, reason(request));
     }
 
+    @PostMapping("/coach-voters/{credentialId}/reactivate")
+    CoachCategoryApplicationService.CredentialLifecycleResult reactivate(@PathVariable UUID credentialId) {
+        return categoryApplications.reactivateCredential(credentialId);
+    }
+
+    @PostMapping("/coach-voters/{credentialId}/remove")
+    CoachCategoryApplicationService.CredentialLifecycleResult remove(@PathVariable UUID credentialId) {
+        return categoryApplications.removeCredentialFromJury(credentialId);
+    }
+
     private String reason(DeactivateRequest request) {
         return request == null || request.reason() == null || request.reason().isBlank()
                 ? "Revogação administrativa pelo painel legado"

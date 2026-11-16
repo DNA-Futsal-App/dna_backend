@@ -358,6 +358,22 @@ public class CoachCategoryApplicationService {
                 .orElseThrow(() -> Errors.notFound("COACH_CREDENTIAL_NOT_FOUND", "Credencial não encontrada."));
         UserAccount user = users.findByIdForUpdate(credential.getUserId()).orElseThrow(() ->
                 Errors.notFound("COACH_CATEGORY_USER_MISSING", "Conta não encontrada."));
+        // Snapshot only contexts that are active at coach deactivation. Restoring a coach
+        // must not revive contexts that were revoked separately in the past.
+        jdbc.update("""
+            INSERT INTO award_coach_credential_restore_contexts
+                (credential_id, context_id, application_id)
+            SELECT v.credential_id, v.id,
+                   (SELECT a.id FROM award_coach_category_applications a
+                     WHERE a.edition_id=v.edition_id AND a.user_id=v.user_id
+                       AND a.event_id=v.event_id AND a.division_id=v.division_id
+                       AND a.category_id=v.category_id AND a.team_id=v.team_id
+                       AND a.status='APPROVED'
+                     ORDER BY a.created_at DESC, a.id DESC LIMIT 1)
+              FROM award_coach_voters v
+             WHERE v.credential_id=? AND v.active=TRUE
+            ON CONFLICT (credential_id, context_id) DO NOTHING
+            """, credentialId);
         List<ApplicationRow> apps = jdbc.query("""
             SELECT id, link_id, edition_id, user_id, event_id, division_id, category_id,
                    gender, team_id, team_name, coach_role, evidence_url, status,
@@ -443,6 +459,112 @@ public class CoachCategoryApplicationService {
                 matching.size(), ballots, votes);
     }
 
+    public record CredentialLifecycleResult(UUID credentialId, String status, int contextsRestored) { }
+
+    private record RestorableContext(UUID contextId, UUID applicationId) { }
+
+    /** Re-enable only contexts that were active immediately before this credential was disabled. */
+    @Transactional
+    public CredentialLifecycleResult reactivateCredential(UUID credentialId) {
+        AwardCoachCredential credential = credentials.findById(credentialId)
+                .orElseThrow(() -> Errors.notFound("COACH_CREDENTIAL_NOT_FOUND", "Credenciamento não encontrado."));
+        if (credential.isRemoved()) {
+            throw Errors.conflict("COACH_CREDENTIAL_REMOVED", "Este treinador foi removido do júri técnico.");
+        }
+        if (credential.isActive()) {
+            throw Errors.conflict("COACH_CREDENTIAL_ALREADY_ACTIVE", "O treinador já está habilitado.");
+        }
+        UserAccount user = users.findByIdForUpdate(credential.getUserId()).orElseThrow(() ->
+                Errors.notFound("COACH_CATEGORY_USER_MISSING", "Conta não encontrada."));
+        // Serialize administrative changes with ballot submission and other revocations.
+        jdbc.query("SELECT id FROM award_coach_credentials WHERE id=? FOR UPDATE",
+                (rs, row) -> rs.getObject("id", UUID.class), credentialId);
+        List<RestorableContext> restore = jdbc.query("""
+                SELECT context_id, application_id
+                  FROM award_coach_credential_restore_contexts
+                 WHERE credential_id=? ORDER BY context_id
+                """, (rs, row) -> new RestorableContext(
+                        rs.getObject("context_id", UUID.class),
+                        rs.getObject("application_id", UUID.class)), credentialId);
+        // Legacy credentials disabled before V32 have no snapshot. Reactivate only
+        // the credential; the administrator must assign a category again.
+        List<UUID> lockedContexts = jdbc.query(
+                "SELECT id FROM award_coach_voters WHERE credential_id=? ORDER BY id FOR UPDATE",
+                (rs, row) -> rs.getObject("id", UUID.class), credentialId);
+        // Older deactivation flows could leave a ballot behind. Re-enabling must
+        // never bring back a previous vote.
+        for (UUID contextId : lockedContexts) removeBallot(contextId);
+        int restored = 0;
+        for (RestorableContext entry : restore) {
+            if (entry.applicationId() != null) {
+                int updated = jdbc.update("""
+                    UPDATE award_coach_category_applications
+                       SET status='APPROVED', review_reason='ADMIN_REACTIVATED',
+                           reviewed_at=?, reviewed_by_user_id=?
+                     WHERE id=? AND status='REVOKED'
+                    """, Timestamp.from(clock.instant()), currentUser.userId(), entry.applicationId());
+                if (updated != 1) {
+                    throw Errors.conflict("COACH_REACTIVATION_CONTEXT_CHANGED",
+                            "A categoria mudou desde a desativação. Reavalie os vínculos antes de reabilitar.");
+                }
+            }
+            restored += jdbc.update("""
+                    UPDATE award_coach_voters SET active=TRUE
+                     WHERE id=? AND credential_id=? AND active=FALSE
+                    """, entry.contextId(), credentialId);
+        }
+        if (restored != restore.size()) {
+            throw Errors.conflict("COACH_REACTIVATION_CONTEXT_CHANGED",
+                    "Os vínculos do treinador mudaram desde a desativação.");
+        }
+        credential.reactivate();
+        credentials.saveAndFlush(credential);
+        if (restored > 0) {
+            user.promoteToCoach();
+            users.saveAndFlush(user);
+        }
+        jdbc.update("DELETE FROM award_coach_credential_restore_contexts WHERE credential_id=?", credentialId);
+        audit(credential.getEditionId(), user.getId(), credentialId, "COACH_REACTIVATED",
+                "Credenciamento reabilitado pela administração", currentUser.userId(), 0, 0);
+        return new CredentialLifecycleResult(credentialId,
+                restored > 0 ? "ACTIVE" : "ACTIVE_NO_CONTEXTS", restored);
+    }
+
+    /** Remove from jury administration, not from the user's DNA Futsal account. */
+    @Transactional
+    public CredentialLifecycleResult removeCredentialFromJury(UUID credentialId) {
+        AwardCoachCredential credential = credentials.findById(credentialId)
+                .orElseThrow(() -> Errors.notFound("COACH_CREDENTIAL_NOT_FOUND", "Credenciamento não encontrado."));
+        if (credential.isRemoved()) {
+            throw Errors.conflict("COACH_CREDENTIAL_REMOVED", "Este treinador já foi removido.");
+        }
+        if (credential.isActive()) {
+            throw Errors.conflict("COACH_CREDENTIAL_STILL_ACTIVE",
+                    "Desative o treinador e exclua seus votos antes de removê-lo do júri.");
+        }
+        UserAccount user = users.findByIdForUpdate(credential.getUserId()).orElseThrow(() ->
+                Errors.notFound("COACH_CATEGORY_USER_MISSING", "Conta não encontrada."));
+        jdbc.query("SELECT id FROM award_coach_credentials WHERE id=? FOR UPDATE",
+                (rs, row) -> rs.getObject("id", UUID.class), credentialId);
+        List<UUID> oldContexts = jdbc.query(
+                "SELECT id FROM award_coach_voters WHERE credential_id=? ORDER BY id FOR UPDATE",
+                (rs, row) -> rs.getObject("id", UUID.class), credentialId);
+        int ballotsDeleted = 0, votesDeleted = 0;
+        for (UUID contextId : oldContexts) {
+            Counters removed = removeBallot(contextId);
+            ballotsDeleted += removed.ballots();
+            votesDeleted += removed.votes();
+        }
+        jdbc.update("UPDATE award_coach_voters SET active=FALSE WHERE credential_id=?", credentialId);
+        credential.remove(clock.instant());
+        credentials.saveAndFlush(credential);
+        jdbc.update("DELETE FROM award_coach_credential_restore_contexts WHERE credential_id=?", credentialId);
+        audit(credential.getEditionId(), user.getId(), credentialId, "COACH_REMOVED",
+                "Credenciamento removido do júri pela administração", currentUser.userId(), ballotsDeleted, votesDeleted);
+        updateCoachRole(user);
+        return new CredentialLifecycleResult(credentialId, "REMOVED", 0);
+    }
+
     private record Counters(int ballots, int votes) { }
 
     private Counters revokeRow(ApplicationRow app, String reason, UUID adminId) {
@@ -498,14 +620,17 @@ public class CoachCategoryApplicationService {
     }
 
     private void updateCoachRole(UserAccount user) {
-        Boolean otherApproved = jdbc.queryForObject("""
-            SELECT EXISTS(SELECT 1 FROM award_coach_category_applications
-                           WHERE user_id = ? AND status = 'APPROVED')
+        // Role follows a real active voting context, including legacy contexts
+        // in another edition; stale approved applications alone are not access.
+        Boolean otherActive = jdbc.queryForObject("""
+            SELECT EXISTS(SELECT 1 FROM award_coach_voters v
+                JOIN award_coach_credentials c ON c.id = v.credential_id
+                WHERE v.user_id = ? AND v.active = TRUE AND c.active = TRUE
+                  AND c.removed_at IS NULL)
             """, Boolean.class, user.getId());
-        if (!Boolean.TRUE.equals(otherApproved)) {
-            user.demoteFromCoach();
-            users.saveAndFlush(user);
-        }
+        if (Boolean.TRUE.equals(otherActive)) user.promoteToCoach();
+        else user.demoteFromCoach();
+        users.saveAndFlush(user);
     }
 
     private boolean hasVotingContext(UUID userId, UUID editionId, long eventId,

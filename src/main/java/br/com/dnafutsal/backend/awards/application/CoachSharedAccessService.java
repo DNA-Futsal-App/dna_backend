@@ -95,7 +95,12 @@ public class CoachSharedAccessService {
         AwardCoachAccessLink link=requireLink(rawToken); AwardEdition edition=edition(link.getEditionId());
         if(!available(link,edition)) throw Errors.conflict("COACH_ACCESS_LINK_UNAVAILABLE","Este link foi revogado ou a edição já foi encerrada.");
         AwardCoachCredential existing=credentials.findByEditionIdAndUserId(edition.getId(),userId).orElse(null);
-        if(existing!=null) return credential(existing);
+        if(existing!=null) {
+            if(!existing.isActive() || existing.isRemoved())
+                throw Errors.conflict("COACH_CREDENTIAL_INACTIVE",
+                        "O acesso deste treinador foi desativado ou removido pela administração.");
+            return credential(existing);
+        }
         AwardCoachCredential created=new AwardCoachCredential(edition.getId(),userId,link.getId());
         try { credentials.saveAndFlush(created); }
         catch(DataIntegrityViolationException ex){ created=credentials.findByEditionIdAndUserId(edition.getId(),userId).orElseThrow(()->ex); }
@@ -121,7 +126,8 @@ public class CoachSharedAccessService {
     }
 
     @Transactional(readOnly=true)
-    public List<CoachCredentialResponse> adminVoters(UUID editionId){ edition(editionId); return credentials.findByEditionIdOrderByCreatedAtAsc(editionId).stream().map(this::credential).toList(); }
+    public List<CoachCredentialResponse> adminVoters(UUID editionId){ edition(editionId); return credentials.findByEditionIdOrderByCreatedAtAsc(editionId).stream()
+            .filter(c -> !c.isRemoved()).map(c -> credential(c, true)).toList(); }
 
     @Transactional
     public CoachCredentialResponse adminAddContext(UUID credentialId,CreateCoachContextRequest request){
@@ -162,9 +168,14 @@ public class CoachSharedAccessService {
         if(!team) throw Errors.badRequest("COACH_CONTEXT_TEAM_INVALID","O time não pertence ao campeonato informado.");
     }
 
-    private CoachCredentialResponse credential(AwardCoachCredential credential){
+    private CoachCredentialResponse credential(AwardCoachCredential credential){return credential(credential, false);}
+
+    private CoachCredentialResponse credential(AwardCoachCredential credential, boolean includeInactive){
         AwardEdition edition=edition(credential.getEditionId()); UserAccount user=users.findById(credential.getUserId()).orElseThrow(()->Errors.conflict("COACH_CREDENTIAL_INCONSISTENT","Conta do treinador não encontrada."));
-        List<CoachVoterContextResponse> list=contexts.findByCredentialIdAndActiveTrueOrderByCreatedAtAsc(credential.getId()).stream().map(c->{
+        List<AwardCoachVoter> rows = includeInactive
+                ? contexts.findByCredentialIdOrderByCreatedAtAsc(credential.getId())
+                : contexts.findByCredentialIdAndActiveTrueOrderByCreatedAtAsc(credential.getId());
+        List<CoachVoterContextResponse> list=rows.stream().map(c->{
             String teamName=candidates.findById(c.getSelfCoachCandidateId()).map(AwardCandidate::getTeamName).orElse(c.getTeamId());
             return new CoachVoterContextResponse(c.getId(),c.getEventId(),c.getDivisionId(),c.getCategoryId(),c.getTeamId(),teamName,c.getContextSource().name(),c.isActive(),ballots.existsByEditionIdAndCoachVoterId(edition.getId(),c.getId()),c.getCreatedAt());
         }).toList();

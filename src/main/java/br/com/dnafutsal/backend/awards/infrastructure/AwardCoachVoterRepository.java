@@ -30,6 +30,8 @@ public interface AwardCoachVoterRepository extends JpaRepository<AwardCoachVoter
             UUID credentialId
     );
 
+    List<AwardCoachVoter> findByCredentialIdOrderByCreatedAtAsc(UUID credentialId);
+
     Optional<AwardCoachVoter> findByIdAndCredentialIdAndActiveTrue(
             UUID id, UUID credentialId
     );

@@ -13,9 +13,14 @@ public class AwardCoachCredential {
     @Column(name="access_link_id") private UUID accessLinkId;
     @Column(nullable=false) private boolean active;
     @Column(name="created_at",nullable=false,updatable=false) private Instant createdAt;
+    @Column(name="removed_at") private Instant removedAt;
     protected AwardCoachCredential(){}
     public AwardCoachCredential(UUID editionId,UUID userId,UUID accessLinkId){this.id=UUID.randomUUID();this.editionId=editionId;this.userId=userId;this.accessLinkId=accessLinkId;this.active=true;}
     @PrePersist void onCreate(){if(createdAt==null)createdAt=Instant.now();}
     public void deactivate(){active=false;}
+    public void reactivate(){if(removedAt!=null)throw new IllegalStateException("Credencial removida");active=true;}
+    public void remove(Instant now){if(active)throw new IllegalStateException("Desative antes de remover");removedAt=now;}
+    public boolean isRemoved(){return removedAt!=null;}
+    public Instant getRemovedAt(){return removedAt;}
     public UUID getId(){return id;} public UUID getEditionId(){return editionId;} public UUID getUserId(){return userId;} public UUID getAccessLinkId(){return accessLinkId;} public boolean isActive(){return active;} public Instant getCreatedAt(){return createdAt;}
 }
