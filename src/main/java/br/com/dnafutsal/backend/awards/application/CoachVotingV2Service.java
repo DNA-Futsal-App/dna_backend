@@ -44,7 +44,9 @@ public class CoachVotingV2Service {
     public CoachVotingContextResponse context(UUID contextId){
         Access a=access(contextId,false);
         Set<String> goldTeams=eligibility.eligibleTeamIds(a.edition.getId(),a.context.getEventId(),a.context.getDivisionId(),a.context.getCategoryId());
-        List<CoachVotingTeamResponse> teams=liveRoster.teams(a.context.getEventId()).stream().map(t->new CoachVotingTeamResponse(t.id(),t.name(),t.logoUrl(),goldTeams.contains(t.id()))).toList();
+        List<CoachVotingTeamResponse> teams=liveRoster.teams(a.context.getEventId()).stream()
+                .filter(t -> goldTeams.contains(t.id()))
+                .map(t->new CoachVotingTeamResponse(t.id(),t.name(),t.logoUrl(),true)).toList();
         return new CoachVotingContextResponse(a.edition.getId(),a.edition.getSlug(),a.edition.getName(),a.edition.getSeason(),state(a.edition,a.submitted,a.now).name(),
                 a.edition.getVotingOpensAt(),a.edition.getVotingClosesAt(),a.context.getId(),a.user.getName(),a.context.getEventId(),a.context.getDivisionId(),a.context.getCategoryId(),
                 a.context.getTeamId(),ownTeamName(a.context),a.submitted,voteCategories.findByEditionIdOrderByDisplayOrderAsc(a.edition.getId()).stream().map(CoachVotingCategoryResponse::from).toList(),teams);
@@ -60,8 +62,14 @@ public class CoachVotingV2Service {
             eligibility.requireEligible(a.edition.getId(),a.context.getEventId(),a.context.getDivisionId(),a.context.getCategoryId(),teamId);
             available=candidates.findByEditionIdAndEventIdAndDivisionIdAndCategoryIdAndTeamIdAndActiveTrueOrderByNameAsc(
                     a.edition.getId(),a.context.getEventId(),a.context.getDivisionId(),a.context.getCategoryId(),teamId.trim());
+            // Previously preparation imported all athletes. Load the chosen eligible roster lazily.
+            if (available.isEmpty()) {
+                available=liveRoster.athletes(a.edition.getId(),a.context.getEventId(),
+                        a.context.getDivisionId(),a.context.getCategoryId(),teamId.trim());
+            }
         } else {
             String normalized=teamId==null?"":teamId.trim();
+            eligibility.requireEligible(a.edition.getId(),a.context.getEventId(),a.context.getDivisionId(),a.context.getCategoryId(),normalized);
             if(normalized.equals(a.context.getTeamId())) throw Errors.badRequest("AWARD_SELF_COACH_VOTE_FORBIDDEN","O treinador não pode votar na própria equipe para Técnico.");
             available=List.of(liveRoster.coachTeamVote(a.edition.getId(),a.context.getEventId(),a.context.getDivisionId(),a.context.getCategoryId(),normalized));
         }
@@ -125,9 +133,8 @@ public class CoachVotingV2Service {
         boolean same=candidate.isActive()&&candidate.getEditionId().equals(a.edition.getId())&&candidate.getEventId()==a.context.getEventId()&&candidate.getDivisionId()==a.context.getDivisionId()&&candidate.getCategoryId()==a.context.getCategoryId();
         if(!same) throw Errors.badRequest("AWARD_CANDIDATE_OUT_OF_CONTEXT","Um candidato não pertence a este contexto.");
         if(candidate.getCandidateType()!=category.getTargetType()) throw Errors.badRequest("AWARD_CANDIDATE_TYPE_MISMATCH","O candidato não corresponde à categoria de votação.");
-        if(category.getTargetType()==AwardCandidateType.ATHLETE){
-            eligibility.requireEligible(a.edition.getId(),a.context.getEventId(),a.context.getDivisionId(),a.context.getCategoryId(),candidate.getTeamId());
-        }
+        // This validation is mandatory for athletes AND for the best-coach team vote.
+        eligibility.requireEligible(a.edition.getId(),a.context.getEventId(),a.context.getDivisionId(),a.context.getCategoryId(),candidate.getTeamId());
         if(category.getTargetType()==AwardCandidateType.COACH){ if(!candidate.isTeamCoachVoteCandidate())throw Errors.badRequest("AWARD_COACH_TEAM_SELECTION_REQUIRED","Selecione uma equipe válida."); if(candidate.getTeamId().equals(a.context.getTeamId()))throw Errors.badRequest("AWARD_SELF_COACH_VOTE_FORBIDDEN","O treinador não pode votar na própria equipe."); }
     }
     private String ownTeamName(AwardCoachVoter c){return candidates.findById(c.getSelfCoachCandidateId()).map(AwardCandidate::getTeamName).orElse(c.getTeamId());}

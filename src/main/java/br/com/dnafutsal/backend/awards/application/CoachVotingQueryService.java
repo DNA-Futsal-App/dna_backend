@@ -73,6 +73,7 @@ public class CoachVotingQueryService {
                                         .getEventId()
                         )
                         .stream()
+                        .filter(team -> eligibleTeams.contains(team.id()))
                         .map(team ->
                                 new CoachVotingTeamResponse(
                                         team.id(),
@@ -122,6 +123,7 @@ public class CoachVotingQueryService {
         );
     }
 
+    @Transactional
     public List<CoachVotingCandidateResponse> candidates(
             UUID voteCategoryId,
             String teamId
@@ -158,12 +160,18 @@ public class CoachVotingQueryService {
             available = candidates.findByEditionIdAndEventIdAndDivisionIdAndCategoryIdAndTeamIdAndActiveTrueOrderByNameAsc(
                     current.edition().getId(), current.voter().getEventId(),
                     current.voter().getDivisionId(), current.voter().getCategoryId(), teamId.trim());
+            if (available.isEmpty()) {
+                available = liveRoster.athletes(current.edition().getId(), current.voter().getEventId(),
+                        current.voter().getDivisionId(), current.voter().getCategoryId(), teamId.trim());
+            }
         } else {
             String normalizedTeamId =
                     teamId == null
                             ? ""
                             : teamId.trim();
 
+            eligibility.requireEligible(current.edition().getId(), current.voter().getEventId(),
+                    current.voter().getDivisionId(), current.voter().getCategoryId(), normalizedTeamId);
             if (normalizedTeamId.equals(
                     current.voter().getTeamId()
             )) {

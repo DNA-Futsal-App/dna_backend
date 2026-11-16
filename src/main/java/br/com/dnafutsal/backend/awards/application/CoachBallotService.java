@@ -282,10 +282,9 @@ public class CoachBallotService {
             );
         }
 
-        if (category.getTargetType() == AwardCandidateType.ATHLETE) {
-            eligibility.requireEligible(current.edition().getId(), current.voter().getEventId(),
-                    current.voter().getDivisionId(), current.voter().getCategoryId(), candidate.getTeamId());
-        }
+        // The same Chave Ouro restriction applies to athletes and coaches.
+        eligibility.requireEligible(current.edition().getId(), current.voter().getEventId(),
+                current.voter().getDivisionId(), current.voter().getCategoryId(), candidate.getTeamId());
 
         if (category.getTargetType()
                 == AwardCandidateType.COACH) {

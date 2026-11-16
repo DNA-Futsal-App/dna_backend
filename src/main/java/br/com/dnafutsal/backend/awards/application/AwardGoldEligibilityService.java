@@ -169,25 +169,28 @@ public class AwardGoldEligibilityService {
                 eligibleTeams(editionId, eventId, divisionId, categoryId), List.of(), List.of());
     }
 
+    /** Same source as /standings/keys, without a manual approval step. */
     @Transactional(readOnly = true)
     public Set<String> eligibleTeamIds(UUID editionId, long eventId, long divisionId, long categoryId) {
-        return jdbc.query("""
-                SELECT team_id FROM award_gold_eligible_teams
-                 WHERE edition_id=? AND event_id=? AND division_id=? AND category_id=?
-                """, (rs, row) -> rs.getString("team_id"),
-                editionId, eventId, divisionId, categoryId).stream().collect(Collectors.toUnmodifiableSet());
+        SportsSnapshot snapshot = snapshots.snapshot(eventId);
+        String eventTitle = snapshot.event().title() == null
+                ? "" : snapshot.event().title().toLowerCase(Locale.ROOT);
+        String stage = eventTitle.contains("torneio uni") ? "UNIAO" : "PAULISTA";
+        return preview(editionId, eventId, divisionId, categoryId, stage).teams().stream()
+                .map(Team::id)
+                .collect(Collectors.toUnmodifiableSet());
     }
 
     @Transactional(readOnly = true)
     public void requireEligible(UUID editionId, long eventId, long divisionId, long categoryId, String teamId) {
-        if (!isPrepared(editionId, eventId, divisionId, categoryId)) {
-            throw Errors.conflict("AWARD_GOLD_NOT_PREPARED",
-                    "A lista de atletas da Chave Ouro ainda não foi aprovada para esta categoria.");
+        Set<String> goldTeams = eligibleTeamIds(editionId, eventId, divisionId, categoryId);
+        if (goldTeams.isEmpty()) {
+            throw Errors.conflict("AWARD_GOLD_CLASSIFICATION_EMPTY",
+                    "A classificação esportiva não possui equipes da Chave Ouro nesta categoria.");
         }
-        if (teamId == null || !eligibleTeamIds(editionId, eventId, divisionId, categoryId)
-                .contains(teamId.trim())) {
+        if (teamId == null || !goldTeams.contains(teamId.trim())) {
             throw Errors.badRequest("AWARD_TEAM_NOT_GOLD",
-                    "Somente atletas de clubes da Chave Ouro podem receber votos.");
+                    "Somente clubes classificados na Chave Ouro podem receber votos.");
         }
     }
 
