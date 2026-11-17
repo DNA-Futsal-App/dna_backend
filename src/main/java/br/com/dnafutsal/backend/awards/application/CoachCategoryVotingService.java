@@ -50,23 +50,36 @@ public class CoachCategoryVotingService {
         return jdbc.query("""
                 SELECT v.id AS context_id, e.id AS edition_id, e.name AS edition_name,
                        e.season, v.event_id, v.division_id, v.category_id, a.gender,
-                       v.team_id, a.team_name, e.status AS edition_status,
-                       e.voting_opens_at, e.voting_closes_at,
+                       v.team_id, COALESCE(a.team_name, own.team_name, v.team_id) AS team_name,
+                       e.status AS edition_status, e.voting_opens_at, e.voting_closes_at,
                        (b.id IS NOT NULL) AS submitted
-                  FROM award_coach_category_applications a
+                  FROM award_coach_voters v
                   JOIN award_coach_credentials c
-                    ON c.edition_id = a.edition_id AND c.user_id = a.user_id AND c.active = TRUE
-                  JOIN award_coach_voters v
-                    ON v.credential_id = c.id AND v.edition_id = a.edition_id
-                   AND v.user_id = a.user_id AND v.event_id = a.event_id
-                   AND v.division_id = a.division_id AND v.category_id = a.category_id
-                   AND v.team_id = a.team_id AND v.active = TRUE
-                  JOIN award_editions e ON e.id = a.edition_id
-                  JOIN user_accounts u ON u.id = a.user_id AND u.role IN ('COACH', 'ADMIN')
+                    ON c.id = v.credential_id AND c.edition_id = v.edition_id
+                   AND c.user_id = v.user_id AND c.active = TRUE
+                  JOIN award_editions e ON e.id = v.edition_id
+                  JOIN user_accounts u ON u.id = v.user_id AND u.role IN ('COACH', 'ADMIN')
+                  LEFT JOIN award_candidates own ON own.id = v.self_coach_candidate_id
+                  LEFT JOIN LATERAL (
+                    SELECT ca.gender, ca.team_name
+                      FROM award_coach_category_applications ca
+                     WHERE ca.edition_id=v.edition_id AND ca.user_id=v.user_id
+                       AND ca.event_id=v.event_id AND ca.division_id=v.division_id
+                       AND ca.category_id=v.category_id AND ca.team_id=v.team_id
+                       AND ca.status='APPROVED'
+                     ORDER BY ca.created_at DESC, ca.id DESC LIMIT 1
+                  ) a ON TRUE
                   LEFT JOIN award_ballots b
                     ON b.edition_id = e.id AND b.coach_voter_id = v.id
-                 WHERE a.user_id = ? AND a.status = 'APPROVED'
-                 ORDER BY e.season DESC, a.created_at ASC
+                 WHERE v.user_id = ? AND v.active = TRUE
+                   AND (a.gender IS NOT NULL OR (v.context_source = 'ADMIN'
+                     AND NOT EXISTS (
+                       SELECT 1 FROM award_coach_category_applications prior
+                        WHERE prior.edition_id=v.edition_id AND prior.user_id=v.user_id
+                          AND prior.event_id=v.event_id AND prior.division_id=v.division_id
+                          AND prior.category_id=v.category_id AND prior.team_id=v.team_id
+                     )))
+                 ORDER BY e.season DESC, v.created_at ASC
                 """, (rs, rowNum) -> {
             boolean submitted = rs.getBoolean("submitted");
             Instant opensAt = instant(rs.getTimestamp("voting_opens_at"));
@@ -131,12 +144,19 @@ public class CoachCategoryVotingService {
                         ON c.id = v.credential_id AND c.edition_id = v.edition_id
                        AND c.user_id = v.user_id AND c.active = TRUE
                       JOIN user_accounts u ON u.id = v.user_id AND u.role IN ('COACH','ADMIN')
-                      JOIN award_coach_category_applications a
+                      LEFT JOIN award_coach_category_applications a
                         ON a.edition_id = v.edition_id AND a.user_id = v.user_id
                        AND a.event_id = v.event_id AND a.division_id = v.division_id
                        AND a.category_id = v.category_id AND a.team_id = v.team_id
                        AND a.status = 'APPROVED'
                      WHERE v.id = ? AND v.user_id = ? AND v.active = TRUE
+                       AND (a.id IS NOT NULL OR (v.context_source = 'ADMIN'
+                         AND NOT EXISTS (
+                           SELECT 1 FROM award_coach_category_applications prior
+                            WHERE prior.edition_id=v.edition_id AND prior.user_id=v.user_id
+                              AND prior.event_id=v.event_id AND prior.division_id=v.division_id
+                              AND prior.category_id=v.category_id AND prior.team_id=v.team_id
+                         )))
                 )
                 """, Boolean.class, contextId, userId);
         if (!Boolean.TRUE.equals(approved)) {

@@ -459,6 +459,117 @@ public class CoachCategoryApplicationService {
                 matching.size(), ballots, votes);
     }
 
+    public record ContextReactivationResult(UUID credentialId, UUID contextId,
+                                            String status, int ballotsDeleted, int votesDeleted) { }
+
+    /** Reinstates one administratively revoked category, never the prior ballot. */
+    @Transactional
+    public ContextReactivationResult reactivateContext(UUID credentialId, UUID contextId) {
+        AwardCoachCredential credential = credentials.findByIdAndActiveTrue(credentialId)
+                .orElseThrow(() -> Errors.conflict("COACH_CREDENTIAL_INACTIVE",
+                        "Reabilite o treinador antes de reabilitar uma categoria."));
+        AwardCoachVoter context = contexts.findById(contextId)
+                .filter(c -> credentialId.equals(c.getCredentialId()))
+                .filter(c -> credential.getEditionId().equals(c.getEditionId()))
+                .filter(c -> credential.getUserId().equals(c.getUserId()))
+                .orElseThrow(() -> Errors.notFound("COACH_CONTEXT_NOT_FOUND",
+                        "Categoria do treinador não encontrada."));
+        if (context.isActive()) {
+            throw Errors.conflict("COACH_CONTEXT_ALREADY_ACTIVE", "A categoria já está ativa.");
+        }
+        if (requireEdition(credential.getEditionId()).isClosed()) {
+            throw Errors.conflict("COACH_CATEGORY_EDITION_CLOSED",
+                    "Não é possível reabilitar uma categoria de edição encerrada.");
+        }
+        UserAccount user = users.findByIdForUpdate(credential.getUserId())
+                .orElseThrow(() -> Errors.notFound("COACH_CATEGORY_USER_MISSING", "Conta não encontrada."));
+        requireActive(user);
+
+        // Lock the exact voter context. Other categories and their ballots are untouched.
+        List<UUID> locked = jdbc.query("""
+            SELECT id FROM award_coach_voters
+             WHERE id=? AND credential_id=? AND active=FALSE FOR UPDATE
+            """, (rs, row) -> rs.getObject("id", UUID.class), contextId, credentialId);
+        if (locked.isEmpty()) {
+            throw Errors.conflict("COACH_CONTEXT_ALREADY_ACTIVE", "A categoria não está desativada.");
+        }
+        Boolean otherActive = jdbc.queryForObject("""
+            SELECT EXISTS(SELECT 1 FROM award_coach_voters
+                WHERE edition_id=? AND user_id=? AND event_id=? AND division_id=?
+                  AND category_id=? AND active=TRUE)
+            """, Boolean.class, credential.getEditionId(), credential.getUserId(),
+                context.getEventId(), context.getDivisionId(), context.getCategoryId());
+        if (Boolean.TRUE.equals(otherActive)) {
+            throw Errors.conflict("COACH_CATEGORY_ALREADY_REQUESTED",
+                    "O treinador já possui outro vínculo ativo nesta categoria.");
+        }
+        Boolean alreadyAuthorized = jdbc.queryForObject("""
+            SELECT EXISTS(SELECT 1 FROM award_coach_category_applications
+                WHERE edition_id=? AND user_id=? AND event_id=? AND division_id=?
+                  AND category_id=? AND status IN ('APPROVED','PENDING'))
+            """, Boolean.class, credential.getEditionId(), credential.getUserId(),
+                context.getEventId(), context.getDivisionId(), context.getCategoryId());
+        if (Boolean.TRUE.equals(alreadyAuthorized)) {
+            throw Errors.conflict("COACH_CONTEXT_AUTHORIZATION_CONFLICT",
+                    "Já existe outra autorização para esta categoria.");
+        }
+        List<UUID> revokedApps = jdbc.query("""
+            SELECT id FROM award_coach_category_applications
+             WHERE edition_id=? AND user_id=? AND event_id=? AND division_id=?
+               AND category_id=? AND team_id=? AND status='REVOKED'
+             ORDER BY reviewed_at DESC NULLS LAST, created_at DESC, id DESC
+             LIMIT 1 FOR UPDATE
+            """, (rs, row) -> rs.getObject("id", UUID.class), credential.getEditionId(),
+                credential.getUserId(), context.getEventId(), context.getDivisionId(),
+                context.getCategoryId(), context.getTeamId());
+        if (revokedApps.isEmpty()) {
+            // An explicit administrator action can also authorize a legacy context,
+            // but never when an application for this exact context was denied.
+            Boolean previous = jdbc.queryForObject("""
+                SELECT EXISTS(SELECT 1 FROM award_coach_category_applications
+                    WHERE edition_id=? AND user_id=? AND event_id=? AND division_id=?
+                      AND category_id=? AND team_id=?)
+                """, Boolean.class, credential.getEditionId(), credential.getUserId(),
+                    context.getEventId(), context.getDivisionId(), context.getCategoryId(),
+                    context.getTeamId());
+            if (Boolean.TRUE.equals(previous)) {
+                throw Errors.conflict("COACH_CONTEXT_AUTHORIZATION_CONFLICT",
+                        "A categoria possui histórico de autorização incompatível.");
+            }
+        }
+        Counters deleted = removeBallot(contextId);
+        int applicationUpdated = 1;
+        if (!revokedApps.isEmpty()) {
+            applicationUpdated = jdbc.update("""
+                UPDATE award_coach_category_applications
+                   SET status='APPROVED', review_reason='ADMIN_CONTEXT_REACTIVATED',
+                       reviewed_at=?, reviewed_by_user_id=?
+                 WHERE id=? AND status='REVOKED'
+                """, Timestamp.from(clock.instant()), currentUser.userId(), revokedApps.get(0));
+        }
+        // Legacy rows without an application become explicitly ADMIN-authorized.
+        int contextUpdated = jdbc.update("""
+            UPDATE award_coach_voters
+               SET active=TRUE,
+                   context_source=CASE WHEN ? THEN 'ADMIN' ELSE context_source END
+             WHERE id=? AND credential_id=? AND active=FALSE
+            """, revokedApps.isEmpty(), contextId, credentialId);
+        if (applicationUpdated != 1 || contextUpdated != 1) {
+            throw Errors.conflict("COACH_CONTEXT_REACTIVATION_CONFLICT",
+                    "O vínculo mudou durante a operação. Atualize a página e tente novamente.");
+        }
+        jdbc.update("""
+            DELETE FROM award_coach_credential_restore_contexts
+             WHERE credential_id=? AND context_id=?
+            """, credentialId, contextId);
+        updateCoachRole(user);
+        audit(credential.getEditionId(), user.getId(), contextId, "CATEGORY_REACTIVATED",
+                "Categoria reabilitada individualmente pela administração",
+                currentUser.userId(), deleted.ballots(), deleted.votes());
+        return new ContextReactivationResult(credentialId, contextId, "ACTIVE",
+                deleted.ballots(), deleted.votes());
+    }
+
     public record CredentialLifecycleResult(UUID credentialId, String status, int contextsRestored) { }
 
     private record RestorableContext(UUID contextId, UUID applicationId) { }
@@ -574,10 +685,10 @@ public class CoachCategoryApplicationService {
         List<UUID> contextIds = jdbc.query("""
             SELECT id FROM award_coach_voters
              WHERE edition_id = ? AND user_id = ? AND event_id = ? AND division_id = ?
-               AND category_id = ?
+               AND category_id = ? AND team_id = ?
              ORDER BY id FOR UPDATE
             """, (rs, row) -> rs.getObject("id", UUID.class), app.editionId(), app.userId(),
-                app.eventId(), app.divisionId(), app.categoryId());
+                app.eventId(), app.divisionId(), app.categoryId(), app.teamId());
         int ballots = 0, votes = 0;
         for (UUID contextId : contextIds) {
             Counters result = removeBallot(contextId);

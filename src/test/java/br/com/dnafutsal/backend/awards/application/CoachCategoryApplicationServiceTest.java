@@ -144,4 +144,77 @@ class CoachCategoryApplicationServiceTest {
         verify(users).saveAndFlush(user);
     }
 
+    @Test
+    void reactivatingOneContextDoesNotDeleteAnotherContextBallot() {
+        UUID contextId = UUID.randomUUID();
+        UUID otherContextId = UUID.randomUUID();
+        UUID appId = UUID.randomUUID();
+        UUID adminId = UUID.randomUUID();
+        var credential = new br.com.dnafutsal.backend.awards.domain.AwardCoachCredential(
+                editionId, user.getId(), null);
+        var context = mock(br.com.dnafutsal.backend.awards.domain.AwardCoachVoter.class);
+        when(context.getCredentialId()).thenReturn(credential.getId());
+        when(context.getEditionId()).thenReturn(editionId);
+        when(context.getUserId()).thenReturn(user.getId());
+        when(context.isActive()).thenReturn(false);
+        when(context.getEventId()).thenReturn(917L);
+        when(context.getDivisionId()).thenReturn(3L);
+        when(context.getCategoryId()).thenReturn(7L);
+        when(context.getTeamId()).thenReturn("10");
+        when(credentials.findByIdAndActiveTrue(credential.getId()))
+                .thenReturn(Optional.of(credential));
+        when(contexts.findById(contextId)).thenReturn(Optional.of(context));
+        when(editions.findById(editionId)).thenReturn(Optional.of(new AwardEdition(
+                "premio-dna-2026", "Prêmio DNA", 2026,
+                AwardEditionStatus.OPEN, now.minusSeconds(60), now.plusSeconds(3600))));
+        when(users.findByIdForUpdate(user.getId())).thenReturn(Optional.of(user));
+        when(jdbc.query(contains("active=FALSE FOR UPDATE"),
+                org.mockito.ArgumentMatchers.<org.springframework.jdbc.core.RowMapper<UUID>>any(),
+                eq(contextId), eq(credential.getId()))).thenReturn(List.of(contextId));
+        when(jdbc.query(contains("status='REVOKED'"),
+                org.mockito.ArgumentMatchers.<org.springframework.jdbc.core.RowMapper<UUID>>any(),
+                eq(editionId), eq(user.getId()), eq(917L), eq(3L), eq(7L), eq("10")))
+                .thenReturn(List.of(appId));
+        // The reactivation service checks duplicate active contexts and existing
+        // authorizations before updating this exact revoked category.
+        when(jdbc.queryForObject(contains("WHERE edition_id=? AND user_id=? AND event_id=?"),
+                eq(Boolean.class), eq(editionId), eq(user.getId()),
+                eq(917L), eq(3L), eq(7L))).thenReturn(false);
+        when(jdbc.queryForObject(contains("SELECT EXISTS(SELECT 1 FROM award_coach_category_applications"),
+                eq(Boolean.class), eq(editionId), eq(user.getId()),
+                eq(917L), eq(3L), eq(7L))).thenReturn(false);
+        when(jdbc.queryForObject(contains("SELECT COUNT(*) FROM award_ballot_votes"),
+                eq(Long.class), eq(contextId))).thenReturn(0L);
+        // JdbcTemplate.update is also called for ballot cleanup, restore-snapshot cleanup
+        // and audit writes. Only these two updates need non-zero mock results;
+        // keep the remaining calls unstubbed rather than causing strict mismatches.
+        lenient().when(jdbc.update(contains("UPDATE award_coach_category_applications"),
+                any(java.sql.Timestamp.class), eq(adminId), eq(appId))).thenReturn(1);
+        lenient().when(jdbc.update(contains("UPDATE award_coach_voters"),
+                eq(false), eq(contextId), eq(credential.getId()))).thenReturn(1);
+        when(jdbc.queryForObject(contains("SELECT EXISTS(SELECT 1 FROM award_coach_voters v"),
+                eq(Boolean.class), eq(user.getId()))).thenReturn(true);
+        when(currentUser.userId()).thenReturn(adminId);
+
+        var result = service.reactivateContext(credential.getId(), contextId);
+
+        assertThat(result.contextId()).isEqualTo(contextId);
+        assertThat(result.status()).isEqualTo("ACTIVE");
+        assertThat(result.ballotsDeleted()).isZero();
+        assertThat(result.votesDeleted()).isZero();
+        assertThat(user.getRole()).isEqualTo(br.com.dnafutsal.backend.identity.domain.UserRole.COACH);
+        verify(jdbc).update("DELETE FROM award_ballots WHERE coach_voter_id = ?", contextId);
+        verify(jdbc, never()).update("DELETE FROM award_ballots WHERE coach_voter_id = ?", otherContextId);
+    }
+
+    @Test
+    void cannotReactivateCategoryWhenEntireCoachCredentialIsInactive() {
+        UUID credentialId = UUID.randomUUID();
+        UUID contextId = UUID.randomUUID();
+        assertThatThrownBy(() -> service.reactivateContext(credentialId, contextId))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("Reabilite o treinador");
+        verifyNoInteractions(jdbc);
+    }
+
 }

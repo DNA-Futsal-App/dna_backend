@@ -60,6 +60,12 @@ public class AdminCoachAccessController {
                 reason(request));
     }
 
+    @PostMapping("/coach-voters/{credentialId}/contexts/{contextId}/reactivate")
+    CoachCategoryApplicationService.ContextReactivationResult reactivateContext(
+            @PathVariable UUID credentialId, @PathVariable UUID contextId) {
+        return categoryApplications.reactivateContext(credentialId, contextId);
+    }
+
     @PostMapping("/coach-voters/{credentialId}/deactivate")
     CoachCategoryApplicationService.RevocationResult deactivate(
             @PathVariable UUID credentialId,
