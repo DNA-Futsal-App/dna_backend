@@ -6,6 +6,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.time.Duration;
@@ -36,6 +38,8 @@ public class SportsSnapshotArchive {
         this.maxAge = maxAge;
     }
 
+    // A failed archive write must never poison the caller's read-only transaction.
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void save(SportsSnapshot snapshot) {
         long eventId = snapshot.event().eventId();
         try {
@@ -54,12 +58,14 @@ public class SportsSnapshotArchive {
                     """, eventId, snapshot.event().season(), snapshot.event().title(),
                     snapshot.event().division(), snapshot.event().category(), payload);
         } catch (RuntimeException exception) {
-            // Never take down a working live response because archival storage failed.
+            // Roll back this independent transaction and let the service serve live data.
             log.error("Cannot archive sports snapshot eventId={} exceptionType={}",
-                    eventId, exception.getClass().getName());
+                    eventId, exception.getClass().getName(), exception);
+            throw exception;
         }
     }
 
+    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
     public Optional<SportsSnapshot> findRecent(long eventId) {
         try {
             List<String> rows = jdbc.queryForList("""
@@ -84,6 +90,7 @@ public class SportsSnapshotArchive {
         }
     }
 
+    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
     public OptionalLong findDefaultEventId(int season, String division, String category) {
         try {
             List<Long> rows = jdbc.queryForList("""

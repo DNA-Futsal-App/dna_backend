@@ -7,6 +7,8 @@ import br.com.dnafutsal.backend.sports.domain.SportsSnapshot;
 import br.com.dnafutsal.backend.sports.infrastructure.SportsSnapshotArchive;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
@@ -28,6 +30,39 @@ class SportsSnapshotArchiveFallbackTest {
         when(gateway.snapshot(920)).thenReturn(good);
         assertThat(service.snapshot(920)).isSameAs(good);
         verify(archive).save(good);
+    }
+
+    @Test
+    void archiveFailureDoesNotPreventServingValidLiveSportsData() {
+        SportsSnapshot good = snapshot(920);
+        when(gateway.snapshot(920)).thenReturn(good);
+        doThrow(new IllegalStateException("archive unavailable")).when(archive).save(good);
+
+        assertThat(service.snapshot(920)).isSameAs(good);
+        verify(archive).save(good);
+        verify(archive, never()).findRecent(anyLong());
+    }
+
+    @Test
+    void archiveDatabaseOperationsUseIndependentTransactions() throws Exception {
+        Transactional write = SportsSnapshotArchive.class
+                .getMethod("save", SportsSnapshot.class).getAnnotation(Transactional.class);
+        assertThat(write).isNotNull();
+        assertThat(write.propagation()).isEqualTo(Propagation.REQUIRES_NEW);
+        assertThat(write.readOnly()).isFalse();
+
+        Transactional recent = SportsSnapshotArchive.class
+                .getMethod("findRecent", long.class).getAnnotation(Transactional.class);
+        assertThat(recent).isNotNull();
+        assertThat(recent.propagation()).isEqualTo(Propagation.REQUIRES_NEW);
+        assertThat(recent.readOnly()).isTrue();
+
+        Transactional fallback = SportsSnapshotArchive.class
+                .getMethod("findDefaultEventId", int.class, String.class, String.class)
+                .getAnnotation(Transactional.class);
+        assertThat(fallback).isNotNull();
+        assertThat(fallback.propagation()).isEqualTo(Propagation.REQUIRES_NEW);
+        assertThat(fallback.readOnly()).isTrue();
     }
 
     @Test

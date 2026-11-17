@@ -43,7 +43,14 @@ public class SportsSnapshotService {
                         "A fonte de dados retornou uma competição diferente da solicitada."
                 );
             }
-            archive.save(result);
+            try {
+                archive.save(result);
+            } catch (RuntimeException archiveFailure) {
+                // Archiving is best-effort and runs in a separate DB transaction.
+                // A storage failure cannot invalidate a valid live response.
+                log.warn("Serving live sports snapshot without archive eventId={} errorType={}",
+                        eventId, archiveFailure.getClass().getName());
+            }
             return result;
         } catch (BusinessException exception) {
             if (!RECOVERABLE_ERRORS.contains(exception.code())) {
