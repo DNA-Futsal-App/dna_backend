@@ -62,6 +62,22 @@ public class AdminAwardPreVoteController {
                 new AwardPreVoteContextRequest(eventId, divisionId, categoryId, gender, contestCategory));
     }
 
+    @GetMapping("/tie-review")
+    public AwardPreVoteTieResponse tieReview(@PathVariable UUID editionId,
+            @RequestParam @Min(1) long eventId, @RequestParam @Min(1) long divisionId,
+            @RequestParam @Min(1) long categoryId,
+            @RequestParam AwardRegistrationGender gender,
+            @RequestParam AwardRegistrationContestCategory contestCategory) {
+        return preVote.tieReview(editionId, new AwardPreVoteContextRequest(
+                eventId, divisionId, categoryId, gender, contestCategory));
+    }
+
+    @PostMapping("/tie-decision")
+    public AwardPreVoteTieResponse decideTie(@PathVariable UUID editionId,
+            @RequestBody @Valid AwardPreVoteTieDecisionRequest request) {
+        return preVote.decideTie(editionId, request);
+    }
+
     @PostMapping("/entries/{entryId}/score")
     public AwardPreVoteBoardResponse score(@PathVariable UUID editionId,
                                             @PathVariable UUID entryId,

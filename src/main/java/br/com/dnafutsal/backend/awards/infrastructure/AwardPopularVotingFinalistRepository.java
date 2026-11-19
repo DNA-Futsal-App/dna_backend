@@ -25,11 +25,20 @@ public interface AwardPopularVotingFinalistRepository extends Repository<AwardPr
             @org.springframework.data.repository.query.Param("editionId") UUID editionId);
 
     @org.springframework.data.jpa.repository.Query(value = """
-        SELECT EXISTS (
-          SELECT 1 FROM award_four_finalist_exceptions x
-          WHERE x.edition_id = :editionId AND x.event_id = :eventId
-            AND x.division_id = :divisionId AND x.category_id = :categoryId
-            AND x.gender = :gender AND x.contest_category = :contestCategory AND x.contest_category = 'FREE_KICK_GOAL'
+        SELECT (
+          EXISTS (
+            SELECT 1 FROM award_four_finalist_exceptions x
+            WHERE x.edition_id = :editionId AND x.event_id = :eventId
+              AND x.division_id = :divisionId AND x.category_id = :categoryId
+              AND x.gender = :gender AND x.contest_category = :contestCategory
+              AND x.contest_category = 'FREE_KICK_GOAL'
+          ) OR EXISTS (
+            SELECT 1 FROM award_pre_vote_tie_decisions d
+            WHERE d.edition_id = :editionId AND d.event_id = :eventId
+              AND d.division_id = :divisionId AND d.category_id = :categoryId
+              AND d.gender = :gender AND d.contest_category = :contestCategory
+              AND d.finalist_count = 4
+          )
         )
         """, nativeQuery = true)
     boolean allowsFourFinalists(@org.springframework.data.repository.query.Param("editionId") UUID editionId,

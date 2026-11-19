@@ -15,7 +15,11 @@ import br.com.dnafutsal.backend.awards.domain.AwardRegistrationStatus;
 import br.com.dnafutsal.backend.awards.infrastructure.AwardEditionRepository;
 import br.com.dnafutsal.backend.awards.infrastructure.AwardPreVoteEditionLockRepository;
 import br.com.dnafutsal.backend.awards.infrastructure.AwardPreVoteFinalistRepository;
+import br.com.dnafutsal.backend.awards.infrastructure.AwardPreVoteTieDecisionRepository;
 import br.com.dnafutsal.backend.awards.infrastructure.AwardPreVoteQueryRepository;
+import br.com.dnafutsal.backend.awards.api.AwardPreVoteTieDecisionRequest;
+import br.com.dnafutsal.backend.awards.api.AwardPreVoteTieResponse;
+import br.com.dnafutsal.backend.awards.api.AwardPopularContext;
 import br.com.dnafutsal.backend.awards.infrastructure.AwardPreVoteScoreRepository;
 import br.com.dnafutsal.backend.awards.infrastructure.AwardRegistrationEntryRepository;
 import br.com.dnafutsal.backend.awards.infrastructure.AwardRegistrationRepository;
@@ -27,11 +31,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Clock;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -45,6 +45,8 @@ public class AwardPreVoteService {
     private final AwardPreVoteQueryRepository queries;
     private final AwardPreVoteScoreRepository scores;
     private final AwardPreVoteFinalistRepository finalists;
+    private final AwardPreVoteTieDecisionRepository tieDecisions;
+    private final AwardPopularReadinessService readiness;
     private final Clock clock;
     private final AwardRegistrationReopeningService reopenings;
 
@@ -54,7 +56,9 @@ public class AwardPreVoteService {
                                AwardRegistrationEntryRepository entries,
                                AwardPreVoteQueryRepository queries,
                                AwardPreVoteScoreRepository scores,
-                               AwardPreVoteFinalistRepository finalists, Clock clock,
+                               AwardPreVoteFinalistRepository finalists,
+                               AwardPreVoteTieDecisionRepository tieDecisions,
+                               AwardPopularReadinessService readiness, Clock clock,
                                AwardRegistrationReopeningService reopenings) {
         this.currentUser = currentUser;
         this.editions = editions;
@@ -64,6 +68,8 @@ public class AwardPreVoteService {
         this.queries = queries;
         this.scores = scores;
         this.finalists = finalists;
+        this.tieDecisions = tieDecisions;
+        this.readiness = readiness;
         this.clock = clock;
         this.reopenings = reopenings;
     }
@@ -85,6 +91,61 @@ public class AwardPreVoteService {
     @Transactional(readOnly = true)
     public AwardPreVoteBoardResponse board(UUID editionId, AwardPreVoteContextRequest context) {
         return buildBoard(requireEdition(editionId), context, currentUser.userId());
+    }
+
+    @Transactional(readOnly = true)
+    public AwardPreVoteTieResponse tieReview(UUID editionId, AwardPreVoteContextRequest context) {
+        AwardEdition edition = requireEdition(editionId);
+        boolean published = !loadFinalists(editionId, context).isEmpty();
+        List<RatedEntry> ranked = ranking(editionId, context);
+        if (published || edition.isRegistrationsOpen() || reopenings.blocksFinalization(editionId, context)
+                || countPending(editionId, context) > 0 || !completePanel(ranked)
+                || !allAdministratorsScored(editionId, context)) {
+            return new AwardPreVoteTieResponse(false, published, null, List.of(), List.of());
+        }
+        List<AwardTieDecisionPolicy.Candidate> scores = candidates(ranked);
+        if (!AwardTieDecisionPolicy.tiedAtCutoff(scores)) {
+            return new AwardPreVoteTieResponse(false, false, null, List.of(), List.of());
+        }
+        var decision = tieDecisions.find(editionId, context);
+        Map<UUID, AwardRegistration> registrationsById = registrations.findAllById(
+                ranked.stream().map(r -> r.entry().getRegistrationId()).distinct().toList())
+                .stream().collect(Collectors.toMap(AwardRegistration::getId, Function.identity()));
+        AwardTieDecisionPolicy.Candidate cutoff = scores.get(2);
+        List<AwardPreVoteTieResponse.Candidate> result = ranked.stream().map(item -> {
+            AwardRegistration registration = registrationsById.get(item.entry().getRegistrationId());
+            if (registration == null) throw Errors.conflict("AWARD_PRE_VOTE_REGISTRATION_NOT_FOUND", "Inscrição inconsistente.");
+            int compare = compareScore(item.sum(), item.count(), cutoff.scoreSum(), cutoff.scoreCount());
+            return new AwardPreVoteTieResponse.Candidate(item.entry().getId(),
+                    registration.getAthleteName(), registration.getTeamName(),
+                    (double) item.sum() / item.count(), compare > 0, compare >= 0);
+        }).toList();
+        return new AwardPreVoteTieResponse(true, false,
+                decision.map(AwardPreVoteTieDecisionRepository.Decision::finalistCount).orElse(null),
+                decision.map(AwardPreVoteTieDecisionRepository.Decision::entries).orElse(List.of()), result);
+    }
+
+    @Transactional
+    public AwardPreVoteTieResponse decideTie(UUID editionId, AwardPreVoteTieDecisionRequest request) {
+        AwardPreVoteContextRequest context = request.context();
+        AwardEdition edition = lockEdition(editionId);
+        if (!loadFinalists(editionId, context).isEmpty()) {
+            throw Errors.conflict("AWARD_PRE_VOTE_ALREADY_FINALIZED", "Nao e permitido alterar finalistas publicados.");
+        }
+        if (edition.isRegistrationsOpen() || reopenings.blocksFinalization(editionId, context)
+                || countPending(editionId, context) > 0) {
+            throw Errors.conflict("AWARD_PRE_VOTE_NOT_READY", "Encerre inscricoes e revisoes antes de resolver o empate.");
+        }
+        List<RatedEntry> ranked = ranking(editionId, context);
+        if (!completePanel(ranked) || !allAdministratorsScored(editionId, context)) {
+            throw Errors.conflict("AWARD_PRE_VOTE_INCOMPLETE", "Todos os administradores devem avaliar todos os videos antes do desempate.");
+        }
+        List<UUID> chosen = AwardTieDecisionPolicy.select(candidates(ranked),
+                request.finalistCount(), request.selectedEntryIds()).orElseThrow(() ->
+                Errors.conflict("AWARD_PRE_VOTE_TIE_SELECTION_INVALID",
+                        "Escolha 3 ou 4 atletas: preserve os melhores e selecione apenas os empatados no corte."));
+        tieDecisions.save(editionId, context, chosen, currentUser.userId());
+        return tieReview(editionId, context);
     }
 
     @Transactional
@@ -139,12 +200,20 @@ public class AwardPreVoteService {
             throw Errors.conflict("AWARD_PRE_VOTE_INCOMPLETE", "Todos os vídeos precisam receber notas do mesmo conjunto de administradores.");
         }
         List<RatedEntry> chosen;
-        if (allowsFour(editionId, context)) {
-            // A comissao decidiu quais dois dos tres empatados seguem adiante.
-            // O ID persistido da decisao e a unica fonte da ordem manual; jamais UUID alfabetico.
+        var tieDecision = tieDecisions.find(editionId, context);
+        if (tieDecision.isPresent()) {
+            var decision = tieDecision.get();
+            List<UUID> chosenIds = AwardTieDecisionPolicy.select(candidates(ranking),
+                    decision.finalistCount(), decision.entries()).orElseThrow(() ->
+                    Errors.conflict("AWARD_PRE_VOTE_TIE_SELECTION_INVALID",
+                            "As notas mudaram depois da decisao. Reavalie o desempate."));
+            Map<UUID, RatedEntry> byId = ranking.stream().collect(Collectors.toMap(
+                    r -> r.entry().getId(), Function.identity()));
+            chosen = chosenIds.stream().map(byId::get).toList();
+        } else if (allowsFour(editionId, context)) {
             chosen = exceptionalSelection(editionId, ranking).orElseThrow(() ->
                     Errors.conflict("AWARD_PRE_VOTE_MANUAL_TIE_INVALID",
-                            "A decisao administrativa do empate triplo nao confere com as notas atuais."));
+                            "A decisao administrativa historica nao confere com as notas atuais."));
         } else {
             if (ranking.size() > 3 && compareAverages(ranking.get(2), ranking.get(3)) == 0) {
                 throw Errors.conflict("AWARD_PRE_VOTE_TIE_AT_CUTOFF",
@@ -176,9 +245,7 @@ public class AwardPreVoteService {
                 .stream().collect(Collectors.toMap(AwardRegistration::getId, Function.identity()));
         // Avaliação cega: antes da publicação não expomos as médias nem a posição parcial.
         List<RatedEntry> displayOrder = published.isEmpty()
-                ? ranking.stream().sorted((a, b) -> Long.compare(
-                        registrationMap.get(a.entry().getRegistrationId()).getRegistrationNumber(),
-                        registrationMap.get(b.entry().getRegistrationId()).getRegistrationNumber())).toList()
+                ? ranking.stream().sorted(Comparator.comparingLong(a -> registrationMap.get(a.entry().getRegistrationId()).getRegistrationNumber())).toList()
                 : ranking;
         List<AwardPreVoteEntryResponse> mapped = displayOrder.stream().map(item -> {
             AwardRegistration registration = registrationMap.get(item.entry().getRegistrationId());
@@ -196,10 +263,11 @@ public class AwardPreVoteService {
         int fullyScored = (int) ranking.stream().filter(r -> r.count() > 0).count();
         int panel = ranking.isEmpty() ? 0 : ranking.get(0).count();
         boolean fourAllowed = allowsFour(edition.getId(), context);
-        boolean cutoffValid = fourAllowed
-                ? exceptionalSelection(edition.getId(), ranking).isPresent()
+        var tieDecision = tieDecisions.find(edition.getId(), context);
+        boolean cutoffValid = tieDecision.map(decision -> AwardTieDecisionPolicy.select(candidates(ranking),
+                decision.finalistCount(), decision.entries()).isPresent()).orElseGet(() -> fourAllowed ? exceptionalSelection(edition.getId(), ranking).isPresent()
                 : ranking.size() >= 3 && (ranking.size() == 3
-                    || compareAverages(ranking.get(2), ranking.get(3)) != 0);
+                || compareAverages(ranking.get(2), ranking.get(3)) != 0));
         boolean ready = published.isEmpty() && !edition.isRegistrationsOpen() && pending == 0
                 && ranking.size() >= (fourAllowed ? 4 : 3) && completePanel(ranking) && cutoffValid;
         return new AwardPreVoteBoardResponse(mapped, pending, ranking.size(), fullyScored,
@@ -245,7 +313,22 @@ public class AwardPreVoteService {
     }
 
     private static int compareAverages(RatedEntry a, RatedEntry b) {
-        return Long.compare(a.sum() * b.count(), b.sum() * a.count());
+        return compareScore(a.sum(), a.count(), b.sum(), b.count());
+    }
+
+    private static int compareScore(long sumA, int countA, long sumB, int countB) {
+        return Long.compare(sumA * countB, sumB * countA);
+    }
+
+    private boolean allAdministratorsScored(UUID editionId, AwardPreVoteContextRequest context) {
+        var result = readiness.assess(editionId, new AwardPopularContext(context.eventId(),
+                context.divisionId(), context.categoryId(), context.gender(), context.contestCategory()));
+        return result.activeAdministrators() > 0 && result.missingAdmins().isEmpty();
+    }
+
+    private static List<AwardTieDecisionPolicy.Candidate> candidates(List<RatedEntry> ranked) {
+        return ranked.stream().map(r -> new AwardTieDecisionPolicy.Candidate(
+                r.entry().getId(), r.sum(), r.count())).toList();
     }
 
     private boolean allowsFour(UUID editionId, AwardPreVoteContextRequest context) {
@@ -253,11 +336,6 @@ public class AwardPreVoteService {
                 context.categoryId(), context.gender().name(), context.contestCategory().name());
     }
 
-    /**
-     * Somente a excecao assinada da edicao pode escolher os dois entre os tres
-     * empatados na nota de corte. O primeiro e segundo devem permanecer os lideres
-     * reais; outros empates (inclusive um sexto na mesma nota) nao sao admitidos.
-     */
     private java.util.Optional<List<RatedEntry>> exceptionalSelection(UUID editionId, List<RatedEntry> ranking) {
         if (ranking.size() < 5 || compareAverages(ranking.get(2), ranking.get(3)) != 0
                 || compareAverages(ranking.get(3), ranking.get(4)) != 0

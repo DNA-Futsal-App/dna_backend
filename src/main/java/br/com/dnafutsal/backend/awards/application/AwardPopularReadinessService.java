@@ -19,16 +19,19 @@ public class AwardPopularReadinessService {
     private final AwardRegistrationRepository registrations;
     private final AwardPopularVotingFinalistRepository finalists;
     private final AwardActiveAdministratorRepository users;
+    private final AwardPreVoteTieDecisionRepository tieDecisions;
 
     public AwardPopularReadinessService(AwardEditionRepository editions, AwardPreVoteQueryRepository queries,
             AwardPreVoteScoreRepository scores, AwardRegistrationRepository registrations,
-            AwardPopularVotingFinalistRepository finalists, AwardActiveAdministratorRepository users) {
+            AwardPopularVotingFinalistRepository finalists, AwardActiveAdministratorRepository users,
+            AwardPreVoteTieDecisionRepository tieDecisions) {
         this.editions = editions;
         this.queries = queries;
         this.scores = scores;
         this.registrations = registrations;
         this.finalists = finalists;
         this.users = users;
+        this.tieDecisions = tieDecisions;
     }
 
     @Transactional(readOnly = true)
@@ -75,7 +78,11 @@ public class AwardPopularReadinessService {
         }
         boolean fourAllowed = finalists.allowsFourFinalists(editionId, context.eventId(), context.divisionId(),
                 context.categoryId(), context.gender().name(), context.contestCategory().name());
-        int target = fourAllowed ? 4 : 3;
+        var decisionContext = new AwardPreVoteContextRequest(context.eventId(), context.divisionId(),
+                context.categoryId(), context.gender(), context.contestCategory());
+        var decision = tieDecisions.find(editionId, decisionContext);
+        int target = decision.map(AwardPreVoteTieDecisionRepository.Decision::finalistCount)
+                .orElse(fourAllowed ? 4 : 3);
         List<AwardPreVoteFinalist> published = finalists.finalists(editionId, context.eventId(),
                 context.divisionId(), context.categoryId(), context.gender(), context.contestCategory());
         boolean finalistsConfirmed = published.size() == target;
@@ -99,8 +106,19 @@ public class AwardPopularReadinessService {
             });
             boolean tiedAtThird = sums.getOrDefault(ranking.get(2).getId(), 0L).equals(
                     sums.getOrDefault(ranking.get(3).getId(), 0L));
-            if (tiedAtThird && !fourAllowed) blockers.add("EMPATE_NO_CORTE_TOP3");
-            if (fourAllowed && !finalistsConfirmed) {
+            if (decision.isPresent() && !finalistsConfirmed) {
+                List<AwardTieDecisionPolicy.Candidate> ranked = ranking.stream()
+                        .map(e -> new AwardTieDecisionPolicy.Candidate(
+                                e.getId(), sums.getOrDefault(e.getId(), 0L), activeAdmins.size()))
+                        .toList();
+                if (AwardTieDecisionPolicy.select(ranked, target,
+                        decision.get().entries()).isEmpty()) {
+                    blockers.add("DECISAO_DE_EMPATE_INVALIDA");
+                }
+            } else if (tiedAtThird && !fourAllowed && decision.isEmpty()) {
+                blockers.add("EMPATE_NO_CORTE_TOP3");
+            }
+            if (fourAllowed && decision.isEmpty() && !finalistsConfirmed) {
                 List<UUID> chosen = finalists.selectedFourFinalists(editionId);
                 boolean exactlyTripleTie = ranking.size() >= 5 && tiedAtThird
                         && sums.getOrDefault(ranking.get(3).getId(), 0L).equals(

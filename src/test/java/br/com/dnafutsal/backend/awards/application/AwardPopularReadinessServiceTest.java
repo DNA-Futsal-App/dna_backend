@@ -22,7 +22,8 @@ class AwardPopularReadinessServiceTest {
         var registrations = mock(AwardRegistrationRepository.class);
         var finalists = mock(AwardPopularVotingFinalistRepository.class);
         var admins = mock(AwardActiveAdministratorRepository.class);
-        var service = new AwardPopularReadinessService(editions, queries, scores, registrations, finalists, admins);
+        var service = new AwardPopularReadinessService(editions, queries, scores, registrations,
+                finalists, admins, mock(AwardPreVoteTieDecisionRepository.class));
         UUID edition = UUID.randomUUID();
         var context = new AwardPopularContext(1, 2, 3, AwardRegistrationGender.FEMALE,
                 AwardRegistrationContestCategory.BEST_SAVE);

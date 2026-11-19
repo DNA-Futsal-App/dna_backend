@@ -12,6 +12,7 @@ import br.com.dnafutsal.backend.awards.domain.AwardRegistrationMediaSource;
 import br.com.dnafutsal.backend.awards.infrastructure.AwardEditionRepository;
 import br.com.dnafutsal.backend.awards.infrastructure.AwardPreVoteEditionLockRepository;
 import br.com.dnafutsal.backend.awards.infrastructure.AwardPreVoteFinalistRepository;
+import br.com.dnafutsal.backend.awards.infrastructure.AwardPreVoteTieDecisionRepository;
 import br.com.dnafutsal.backend.awards.infrastructure.AwardPreVoteQueryRepository;
 import br.com.dnafutsal.backend.awards.infrastructure.AwardPreVoteScoreRepository;
 import br.com.dnafutsal.backend.awards.infrastructure.AwardRegistrationEntryRepository;
@@ -47,6 +48,7 @@ class AwardPreVoteServiceTest {
     @Mock AwardPreVoteQueryRepository queries;
     @Mock AwardPreVoteScoreRepository scores;
     @Mock AwardPreVoteFinalistRepository finalists;
+    @Mock AwardPreVoteTieDecisionRepository tieDecisions;
     @Mock AwardEdition edition;
 
     private AwardPreVoteService service;
@@ -58,7 +60,8 @@ class AwardPreVoteServiceTest {
     @BeforeEach
     void prepare() {
         service = new AwardPreVoteService(currentUser, editions, editionLocks, registrations, entries,
-                queries, scores, finalists, Clock.systemUTC(), mock(AwardRegistrationReopeningService.class));
+                queries, scores, finalists, tieDecisions, mock(AwardPopularReadinessService.class),
+                Clock.systemUTC(), mock(AwardRegistrationReopeningService.class));
     }
 
     private List<AwardRegistrationEntry> prepareEntries(int... grades) {
