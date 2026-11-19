@@ -61,7 +61,8 @@ public class CoachVotingV2Service {
         if(category.getTargetType()==AwardCandidateType.ATHLETE){
             eligibility.requireEligible(a.edition.getId(),a.context.getEventId(),a.context.getDivisionId(),a.context.getCategoryId(),teamId);
             available=candidates.findByEditionIdAndEventIdAndDivisionIdAndCategoryIdAndTeamIdAndActiveTrueOrderByNameAsc(
-                    a.edition.getId(),a.context.getEventId(),a.context.getDivisionId(),a.context.getCategoryId(),teamId.trim());
+                    a.edition.getId(),a.context.getEventId(),a.context.getDivisionId(),a.context.getCategoryId(),teamId.trim())
+                    .stream().filter(c -> c.getCandidateType()==AwardCandidateType.ATHLETE).toList();
             // Previously preparation imported all athletes. Load the chosen eligible roster lazily.
             if (available.isEmpty()) {
                 available=liveRoster.athletes(a.edition.getId(),a.context.getEventId(),
@@ -71,7 +72,17 @@ public class CoachVotingV2Service {
             String normalized=teamId==null?"":teamId.trim();
             eligibility.requireEligible(a.edition.getId(),a.context.getEventId(),a.context.getDivisionId(),a.context.getCategoryId(),normalized);
             if(normalized.equals(a.context.getTeamId())) throw Errors.badRequest("AWARD_SELF_COACH_VOTE_FORBIDDEN","O treinador não pode votar na própria equipe para Técnico.");
-            available=List.of(liveRoster.coachTeamVote(a.edition.getId(),a.context.getEventId(),a.context.getDivisionId(),a.context.getCategoryId(),normalized));
+            // Reuse staff already imported from FPFS; only read the team details if absent.
+            // The synthetic TEAM_VOTE option must never be offered to new voters.
+            available=candidates.findByEditionIdAndEventIdAndDivisionIdAndCategoryIdAndTeamIdAndActiveTrueOrderByNameAsc(
+                    a.edition.getId(),a.context.getEventId(),a.context.getDivisionId(),a.context.getCategoryId(),normalized).stream()
+                    .filter(c -> c.getCandidateType()==AwardCandidateType.COACH)
+                    .filter(c -> c.getSource()==AwardCandidateSource.SCRAPER && !c.isTeamCoachVoteCandidate())
+                    .toList();
+            if(available.isEmpty()){
+                available=liveRoster.coaches(a.edition.getId(),a.context.getEventId(),
+                        a.context.getDivisionId(),a.context.getCategoryId(),normalized);
+            }
         }
         return available.stream().filter(c->c.getCandidateType()==category.getTargetType()).map(CoachVotingCandidateResponse::from).toList();
     }
@@ -135,7 +146,12 @@ public class CoachVotingV2Service {
         if(candidate.getCandidateType()!=category.getTargetType()) throw Errors.badRequest("AWARD_CANDIDATE_TYPE_MISMATCH","O candidato não corresponde à categoria de votação.");
         // This validation is mandatory for athletes AND for the best-coach team vote.
         eligibility.requireEligible(a.edition.getId(),a.context.getEventId(),a.context.getDivisionId(),a.context.getCategoryId(),candidate.getTeamId());
-        if(category.getTargetType()==AwardCandidateType.COACH){ if(!candidate.isTeamCoachVoteCandidate())throw Errors.badRequest("AWARD_COACH_TEAM_SELECTION_REQUIRED","Selecione uma equipe válida."); if(candidate.getTeamId().equals(a.context.getTeamId()))throw Errors.badRequest("AWARD_SELF_COACH_VOTE_FORBIDDEN","O treinador não pode votar na própria equipe."); }
+        if(category.getTargetType()==AwardCandidateType.COACH){
+            if(candidate.getTeamId().equals(a.context.getTeamId()))
+                throw Errors.badRequest("AWARD_SELF_COACH_VOTE_FORBIDDEN","O treinador não pode votar na própria equipe.");
+            if(candidate.getSource()!=AwardCandidateSource.SCRAPER || candidate.isTeamCoachVoteCandidate())
+                throw Errors.badRequest("AWARD_COACH_PERSON_REQUIRED","Selecione o nome de um técnico da comissão técnica do clube.");
+        }
     }
     private String ownTeamName(AwardCoachVoter c){return candidates.findById(c.getSelfCoachCandidateId()).map(AwardCandidate::getTeamName).orElse(c.getTeamId());}
     private CoachVotingState state(AwardEdition e,boolean submitted,Instant now){if(submitted)return CoachVotingState.SUBMITTED;if(e.getStatus()==AwardEditionStatus.DRAFT)return CoachVotingState.DRAFT;if(e.getStatus()==AwardEditionStatus.CLOSED)return CoachVotingState.CLOSED;if(e.getVotingOpensAt()!=null&&now.isBefore(e.getVotingOpensAt()))return CoachVotingState.SCHEDULED;if(e.getVotingClosesAt()!=null&&!now.isBefore(e.getVotingClosesAt()))return CoachVotingState.CLOSED;return CoachVotingState.OPEN;}

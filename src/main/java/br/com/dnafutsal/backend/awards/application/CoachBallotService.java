@@ -288,13 +288,6 @@ public class CoachBallotService {
 
         if (category.getTargetType()
                 == AwardCandidateType.COACH) {
-            if (!candidate.isTeamCoachVoteCandidate()) {
-                throw Errors.badRequest(
-                        "AWARD_COACH_TEAM_SELECTION_REQUIRED",
-                        "Na categoria Técnico, selecione uma equipe válida."
-                );
-            }
-
             if (candidate.getTeamId()
                     .equals(
                             current.voter()
@@ -303,6 +296,15 @@ public class CoachBallotService {
                 throw Errors.badRequest(
                         "AWARD_SELF_COACH_VOTE_FORBIDDEN",
                         "O treinador não pode votar na própria equipe para a categoria Técnico."
+                );
+            }
+            // Historical team-name ballots remain stored; new ballots must name
+            // a real FPFS staff member rather than the synthetic TEAM_VOTE record.
+            if (candidate.getSource() != br.com.dnafutsal.backend.awards.domain.AwardCandidateSource.SCRAPER
+                    || candidate.isTeamCoachVoteCandidate()) {
+                throw Errors.badRequest(
+                        "AWARD_COACH_PERSON_REQUIRED",
+                        "Selecione o nome de um técnico da comissão técnica do clube."
                 );
             }
         }

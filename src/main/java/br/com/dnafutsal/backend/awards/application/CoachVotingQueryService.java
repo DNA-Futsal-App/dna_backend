@@ -159,7 +159,8 @@ public class CoachVotingQueryService {
                     current.voter().getDivisionId(), current.voter().getCategoryId(), teamId);
             available = candidates.findByEditionIdAndEventIdAndDivisionIdAndCategoryIdAndTeamIdAndActiveTrueOrderByNameAsc(
                     current.edition().getId(), current.voter().getEventId(),
-                    current.voter().getDivisionId(), current.voter().getCategoryId(), teamId.trim());
+                    current.voter().getDivisionId(), current.voter().getCategoryId(), teamId.trim())
+                    .stream().filter(candidate -> candidate.getCandidateType() == AwardCandidateType.ATHLETE).toList();
             if (available.isEmpty()) {
                 available = liveRoster.athletes(current.edition().getId(), current.voter().getEventId(),
                         current.voter().getDivisionId(), current.voter().getCategoryId(), teamId.trim());
@@ -181,15 +182,21 @@ public class CoachVotingQueryService {
                 );
             }
 
-            available = List.of(
-                    liveRoster.coachTeamVote(
-                            current.edition().getId(),
-                            current.voter().getEventId(),
-                            current.voter().getDivisionId(),
-                            current.voter().getCategoryId(),
-                            normalizedTeamId
-                    )
-            );
+            // Use persisted FPFS staff when available; never offer the old
+            // synthetic club-name candidate as a new vote for Técnico.
+            available = candidates.findByEditionIdAndEventIdAndDivisionIdAndCategoryIdAndTeamIdAndActiveTrueOrderByNameAsc(
+                    current.edition().getId(), current.voter().getEventId(),
+                    current.voter().getDivisionId(), current.voter().getCategoryId(), normalizedTeamId)
+                    .stream()
+                    .filter(candidate -> candidate.getCandidateType() == AwardCandidateType.COACH)
+                    .filter(candidate -> candidate.getSource() == br.com.dnafutsal.backend.awards.domain.AwardCandidateSource.SCRAPER
+                            && !candidate.isTeamCoachVoteCandidate())
+                    .toList();
+            if (available.isEmpty()) {
+                available = liveRoster.coaches(
+                        current.edition().getId(), current.voter().getEventId(),
+                        current.voter().getDivisionId(), current.voter().getCategoryId(), normalizedTeamId);
+            }
         }
 
         return available.stream()
