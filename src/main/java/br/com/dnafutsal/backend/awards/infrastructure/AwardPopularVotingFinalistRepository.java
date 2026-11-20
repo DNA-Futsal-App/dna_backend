@@ -48,6 +48,20 @@ public interface AwardPopularVotingFinalistRepository extends Repository<AwardPr
                                 @org.springframework.data.repository.query.Param("gender") String gender,
                                 @org.springframework.data.repository.query.Param("contestCategory") String contestCategory);
 
+    /** Quantidade escolhida pelo administrador para esta disputa, caso exista. */
+    @Query(value = """
+        SELECT d.finalist_count FROM award_pre_vote_tie_decisions d
+        WHERE d.edition_id = :editionId AND d.event_id = :eventId
+          AND d.division_id = :divisionId AND d.category_id = :categoryId
+          AND d.gender = :gender AND d.contest_category = :contestCategory
+        """, nativeQuery = true)
+    Number decidedFinalistCount(@Param("editionId") UUID editionId,
+                                 @Param("eventId") long eventId,
+                                 @Param("divisionId") long divisionId,
+                                 @Param("categoryId") long categoryId,
+                                 @Param("gender") String gender,
+                                 @Param("contestCategory") String contestCategory);
+
     @Query("""
         select r.eventId, r.divisionId, r.divisionName,
                r.categoryId, r.categoryName, r.gender, f.contestCategory

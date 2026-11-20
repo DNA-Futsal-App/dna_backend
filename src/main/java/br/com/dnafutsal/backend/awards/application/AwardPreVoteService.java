@@ -95,12 +95,12 @@ public class AwardPreVoteService {
 
     @Transactional(readOnly = true)
     public AwardPreVoteTieResponse tieReview(UUID editionId, AwardPreVoteContextRequest context) {
-        AwardEdition edition = requireEdition(editionId);
+        requireEdition(editionId);
         boolean published = !loadFinalists(editionId, context).isEmpty();
         List<RatedEntry> ranked = ranking(editionId, context);
-        if (published || edition.isRegistrationsOpen() || reopenings.blocksFinalization(editionId, context)
-                || countPending(editionId, context) > 0 || !completePanel(ranked)
-                || !allAdministratorsScored(editionId, context)) {
+        // A consulta nao deve esconder o empate por pendencias administrativas.
+        // A gravacao da decisao continua bloqueada em decideTie ate todas serem resolvidas.
+        if (published || !completePanel(ranked)) {
             return new AwardPreVoteTieResponse(false, published, null, List.of(), List.of());
         }
         List<AwardTieDecisionPolicy.Candidate> scores = candidates(ranked);

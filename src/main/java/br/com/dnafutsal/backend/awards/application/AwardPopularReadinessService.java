@@ -90,9 +90,13 @@ public class AwardPopularReadinessService {
             if (published.get(i).getRank() != i + 1) finalistsConfirmed = false;
         }
         List<String> blockers = new ArrayList<>();
+        if (!published.isEmpty() && !finalistsConfirmed) {
+            // Nunca reescrever uma classificacao ja homologada, sobretudo se houve votos.
+            blockers.add("FINALISTAS_PUBLICADOS_DIVERGENTES");
+        }
         if (edition.isRegistrationsOpen()) blockers.add("INSCRICOES_ABERTAS");
         if (pending > 0) blockers.add("REVISOES_PENDENTES");
-        if (approved.size() < target) blockers.add(fourAllowed
+        if (approved.size() < target) blockers.add(target == 4
                 ? "MENOS_DE_QUATRO_VIDEOS_APROVADOS" : "MENOS_DE_TRES_VIDEOS_APROVADOS");
         if (activeAdmins.isEmpty()) blockers.add("NENHUM_ADMIN_ATIVO");
         if (!missing.isEmpty()) blockers.add("NOTAS_PENDENTES");

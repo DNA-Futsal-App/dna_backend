@@ -44,6 +44,10 @@ class AwardPopularLiveResultsTest {
     }
 
     private void stubContext(Instant opening, Instant closing) {
+        stubContext(opening, closing, 3);
+    }
+
+    private void stubContext(Instant opening, Instant closing, int finalistas) {
         when(windows.findByEditionIdAndEventIdAndDivisionIdAndCategoryIdAndGenderAndContestCategory(
                 editionId, CONTEXT.eventId(), CONTEXT.divisionId(), CONTEXT.categoryId(),
                 CONTEXT.gender(), CONTEXT.contestCategory()))
@@ -52,7 +56,7 @@ class AwardPopularLiveResultsTest {
         List<AwardPreVoteFinalist> published = new ArrayList<>();
         List<AwardRegistrationEntry> media = new ArrayList<>();
         List<AwardRegistration> athletes = new ArrayList<>();
-        for (int i = 0; i < 3; i++) {
+        for (int i = 0; i < finalistas; i++) {
             UUID entryId = UUID.randomUUID();
             UUID registrationId = UUID.randomUUID();
             entryIds.add(entryId);
@@ -98,6 +102,17 @@ class AwardPopularLiveResultsTest {
                 .thenReturn(List.<Object[]>of(
                         new Object[]{entryIds.get(0), 7L},
                         new Object[]{entryIds.get(1), 4L}));
+    }
+
+    @Test
+    void popularBoardAcceptsFourWhenAdministrativeDecisionSaysFour() {
+        when(finalists.decidedFinalistCount(editionId, CONTEXT.eventId(), CONTEXT.divisionId(),
+                CONTEXT.categoryId(), CONTEXT.gender().name(), CONTEXT.contestCategory().name()))
+                .thenReturn(4);
+        stubContext(NOW.minusSeconds(3600), NOW.plusSeconds(3600), 4);
+        AwardPopularBoardResponse board = service().board(editionId, CONTEXT);
+        assertEquals(4, board.finalists().size());
+        assertNull(board.totalVotes());
     }
 
     @Test

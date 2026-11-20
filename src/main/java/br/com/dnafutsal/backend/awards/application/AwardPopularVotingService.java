@@ -377,7 +377,10 @@ public class AwardPopularVotingService {
                 context.divisionId(), context.categoryId(), context.gender(), context.contestCategory());
         boolean fourAllowed = finalistQueries.allowsFourFinalists(editionId, context.eventId(),
                 context.divisionId(), context.categoryId(), context.gender().name(), context.contestCategory().name());
-        int target = fourAllowed ? 4 : 3;
+        // A decisao por disputa (V34) prevalece; a excecao historica (V23/V24) continua suportada.
+        Number decidedCount = finalistQueries.decidedFinalistCount(editionId, context.eventId(),
+                context.divisionId(), context.categoryId(), context.gender().name(), context.contestCategory().name());
+        int target = decidedCount != null ? decidedCount.intValue() : (fourAllowed ? 4 : 3);
         if (published.size() != target) {
             throw Errors.notFound("AWARD_POPULAR_FINALISTS_UNAVAILABLE",
                     "Esta disputa ainda não possui o número correto de finalistas confirmados.");
