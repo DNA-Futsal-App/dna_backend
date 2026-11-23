@@ -271,4 +271,15 @@ public class UserAccount {
     public Instant getCreatedAt() {
         return createdAt;
     }
+
+    public void activateViaCoachInvite() {
+        if (this.status != UserStatus.PENDING_EMAIL_VERIFICATION) {
+            throw new IllegalStateException(
+                    "Somente contas pendentes de confirmacao de email podem ser ativadas pelo convite.");
+        }
+        // O convite permite acesso, mas nao prova a posse do endereco de email.
+        this.status = UserStatus.ACTIVE;
+        this.emailVerifiedAt = null;
+        this.tokenVersion++;
+    }
 }
