@@ -2,6 +2,7 @@ package br.com.dnafutsal.backend.awards.application;
 
 import br.com.dnafutsal.backend.awards.domain.*;
 import br.com.dnafutsal.backend.awards.infrastructure.*;
+import br.com.dnafutsal.backend.common.BusinessException;
 import br.com.dnafutsal.backend.common.Errors;
 import br.com.dnafutsal.backend.identity.application.CurrentUserService;
 import br.com.dnafutsal.backend.identity.domain.UserAccount;
@@ -10,7 +11,10 @@ import br.com.dnafutsal.backend.identity.infrastructure.UserAccountRepository;
 import br.com.dnafutsal.backend.sports.application.SportsCatalogService;
 import br.com.dnafutsal.backend.sports.domain.CatalogCategoryView;
 import br.com.dnafutsal.backend.sports.domain.TeamView;
+import org.postgresql.util.PSQLException;
+import org.postgresql.util.ServerErrorMessage;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,7 +25,9 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -96,6 +102,9 @@ public class CoachCategoryApplicationService {
                                             String role, String evidenceUrl) {
         UserAccount managed = users.findById(user.getId()).orElseThrow(() ->
                 Errors.conflict("COACH_CATEGORY_USER_MISSING", "Conta recém-criada não encontrada."));
+        // Hibernate must execute the user INSERT before JdbcTemplate checks the FK.
+        // Flush does not commit: the entire registration still rolls back on failure.
+        users.flush();
         return apply(managed, token, teamId, role, null, true);
     }
 
@@ -234,8 +243,7 @@ public class CoachCategoryApplicationService {
                     selectedRole, evidence, status, verified ? "AUTO_INVITE" : null,
                     verified ? Timestamp.from(now) : null, Timestamp.from(now));
         } catch (DataIntegrityViolationException ex) {
-            throw Errors.conflict("COACH_CATEGORY_ALREADY_REQUESTED",
-                    "Já existe uma inscrição ativa para esta categoria.");
+            throw applicationInsertFailure(ex, "INVITE_APPLICATION_INSERT");
         }
         if (verified) {
             createVotingContext(user, link.editionId(), link.eventId(), link.divisionId(),
@@ -247,6 +255,41 @@ public class CoachCategoryApplicationService {
                 user.getEmail(), link.eventId(), link.divisionId(), link.categoryId(), link.gender(),
                 selectedTeam, team.name(), selectedRole, evidence, status,
                 verified ? "AUTO_INVITE" : null, now, verified ? now : null);
+    }
+
+    // Only this specific partial unique index represents a duplicate application.
+    // Keep structured database metadata in server logs, never raw SQL values in the API.
+    private static BusinessException applicationInsertFailure(DataIntegrityViolationException failure,
+                                                               String operation) {
+        String sqlState = null;
+        String constraint = null;
+        Map<String, Object> diagnostics = new LinkedHashMap<>();
+        diagnostics.put("operation", operation);
+        for (Throwable cause = failure; cause != null; cause = cause.getCause()) {
+            if (cause instanceof SQLException sql && sqlState == null) {
+                sqlState = sql.getSQLState();
+            }
+            if (cause instanceof PSQLException postgres) {
+                sqlState = postgres.getSQLState();
+                ServerErrorMessage server = postgres.getServerErrorMessage();
+                if (server != null) {
+                    constraint = server.getConstraint();
+                    if (server.getTable() != null) diagnostics.put("table", server.getTable());
+                    if (server.getColumn() != null) diagnostics.put("column", server.getColumn());
+                }
+                break;
+            }
+            if (cause == cause.getCause()) break;
+        }
+        diagnostics.put("sqlState", sqlState == null ? "UNKNOWN" : sqlState);
+        diagnostics.put("constraint", constraint == null ? "UNKNOWN" : constraint);
+        if ("23505".equals(sqlState) && "uk_coach_category_app_active_context".equals(constraint)) {
+            return new BusinessException(HttpStatus.CONFLICT, "COACH_CATEGORY_ALREADY_REQUESTED",
+                    "Já existe uma inscrição ativa para esta categoria.", null, diagnostics);
+        }
+        // Do not attach the raw SQL exception: PostgreSQL DETAIL may contain personal data.
+        return new BusinessException(HttpStatus.INTERNAL_SERVER_ERROR, "COACH_CATEGORY_PERSISTENCE_ERROR",
+                "Não foi possível registrar o credenciamento do treinador.", null, diagnostics);
     }
 
     private void createVotingContext(UserAccount user, UUID editionId, long eventId,
@@ -373,7 +416,7 @@ public class CoachCategoryApplicationService {
                     request.categoryId(), request.gender().name(), team.id(), team.name(),
                     adminId, Timestamp.from(now), Timestamp.from(now));
         } catch (DataIntegrityViolationException ex) {
-            throw Errors.conflict("COACH_CATEGORY_ALREADY_REQUESTED", "Já existe inscrição nesta categoria.");
+            throw applicationInsertFailure(ex, "ADMIN_APPLICATION_INSERT");
         }
         user.promoteToCoach();
         users.saveAndFlush(user);

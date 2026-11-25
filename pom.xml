@@ -76,7 +76,7 @@
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
-            <scope>runtime</scope>
+            <!-- Structured SQLSTATE and constraint diagnostics are used by the application. -->
         </dependency>
 
         <dependency>

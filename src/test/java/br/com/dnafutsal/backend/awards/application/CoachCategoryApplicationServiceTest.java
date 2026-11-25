@@ -12,8 +12,13 @@ import br.com.dnafutsal.backend.sports.domain.TeamView;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.postgresql.util.PSQLException;
+import org.postgresql.util.ServerErrorMessage;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.time.Clock;
@@ -94,8 +99,63 @@ class CoachCategoryApplicationServiceTest {
         assertThat(user.getStatus()).isEqualTo(br.com.dnafutsal.backend.identity.domain.UserStatus.ACTIVE);
         assertThat(user.getRole()).isEqualTo(br.com.dnafutsal.backend.identity.domain.UserRole.COACH);
         assertThat(user.getEmailVerifiedAt()).isNull();
-        verify(contexts).saveAndFlush(any(br.com.dnafutsal.backend.awards.domain.AwardCoachVoter.class));
-        verify(users).saveAndFlush(user);
+        var ordered = inOrder(users, jdbc, contexts);
+        ordered.verify(users).flush();
+        ordered.verify(jdbc).update(contains("INSERT INTO award_coach_category_applications"), any(Object[].class));
+        ordered.verify(contexts).saveAndFlush(any(br.com.dnafutsal.backend.awards.domain.AwardCoachVoter.class));
+        ordered.verify(users).saveAndFlush(user);
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "23505, uk_coach_category_app_active_context, 409, COACH_CATEGORY_ALREADY_REQUESTED",
+            "23505, award_coach_category_applications_pkey, 500, COACH_CATEGORY_PERSISTENCE_ERROR",
+            "23503, award_coach_category_applications_user_id_fkey, 500, COACH_CATEGORY_PERSISTENCE_ERROR",
+            "23514, ck_coach_category_app_review, 500, COACH_CATEGORY_PERSISTENCE_ERROR",
+            "23502, , 500, COACH_CATEGORY_PERSISTENCE_ERROR"
+    })
+    void registrationDistinguishesActualDuplicateFromOtherIntegrityFailures(
+            String sqlState, String constraint, int expectedStatus, String expectedCode) {
+        validInvite();
+        when(users.findById(user.getId())).thenReturn(Optional.of(user));
+        var sql = mock(PSQLException.class);
+        var server = mock(ServerErrorMessage.class);
+        when(sql.getSQLState()).thenReturn(sqlState);
+        when(sql.getServerErrorMessage()).thenReturn(server);
+        when(server.getConstraint()).thenReturn(constraint);
+        when(jdbc.update(contains("INSERT INTO award_coach_category_applications"), any(Object[].class)))
+                .thenThrow(new DataIntegrityViolationException("database detail must not leak", sql));
+
+        assertThatThrownBy(() -> service.applyForNewUser(user,
+                "token-para-categoria-com-primeiro-uso", "10", "Treinador", null))
+                .isInstanceOfSatisfying(BusinessException.class, error -> {
+                    assertThat(error.code()).isEqualTo(expectedCode);
+                    assertThat(error.status().value()).isEqualTo(expectedStatus);
+                    assertThat(error.diagnostics()).containsEntry("sqlState", sqlState)
+                            .containsEntry("constraint", constraint == null ? "UNKNOWN" : constraint);
+                    assertThat(error.getMessage()).doesNotContain("database detail");
+                    assertThat(error.getCause()).isNull();
+                });
+        verify(users).flush();
+        verify(users, never()).saveAndFlush(any());
+        verifyNoInteractions(credentials, contexts, rosters);
+        assertThat(user.getRole()).isEqualTo(br.com.dnafutsal.backend.identity.domain.UserRole.USER);
+    }
+
+    @Test
+    void unknownIntegrityFailureIsNotReportedAsDuplicate() {
+        validInvite();
+        when(users.findById(user.getId())).thenReturn(Optional.of(user));
+        when(jdbc.update(contains("INSERT INTO award_coach_category_applications"), any(Object[].class)))
+                .thenThrow(new DataIntegrityViolationException("unclassified integrity failure"));
+        assertThatThrownBy(() -> service.applyForNewUser(user,
+                "token-para-categoria-com-primeiro-uso", "10", "Treinador", null))
+                .isInstanceOfSatisfying(BusinessException.class, error -> {
+                    assertThat(error.code()).isEqualTo("COACH_CATEGORY_PERSISTENCE_ERROR");
+                    assertThat(error.status().value()).isEqualTo(500);
+                    assertThat(error.diagnostics()).containsEntry("sqlState", "UNKNOWN");
+                });
+        verifyNoInteractions(credentials, contexts, rosters);
     }
 
     @Test
