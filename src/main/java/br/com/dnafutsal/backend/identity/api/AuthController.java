@@ -58,8 +58,11 @@ public class AuthController {
     @PostMapping("/register")
     ResponseEntity<MessageResponse> register(@Valid @RequestBody RegisterRequest request) {
         registration.register(request);
+        String message = request.coachCategoryRegistration() == null
+                ? "Cadastro recebido. Confirme o e-mail para entrar no aplicativo."
+                : "Conta e acesso ao júri técnico ativados. Entre com sua senha para votar.";
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(new MessageResponse("Cadastro recebido. Confirme o e-mail para entrar no aplicativo."));
+                .body(new MessageResponse(message));
     }
 
     @GetMapping("/email-verification/confirm")

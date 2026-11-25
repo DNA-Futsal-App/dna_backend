@@ -92,7 +92,11 @@ public class RegistrationService {
                 )
         );
 
-        enqueueVerification(user);
+        // A valid category invite creates the coach context in the same transaction.
+        // If the invite is invalid, the registration rolls back before this point.
+        if (request.coachCategoryRegistration() == null) {
+            enqueueVerification(user);
+        }
     }
 
     @Transactional

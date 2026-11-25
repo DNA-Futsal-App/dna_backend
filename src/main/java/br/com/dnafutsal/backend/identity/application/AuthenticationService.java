@@ -1,5 +1,6 @@
 package br.com.dnafutsal.backend.identity.application;
 
+import br.com.dnafutsal.backend.awards.application.CoachCategoryApplicationService;
 import br.com.dnafutsal.backend.common.Errors;
 import br.com.dnafutsal.backend.common.TokenSupport;
 import br.com.dnafutsal.backend.config.SecurityProperties;
@@ -11,6 +12,7 @@ import br.com.dnafutsal.backend.identity.domain.UserAccount;
 import br.com.dnafutsal.backend.identity.domain.UserStatus;
 import br.com.dnafutsal.backend.identity.infrastructure.RefreshSessionRepository;
 import br.com.dnafutsal.backend.identity.infrastructure.UserAccountRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,7 +35,9 @@ public class AuthenticationService {
     private final Clock clock;
     private final String dummyPasswordHash;
     private final RegistrationService registration;
+    private final CoachCategoryApplicationService coachApplications;
 
+    @Autowired
     public AuthenticationService(UserAccountRepository users,
                                  RefreshSessionRepository refreshSessions,
                                  PasswordEncoder passwordEncoder,
@@ -43,7 +47,8 @@ public class AuthenticationService {
                                  SecurityProperties properties,
                                  LoginAttemptService attempts,
                                  Clock clock,
-                                 RegistrationService registration
+                                 RegistrationService registration,
+                                 CoachCategoryApplicationService coachApplications
     ) {
         this.users = users;
         this.refreshSessions = refreshSessions;
@@ -56,6 +61,22 @@ public class AuthenticationService {
         this.clock = clock;
         this.dummyPasswordHash = passwordEncoder.encode(tokenSupport.generate());
         this.registration = registration;
+        this.coachApplications = coachApplications;
+    }
+
+    // Preserve the signature used by existing unit tests.
+    public AuthenticationService(UserAccountRepository users,
+                                 RefreshSessionRepository refreshSessions,
+                                 PasswordEncoder passwordEncoder,
+                                 IdentityNormalizer normalizer,
+                                 TokenSupport tokenSupport,
+                                 JwtTokenService jwtTokens,
+                                 SecurityProperties properties,
+                                 LoginAttemptService attempts,
+                                 Clock clock,
+                                 RegistrationService registration) {
+        this(users, refreshSessions, passwordEncoder, normalizer, tokenSupport,
+                jwtTokens, properties, attempts, clock, registration, null);
     }
 
     @Transactional(
@@ -81,6 +102,16 @@ public class AuthenticationService {
                 && clock.instant().isBefore(user.getDeletionScheduledFor())) {
             throw Errors.forbidden("ACCOUNT_PENDING_DELETION",
                     "Sua conta tem uma exclusão agendada. Confirme se deseja cancelar a exclusão e entrar.");
+        }
+        // Redeem the invitation only AFTER password verification and before issuing JWT.
+        // A failed/expired invite cannot bypass the pending-email account state.
+        if (request.coachCategoryRegistration() != null) {
+            if (coachApplications == null) {
+                throw Errors.forbidden("COACH_INVITE_UNAVAILABLE", "Convite indisponível.");
+            }
+            var invitation = request.coachCategoryRegistration();
+            coachApplications.applyForInvitedLogin(user, invitation.token(), invitation.teamId(),
+                    invitation.role());
         }
         if (user.getStatus() == UserStatus.PENDING_EMAIL_VERIFICATION) {
             attempts.failed(loginKey, context.ipAddress());

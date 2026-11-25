@@ -25,7 +25,8 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Category invitations grant access automatically after email verification.
+ * Valid category invitations grant access at registration or authenticated login,
+ * without email verification, proof documents or manual review.
  * Administrative revocation removes the category context AND its ballot atomically.
  */
 @Service
@@ -89,15 +90,66 @@ public class CoachCategoryApplicationService {
         return apply(user, token, teamId, role, evidenceUrl, true);
     }
 
-    /** During registration, email must be verified before voting becomes available. */
+    /** Successful registration with a valid invitation is already an approved coach. */
     @Transactional
     public ApplicationView applyForNewUser(UserAccount user, String token, String teamId,
                                             String role, String evidenceUrl) {
         UserAccount managed = users.findById(user.getId()).orElseThrow(() ->
                 Errors.conflict("COACH_CATEGORY_USER_MISSING", "Conta recém-criada não encontrada."));
-        managed.requireEmailVerification();
-        users.flush();
-        return apply(managed, token, teamId, role, evidenceUrl, false);
+        return apply(managed, token, teamId, role, null, true);
+    }
+
+    /** Password-authenticated login can activate an old pending account, but ONLY via
+     * a currently valid invitation. The activation and context grant are atomic. */
+    @Transactional
+    public ApplicationView applyForInvitedLogin(UserAccount user, String token,
+                                                String teamId, String role) {
+        if (user.getStatus() != UserStatus.ACTIVE
+                && user.getStatus() != UserStatus.PENDING_EMAIL_VERIFICATION) {
+            throw Errors.forbidden("ACCOUNT_UNAVAILABLE", "A conta não está disponível.");
+        }
+        boolean pendingEmail = user.getStatus() == UserStatus.PENDING_EMAIL_VERIFICATION;
+        if (pendingEmail) {
+            var link = usableLink(token);
+            // Old registrations may have a pending application under an expired
+            // link. A new, valid invitation for the SAME context can claim it.
+            // Never activate unrelated pending applications or revoked grants.
+            List<UUID> prior = jdbc.query("""
+                    SELECT id FROM award_coach_category_applications
+                     WHERE edition_id = ? AND user_id = ? AND event_id = ?
+                       AND division_id = ? AND category_id = ? AND team_id = ?
+                       AND status = 'PENDING'
+                     ORDER BY created_at, id FOR UPDATE
+                    """, (rs, row) -> rs.getObject("id", UUID.class), link.editionId(),
+                    user.getId(), link.eventId(), link.divisionId(), link.categoryId(),
+                    teamId == null ? "" : teamId.trim());
+            if (!prior.isEmpty()) {
+                createVotingContext(user, link.editionId(), link.eventId(),
+                        link.divisionId(), link.categoryId(), teamId.trim());
+                int updated = jdbc.update("""
+                        UPDATE award_coach_category_applications
+                           SET status = 'APPROVED', link_id = ?,
+                               review_reason = 'AUTO_INVITE_LOGIN', reviewed_at = ?
+                         WHERE id = ? AND status = 'PENDING'
+                        """, link.linkId(), Timestamp.from(clock.instant()), prior.get(0));
+                if (updated != 1) {
+                    throw Errors.conflict("COACH_CATEGORY_APPLICATION_CHANGED",
+                            "O vínculo mudou durante a ativação. Tente novamente.");
+                }
+                user.activateViaCoachInvite();
+                user.promoteToCoach();
+                users.saveAndFlush(user);
+                return views("WHERE a.id = ?", prior.get(0)).stream().findFirst()
+                        .orElseThrow(() -> Errors.conflict("COACH_CATEGORY_APPLICATION_NOT_FOUND",
+                                "Vínculo não encontrado após a ativação."));
+            }
+        }
+        ApplicationView result = apply(user, token, teamId, role, null, true);
+        if (pendingEmail) {
+            user.activateViaCoachInvite();
+            users.saveAndFlush(user);
+        }
+        return result;
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -112,13 +164,16 @@ public class CoachCategoryApplicationService {
 
     private void activatePendingForUser(UserAccount user) {
         List<ApplicationRow> pending = jdbc.query("""
-            SELECT id, link_id, edition_id, user_id, event_id, division_id, category_id,
-                   gender, team_id, team_name, coach_role, evidence_url, status,
-                   review_reason, created_at, reviewed_at
-              FROM award_coach_category_applications
-             WHERE user_id = ? AND status = 'PENDING'
-             ORDER BY created_at, id FOR UPDATE
-            """, (rs, row) -> map(rs), user.getId());
+            SELECT a.id, a.link_id, a.edition_id, a.user_id, a.event_id,
+                   a.division_id, a.category_id, a.gender, a.team_id, a.team_name,
+                   a.coach_role, a.evidence_url, a.status, a.review_reason,
+                   a.created_at, a.reviewed_at
+              FROM award_coach_category_applications a
+              JOIN award_coach_category_links l ON l.id = a.link_id
+             WHERE a.user_id = ? AND a.status = 'PENDING'
+               AND l.status = 'ACTIVE' AND l.expires_at > ?
+             ORDER BY a.created_at, a.id FOR UPDATE OF a
+            """, (rs, row) -> map(rs), user.getId(), Timestamp.from(clock.instant()));
         boolean activated = false;
         for (ApplicationRow app : pending) {
             if (requireEdition(app.editionId()).isClosed()) {
@@ -149,11 +204,8 @@ public class CoachCategoryApplicationService {
                 || selectedRole.isBlank() || selectedRole.length() > 80) {
             throw Errors.badRequest("COACH_CATEGORY_DATA_INVALID", "Informe sua equipe e sua função técnica.");
         }
-        String evidence = evidenceUrl == null || evidenceUrl.isBlank() ? null : evidenceUrl.trim();
-        if (evidence != null && (evidence.length() > 500
-                || !(evidence.startsWith("https://") || evidence.startsWith("http://")))) {
-            throw Errors.badRequest("COACH_CATEGORY_EVIDENCE_INVALID", "Informe um endereço HTTP(S) válido para comprovação.");
-        }
+        // No supporting document is requested, validated or stored for new grants.
+        String evidence = null;
         TeamView team = catalog.teams(link.eventId()).stream()
                 .filter(t -> selectedTeam.equals(t.id())).findFirst()
                 .orElseThrow(() -> Errors.badRequest("COACH_CATEGORY_TEAM_INVALID",

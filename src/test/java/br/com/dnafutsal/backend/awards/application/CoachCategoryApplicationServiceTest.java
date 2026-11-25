@@ -67,16 +67,63 @@ class CoachCategoryApplicationServiceTest {
                         AwardEditionStatus.DRAFT, null, null)));
     }
 
+    private void allowCoachVotingContext() {
+        when(gold.eligibleTeamIds(editionId, 917L, 3L, 7L))
+                .thenReturn(Set.of("11"));
+        var credential = new br.com.dnafutsal.backend.awards.domain.AwardCoachCredential(
+                editionId, user.getId(), null);
+        when(credentials.findByEditionIdAndUserId(editionId, user.getId()))
+                .thenReturn(Optional.of(credential));
+        when(contexts.findByCredentialIdAndActiveTrueOrderByCreatedAtAsc(credential.getId()))
+                .thenReturn(List.of());
+        var ownTeam = mock(br.com.dnafutsal.backend.awards.domain.AwardCandidate.class);
+        when(ownTeam.getId()).thenReturn(UUID.randomUUID());
+        when(rosters.coachTeamVote(editionId, 917L, 3L, 7L, "10")).thenReturn(ownTeam);
+    }
+
     @Test
-    void newRegistrationCreatesOnlyPendingApplicationWithoutVoterAccess() {
+    void newRegistrationImmediatelyApprovesWithoutEvidenceOrEmailVerification() {
         validInvite();
+        allowCoachVotingContext();
         when(users.findById(user.getId())).thenReturn(Optional.of(user));
         var result = service.applyForNewUser(user, "token-para-categoria-com-primeiro-uso",
                 "10", "Treinador principal", "https://fpfs.example/prova");
-        assertThat(result.status()).isEqualTo("PENDING");
+        assertThat(result.status()).isEqualTo("APPROVED");
+        assertThat(result.evidenceUrl()).isNull();
         assertThat(result.teamId()).isEqualTo("10");
-        assertThat(user.getStatus()).isEqualTo(br.com.dnafutsal.backend.identity.domain.UserStatus.PENDING_EMAIL_VERIFICATION);
-        verify(users).flush();
+        assertThat(user.getStatus()).isEqualTo(br.com.dnafutsal.backend.identity.domain.UserStatus.ACTIVE);
+        assertThat(user.getRole()).isEqualTo(br.com.dnafutsal.backend.identity.domain.UserRole.COACH);
+        assertThat(user.getEmailVerifiedAt()).isNull();
+        verify(contexts).saveAndFlush(any(br.com.dnafutsal.backend.awards.domain.AwardCoachVoter.class));
+        verify(users).saveAndFlush(user);
+    }
+
+    @Test
+    void pendingAccountLoginWithValidInvitationBecomesActiveCoach() {
+        user.requireEmailVerification();
+        validInvite();
+        allowCoachVotingContext();
+        var result = service.applyForInvitedLogin(user,
+                "token-para-categoria-com-primeiro-uso", "10", "Treinador principal");
+        assertThat(result.status()).isEqualTo("APPROVED");
+        assertThat(user.getStatus()).isEqualTo(br.com.dnafutsal.backend.identity.domain.UserStatus.ACTIVE);
+        assertThat(user.getRole()).isEqualTo(br.com.dnafutsal.backend.identity.domain.UserRole.COACH);
+        assertThat(user.getEmailVerifiedAt()).isNull();
+    }
+
+    @Test
+    void revokedInvitationCannotActivatePendingAccount() {
+        user.requireEmailVerification();
+        when(links.inspect("token-para-categoria-com-primeiro-uso"))
+                .thenReturn(new CoachCategoryLinkService.LinkView(linkId, editionId,
+                        917L, 3L, 7L, "MALE", "REVOKED", false,
+                        now.minusSeconds(1), now, null));
+        assertThatThrownBy(() -> service.applyForInvitedLogin(user,
+                "token-para-categoria-com-primeiro-uso", "10", "Treinador"))
+                .isInstanceOf(BusinessException.class);
+        assertThat(user.getStatus()).isEqualTo(
+                br.com.dnafutsal.backend.identity.domain.UserStatus.PENDING_EMAIL_VERIFICATION);
+        assertThat(user.getRole()).isEqualTo(br.com.dnafutsal.backend.identity.domain.UserRole.USER);
         verifyNoInteractions(credentials, contexts, rosters);
     }
 
