@@ -10,6 +10,7 @@ import br.com.dnafutsal.backend.awards.api.AwardContextResultResponse;
 import br.com.dnafutsal.backend.awards.domain.AwardBallot;
 import br.com.dnafutsal.backend.awards.domain.AwardBallotVote;
 import br.com.dnafutsal.backend.awards.domain.AwardCandidate;
+import br.com.dnafutsal.backend.awards.domain.AwardCandidateSource;
 import br.com.dnafutsal.backend.awards.domain.AwardCandidateType;
 import br.com.dnafutsal.backend.awards.domain.AwardCoachVoter;
 import br.com.dnafutsal.backend.awards.domain.AwardEdition;
@@ -375,18 +376,15 @@ public class AwardResultsService {
         }
 
         if (category.getTargetType() == AwardCandidateType.COACH) {
-            if (!candidate.isTeamCoachVoteCandidate()) {
+            if (!isAuditableCoachCandidate(candidate)) {
                 issues.add(issue(
                         ballot,
                         "COACH_TEAM_SELECTION_INVALID",
-                        "Um voto de Técnico não referencia uma equipe válida."
+                        "Um voto de Técnico não referencia um treinador importado ou uma equipe válida do modelo anterior."
                 ));
             }
 
-            if (candidate.getTeamId()
-                    .equals(
-                            voter.getTeamId()
-                    )) {
+            if (Objects.equals(candidate.getTeamId(), voter.getTeamId())) {
                 issues.add(issue(
                         ballot,
                         "SELF_COACH_VOTE",
@@ -464,6 +462,10 @@ public class AwardResultsService {
                                 category,
                                 candidate
                         ))
+                        // Do not offer old synthetic team options in the nominal ranking,
+                        // but retain their own tally if a historical ballot references them.
+                        .filter(candidate -> !candidate.isTeamCoachVoteCandidate()
+                                || counts.containsKey(candidate.getId()))
                         .toList();
 
         int totalVotes =
@@ -552,10 +554,19 @@ public class AwardResultsService {
         }
 
         if (category.getTargetType() == AwardCandidateType.COACH) {
-            return candidate.isTeamCoachVoteCandidate();
+            return isAuditableCoachCandidate(candidate);
         }
 
         return true;
+    }
+
+    /** Historical audit only: V2 still forbids new TEAM_VOTE selections. */
+    private boolean isAuditableCoachCandidate(AwardCandidate candidate) {
+        return candidate.getCandidateType() == AwardCandidateType.COACH
+                && candidate.getTeamId() != null
+                && !candidate.getTeamId().isBlank()
+                && (candidate.isTeamCoachVoteCandidate()
+                    || candidate.getSource() == AwardCandidateSource.SCRAPER);
     }
 
     private Snapshot snapshot(

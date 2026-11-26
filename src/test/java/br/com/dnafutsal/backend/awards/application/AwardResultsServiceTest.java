@@ -267,6 +267,111 @@ class AwardResultsServiceTest {
                 .contains("CANDIDATE_OUT_OF_CONTEXT");
     }
 
+    @Test
+    void auditAndPartialResultsAcceptNominalImportedCoach() {
+        AwardEdition edition = edition(AwardEditionStatus.OPEN);
+        AwardCandidate selected = importedCoach(edition, "20", "Treinador Nominal", "Técnico");
+        setupCoachVote(edition, selected);
+
+        var audit = service.audit(edition.getId());
+        assertThat(audit.integrityOk()).isTrue();
+        assertThat(audit.completeBallots()).isEqualTo(1);
+        assertThat(audit.invalidBallots()).isZero();
+        assertThat(audit.issues()).isEmpty();
+        assertCoachTally(service.partialResults(edition.getId()), selected);
+    }
+
+    @Test
+    void finalResultsCountNominalCoachWithoutLosingVotes() {
+        AwardEdition edition = edition(AwardEditionStatus.CLOSED);
+        AwardCandidate selected = importedCoach(edition, "20", "Treinador Nominal", "Técnico");
+        setupCoachVote(edition, selected);
+
+        assertCoachTally(service.results(edition.getId()), selected);
+    }
+
+    @Test
+    void preservesHistoricallyRecordedTeamVoteWithoutReassigningIt() {
+        AwardEdition edition = edition(AwardEditionStatus.CLOSED);
+        AwardCandidate selected = importedCoach(edition, "20", "Time B", AwardCandidate.TEAM_COACH_VOTE_ROLE);
+        setupCoachVote(edition, selected);
+
+        assertCoachTally(service.results(edition.getId()), selected);
+    }
+
+    @Test
+    void nominalCoachFromOwnTeamRemainsInvalid() {
+        AwardEdition edition = edition(AwardEditionStatus.OPEN);
+        setupCoachVote(edition, importedCoach(edition, "10", "Treinador da própria equipe", "Técnico"));
+        assertRejectedCoachVote(edition, "SELF_COACH_VOTE");
+    }
+
+    @Test
+    void manualCoachRemainsInvalidForNominalVote() {
+        AwardEdition edition = edition(AwardEditionStatus.OPEN);
+        setupCoachVote(edition, coach(edition, "manual", "Treinador Manual", "20", "Time B"));
+        assertRejectedCoachVote(edition, "COACH_TEAM_SELECTION_INVALID");
+    }
+
+    @Test
+    void importedCoachWithoutTeamRemainsInvalid() {
+        AwardEdition edition = edition(AwardEditionStatus.OPEN);
+        setupCoachVote(edition, importedCoach(edition, " ", "Treinador Sem Time", "Técnico"));
+        assertRejectedCoachVote(edition, "COACH_TEAM_SELECTION_INVALID");
+    }
+
+    private void assertCoachTally(
+            br.com.dnafutsal.backend.awards.api.AwardAdminResultsResponse result,
+            AwardCandidate selected
+    ) {
+        assertThat(result.integrityOk()).isTrue();
+        assertThat(result.contexts()).hasSize(1);
+        var category = result.contexts().get(0).categories().get(0);
+        assertThat(category.totalVotes()).isEqualTo(1);
+        assertThat(category.candidates()).hasSize(1);
+        var leader = category.candidates().get(0);
+        assertThat(leader.candidateId()).isEqualTo(selected.getId());
+        assertThat(leader.candidateName()).isEqualTo(selected.getName());
+        assertThat(leader.rank()).isEqualTo(1);
+        assertThat(leader.votes()).isEqualTo(1);
+        assertThat(leader.percentage()).isEqualTo(100.0);
+    }
+
+    private void assertRejectedCoachVote(AwardEdition edition, String code) {
+        var audit = service.audit(edition.getId());
+        assertThat(audit.integrityOk()).isFalse();
+        assertThat(audit.invalidBallots()).isEqualTo(1);
+        assertThat(audit.issues())
+                .extracting(br.com.dnafutsal.backend.awards.api.AwardAuditIssueResponse::code)
+                .contains(code);
+        assertThatThrownBy(() -> service.partialResults(edition.getId()))
+                .isInstanceOf(BusinessException.class);
+    }
+
+    private AwardCandidate importedCoach(AwardEdition edition, String teamId, String name, String role) {
+        return AwardCandidate.imported(edition.getId(), AwardCandidateType.COACH,
+                UUID.randomUUID().toString(), name, null, role, UUID.randomUUID().toString(),
+                904, 3, 7, teamId, "Time " + teamId, null, null, now);
+    }
+
+    private void setupCoachVote(AwardEdition edition, AwardCandidate selected) {
+        AwardVoteCategory category = new AwardVoteCategory(edition.getId(), "TECNICO", "Melhor Treinador",
+                AwardCandidateType.COACH, null, 50, true);
+        AwardCandidate self = coach(edition, "self", "Treinador Votante", "10", "Time A");
+        AwardCandidate unusedLegacy = importedCoach(edition, "30", "Time C", AwardCandidate.TEAM_COACH_VOTE_ROLE);
+        AwardCoachVoter voter = voter(edition, self, "10");
+        AwardBallot ballot = ballot(edition, voter);
+
+        when(editions.findById(edition.getId())).thenReturn(Optional.of(edition));
+        when(categories.findByEditionIdOrderByDisplayOrderAsc(edition.getId())).thenReturn(List.of(category));
+        when(candidates.findByEditionIdOrderByTeamNameAscNameAsc(edition.getId()))
+                .thenReturn(List.of(self, selected, unusedLegacy));
+        when(voters.findByEditionId(edition.getId())).thenReturn(List.of(voter));
+        when(ballots.findByEditionId(edition.getId())).thenReturn(List.of(ballot));
+        when(votes.findByBallotIdIn(List.of(ballot.getId())))
+                .thenReturn(List.of(new AwardBallotVote(ballot.getId(), category.getId(), selected.getId())));
+    }
+
     private AwardEdition edition(
             AwardEditionStatus status
     ) {
