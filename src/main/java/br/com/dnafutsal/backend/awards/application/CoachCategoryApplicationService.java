@@ -118,41 +118,7 @@ public class CoachCategoryApplicationService {
             throw Errors.forbidden("ACCOUNT_UNAVAILABLE", "A conta não está disponível.");
         }
         boolean pendingEmail = user.getStatus() == UserStatus.PENDING_EMAIL_VERIFICATION;
-        if (pendingEmail) {
-            var link = usableLink(token);
-            // Old registrations may have a pending application under an expired
-            // link. A new, valid invitation for the SAME context can claim it.
-            // Never activate unrelated pending applications or revoked grants.
-            List<UUID> prior = jdbc.query("""
-                    SELECT id FROM award_coach_category_applications
-                     WHERE edition_id = ? AND user_id = ? AND event_id = ?
-                       AND division_id = ? AND category_id = ? AND team_id = ?
-                       AND status = 'PENDING'
-                     ORDER BY created_at, id FOR UPDATE
-                    """, (rs, row) -> rs.getObject("id", UUID.class), link.editionId(),
-                    user.getId(), link.eventId(), link.divisionId(), link.categoryId(),
-                    teamId == null ? "" : teamId.trim());
-            if (!prior.isEmpty()) {
-                createVotingContext(user, link.editionId(), link.eventId(),
-                        link.divisionId(), link.categoryId(), teamId.trim());
-                int updated = jdbc.update("""
-                        UPDATE award_coach_category_applications
-                           SET status = 'APPROVED', link_id = ?,
-                               review_reason = 'AUTO_INVITE_LOGIN', reviewed_at = ?
-                         WHERE id = ? AND status = 'PENDING'
-                        """, link.linkId(), Timestamp.from(clock.instant()), prior.get(0));
-                if (updated != 1) {
-                    throw Errors.conflict("COACH_CATEGORY_APPLICATION_CHANGED",
-                            "O vínculo mudou durante a ativação. Tente novamente.");
-                }
-                user.activateViaCoachInvite();
-                user.promoteToCoach();
-                users.saveAndFlush(user);
-                return views("WHERE a.id = ?", prior.get(0)).stream().findFirst()
-                        .orElseThrow(() -> Errors.conflict("COACH_CATEGORY_APPLICATION_NOT_FOUND",
-                                "Vínculo não encontrado após a ativação."));
-            }
-        }
+        // Both ACTIVE and legacy pending-email accounts redeem the same validated path.
         ApplicationView result = apply(user, token, teamId, role, null, true);
         if (pendingEmail) {
             user.activateViaCoachInvite();
@@ -183,24 +149,13 @@ public class CoachCategoryApplicationService {
                AND l.status = 'ACTIVE' AND l.expires_at > ?
              ORDER BY a.created_at, a.id FOR UPDATE OF a
             """, (rs, row) -> map(rs), user.getId(), Timestamp.from(clock.instant()));
-        boolean activated = false;
         for (ApplicationRow app : pending) {
             if (requireEdition(app.editionId()).isClosed()) {
                 // A closed edition cannot create a new voting context.
                 continue;
             }
-            createVotingContext(user, app.editionId(), app.eventId(), app.divisionId(),
-                    app.categoryId(), app.teamId());
-            activated = true;
-            jdbc.update("""
-                UPDATE award_coach_category_applications
-                   SET status = 'APPROVED', review_reason = 'AUTO_VERIFIED', reviewed_at = ?
-                 WHERE id = ? AND status = 'PENDING'
-                """, Timestamp.from(clock.instant()), app.id());
-        }
-        if (activated) {
-            user.promoteToCoach();
-            users.saveAndFlush(user);
+            ensurePendingContext(user, app, false);
+            approvePending(user, app, app.linkId(), "AUTO_VERIFIED", null);
         }
     }
 
@@ -221,6 +176,27 @@ public class CoachCategoryApplicationService {
                         "A equipe informada não pertence à categoria do convite."));
         if (requireEdition(link.editionId()).isClosed()) {
             throw Errors.conflict("COACH_CATEGORY_EDITION_CLOSED", "A edição foi encerrada.");
+        }
+        // Recover the existing application BEFORE the duplicate-context/insert checks.
+        // The user row is locked by login/applyCurrentUser, or is newly inserted.
+        List<ApplicationRow> prior = jdbc.query("""
+            SELECT id, link_id, edition_id, user_id, event_id, division_id, category_id,
+                   gender, team_id, team_name, coach_role, evidence_url, status,
+                   review_reason, created_at, reviewed_at
+              FROM award_coach_category_applications
+             WHERE edition_id=? AND user_id=? AND event_id=? AND division_id=?
+               AND category_id=? AND status='PENDING' FOR UPDATE
+            """, (rs, row) -> map(rs), link.editionId(), user.getId(), link.eventId(),
+                link.divisionId(), link.categoryId());
+        if (!prior.isEmpty()) {
+            ApplicationRow app = prior.get(0);
+            if (!app.teamId().equals(selectedTeam) || !app.gender().equals(link.gender())) {
+                throw Errors.conflict("COACH_PENDING_CONTEXT_MISMATCH",
+                        "Existe um pedido pendente para outra equipe ou modalidade nesta categoria.");
+            }
+            ensurePendingContext(user, app, false);
+            approvePending(user, app, link.linkId(), "AUTO_INVITE_RECONCILED", null);
+            return views("WHERE a.id = ?", app.id()).get(0);
         }
         // Only one active context per user/category, even if the coach has another invitation.
         if (hasVotingContext(user.getId(), link.editionId(), link.eventId(),
@@ -319,13 +295,138 @@ public class CoachCategoryApplicationService {
                 AwardCoachVoterContextSource.SELF_SELECTED));
     }
 
+    /** A single legacy application, never a revocation/reactivation of a disabled context. */
+    public record PendingReconciliation(UUID applicationId, String status, String detail) { }
+
+    private record OriginalLink(String status, Instant expiresAt) { }
+
+    // Called with the user row locked. Do not change or replace an existing voter ID.
+    private boolean ensurePendingContext(UserAccount user, ApplicationRow app, boolean dryRun) {
+        AwardCoachCredential credential = credentials.findByEditionIdAndUserId(
+                app.editionId(), user.getId()).orElse(null);
+        if (credential != null && (!credential.isActive() || credential.isRemoved())) {
+            throw Errors.conflict("COACH_CATEGORY_CREDENTIAL_DISABLED", "Credencial desativada ou removida.");
+        }
+        List<AwardCoachVoter> matching = contexts.findByUserIdOrderByCreatedAtDesc(user.getId())
+                .stream().filter(v -> app.editionId().equals(v.getEditionId())
+                        && v.getEventId() == app.eventId() && v.getDivisionId() == app.divisionId()
+                        && v.getCategoryId() == app.categoryId()).toList();
+        List<AwardCoachVoter> active = matching.stream().filter(AwardCoachVoter::isActive).toList();
+        if (!active.isEmpty()) {
+            AwardCoachVoter voter = active.get(0);
+            if (active.size() != 1 || credential == null
+                    || !credential.getId().equals(voter.getCredentialId())
+                    || !app.teamId().equals(voter.getTeamId())) {
+                throw Errors.conflict("COACH_PENDING_CONTEXT_MISMATCH",
+                        "O contexto ativo não corresponde ao pedido pendente. Confira o vínculo.");
+            }
+            // Existing context is valid; preserve its ballot and candidate identity.
+            return true;
+        }
+        if (!matching.isEmpty()) {
+            throw Errors.conflict("COACH_PENDING_CONTEXT_DISABLED",
+                    "Há um contexto desativado nesta categoria. Não será reabilitado automaticamente.");
+        }
+        if (dryRun) {
+            if (gold.eligibleTeamIds(app.editionId(), app.eventId(), app.divisionId(), app.categoryId()).isEmpty()) {
+                throw Errors.conflict("AWARD_GOLD_CLASSIFICATION_EMPTY", "A categoria não possui Chave Ouro.");
+            }
+        } else {
+            createVotingContext(user, app.editionId(), app.eventId(), app.divisionId(), app.categoryId(), app.teamId());
+        }
+        return false;
+    }
+
+    private void approvePending(UserAccount user, ApplicationRow app, UUID linkId,
+                                String reason, UUID reviewer) {
+        int updated = jdbc.update("""
+            UPDATE award_coach_category_applications
+               SET status='APPROVED', link_id=?, review_reason=?, reviewed_at=?, reviewed_by_user_id=?
+             WHERE id=? AND status='PENDING'
+            """, linkId, reason, Timestamp.from(clock.instant()), reviewer, app.id());
+        if (updated != 1) {
+            throw Errors.conflict("COACH_CATEGORY_APPLICATION_CHANGED", "O vínculo mudou durante a regularização.");
+        }
+        user.promoteToCoach();
+        users.saveAndFlush(user);
+    }
+
     @Transactional
+    public PendingReconciliation adminReconcilePending(UUID editionId, UUID applicationId,
+                                                       boolean dryRun, boolean allowExpired) {
+        return reconcilePending(editionId, applicationId, dryRun, allowExpired, true);
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public PendingReconciliation reconcileOwnPending(UUID editionId, UUID applicationId) {
+        return reconcilePending(editionId, applicationId, false, false, false);
+    }
+
+    private PendingReconciliation reconcilePending(UUID editionId, UUID applicationId,
+                                                    boolean dryRun, boolean allowExpired, boolean admin) {
+        UUID userId = jdbc.query("""
+            SELECT user_id FROM award_coach_category_applications WHERE edition_id=? AND id=?
+            """, (rs, row) -> rs.getObject("user_id", UUID.class), editionId, applicationId)
+                .stream().findFirst().orElseThrow(() -> Errors.notFound(
+                        "COACH_CATEGORY_APPLICATION_NOT_FOUND", "Credenciamento não encontrado."));
+        if (!admin && !currentUser.userId().equals(userId)) {
+            throw Errors.forbidden("COACH_CATEGORY_ACCESS_REQUIRED", "Credenciamento indisponível.");
+        }
+        UserAccount user = users.findByIdForUpdate(userId).orElseThrow(() ->
+                Errors.notFound("COACH_CATEGORY_USER_MISSING", "Conta não encontrada."));
+        ApplicationRow app = lock(editionId, applicationId);
+        if ("APPROVED".equals(app.status())) {
+            return new PendingReconciliation(applicationId, "ALREADY_APPROVED", "Solicitação já regularizada.");
+        }
+        if (!"PENDING".equals(app.status())) {
+            throw Errors.conflict("COACH_PENDING_STATUS_INVALID", "Somente solicitações pendentes podem ser regularizadas.");
+        }
+        if (user.getStatus() != UserStatus.ACTIVE) {
+            throw Errors.conflict("COACH_PENDING_ACCOUNT_INACTIVE",
+                    "Conta não ativa. Se estiver pendente de e-mail, o treinador deve entrar com sua senha por um convite válido.");
+        }
+        AwardEdition edition = requireEdition(editionId);
+        if (edition.isClosed()) {
+            throw Errors.conflict("COACH_CATEGORY_EDITION_CLOSED", "A edição está encerrada.");
+        }
+        // Validate the original invitation's exact scope; an expired link requires
+        // explicit administrative confirmation. Revoked links are never overridden.
+        OriginalLink original = jdbc.query("""
+            SELECT status, expires_at FROM award_coach_category_links
+             WHERE id=? AND edition_id=? AND event_id=? AND division_id=? AND category_id=? AND gender=?
+             FOR UPDATE
+            """, (rs, row) -> new OriginalLink(rs.getString("status"), rs.getTimestamp("expires_at").toInstant()),
+                app.linkId(), editionId, app.eventId(), app.divisionId(), app.categoryId(), app.gender())
+                .stream().findFirst().orElseThrow(() -> Errors.conflict(
+                        "COACH_PENDING_LINK_INVALID", "Convite original ausente ou incompatível."));
+        if (!"ACTIVE".equals(original.status())) {
+            throw Errors.conflict("COACH_PENDING_LINK_REVOKED", "Convite revogado. Não será regularizado automaticamente.");
+        }
+        if (!clock.instant().isBefore(original.expiresAt()) && !(admin && allowExpired)) {
+            throw Errors.conflict("COACH_PENDING_LINK_EXPIRED", "Convite expirado. Confirme o vínculo ou envie novo convite válido.");
+        }
+        AwardRegistrationGender gender = AwardRegistrationGender.valueOf(app.gender());
+        boolean categoryValid = catalog.categories(edition.getSeason(), gender.catalogTitle(), app.divisionId())
+                .stream().anyMatch(c -> c.id() == app.categoryId() && c.eventId() == app.eventId());
+        if (!categoryValid || catalog.teams(app.eventId()).stream().noneMatch(t -> app.teamId().equals(t.id()))) {
+            throw Errors.conflict("COACH_PENDING_CONTEXT_INVALID", "Categoria ou equipe não consta no catálogo oficial.");
+        }
+        boolean reused = ensurePendingContext(user, app, dryRun);
+        if (dryRun) {
+            return new PendingReconciliation(applicationId, "READY", reused
+                    ? "Contexto existente será preservado." : "Novo contexto será criado para o pedido existente.");
+        }
+        approvePending(user, app, app.linkId(), admin ? "ADMIN_PENDING_RECONCILED" : "AUTO_PENDING_RECONCILED",
+                admin ? currentUser.userId() : null);
+        return new PendingReconciliation(applicationId, "RECONCILED", reused
+                ? "Credenciamento regularizado; contexto e votos preservados." : "Credenciamento e contexto ativados.");
+    }
+
+    @Transactional(readOnly = true)
     public List<ApplicationView> mine() {
-        UserAccount user = users.findByIdForUpdate(currentUser.userId()).orElseThrow(() ->
+        UserAccount user = users.findById(currentUser.userId()).orElseThrow(() ->
                 Errors.unauthorized("ACCOUNT_UNAVAILABLE", "Conta não encontrada."));
         requireActive(user);
-        // Recovers registrations completed under the previous approval-based implementation.
-        activatePendingForUser(user);
         return views("WHERE a.user_id = ?", user.getId());
     }
 

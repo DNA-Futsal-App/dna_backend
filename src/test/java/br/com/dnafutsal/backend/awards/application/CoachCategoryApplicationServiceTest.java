@@ -324,4 +324,69 @@ class CoachCategoryApplicationServiceTest {
         verifyNoInteractions(jdbc);
     }
 
+    @ParameterizedTest
+    @CsvSource({"true", "false"})
+    void freshInvitationReconcilesPendingApplicationWithoutReplacingExistingContext(boolean pendingEmail)
+            throws Exception {
+        if (pendingEmail) user.requireEmailVerification();
+        validInvite();
+        UUID applicationId = UUID.randomUUID();
+        var credential = new br.com.dnafutsal.backend.awards.domain.AwardCoachCredential(
+                editionId, user.getId(), null);
+        var voter = new br.com.dnafutsal.backend.awards.domain.AwardCoachVoter(
+                editionId, user.getId(), credential.getId(), UUID.randomUUID(),
+                917L, 3L, 7L, "10",
+                br.com.dnafutsal.backend.awards.domain.AwardCoachVoterContextSource.SELF_SELECTED);
+        when(credentials.findByEditionIdAndUserId(editionId, user.getId()))
+                .thenReturn(Optional.of(credential));
+        when(contexts.findByUserIdOrderByCreatedAtDesc(user.getId())).thenReturn(List.of(voter));
+        var row = mock(java.sql.ResultSet.class);
+        when(row.getObject("id", UUID.class)).thenReturn(applicationId);
+        when(row.getObject("edition_id", UUID.class)).thenReturn(editionId);
+        when(row.getObject("user_id", UUID.class)).thenReturn(user.getId());
+        when(row.getLong("event_id")).thenReturn(917L);
+        when(row.getLong("division_id")).thenReturn(3L);
+        when(row.getLong("category_id")).thenReturn(7L);
+        when(row.getString("gender")).thenReturn("MALE");
+        when(row.getString("team_id")).thenReturn("10");
+        // Model every column consumed by map(), including nullable review fields.
+        // Strict Mockito stubbing must not mistake a different column for a typo.
+        doReturn(UUID.randomUUID()).when(row).getObject("link_id", UUID.class);
+        doReturn("Clube X").when(row).getString("team_name");
+        doReturn("Treinador").when(row).getString("coach_role");
+        doReturn(null).when(row).getString("evidence_url");
+        doReturn("PENDING").when(row).getString("status");
+        doReturn(null).when(row).getString("review_reason");
+        doReturn(null).when(row).getTimestamp("reviewed_at");
+        when(row.getTimestamp("created_at")).thenReturn(java.sql.Timestamp.from(now));
+        when(jdbc.query(contains("status='PENDING' FOR UPDATE"),
+                org.mockito.ArgumentMatchers.<org.springframework.jdbc.core.RowMapper<Object>>any(),
+                eq(editionId), eq(user.getId()), eq(917L), eq(3L), eq(7L)))
+                .thenAnswer(invocation -> {
+                    org.springframework.jdbc.core.RowMapper<?> mapper = invocation.getArgument(1);
+                    return List.of(mapper.mapRow(row, 0));
+                });
+        when(jdbc.update(contains("SET status='APPROVED'"), eq(linkId),
+                eq("AUTO_INVITE_RECONCILED"), eq(java.sql.Timestamp.from(now)),
+                isNull(), eq(applicationId))).thenReturn(1);
+        var approved = new CoachCategoryApplicationService.ApplicationView(applicationId, editionId,
+                user.getId(), user.getName(), user.getEmail(), 917L, 3L, 7L, "MALE", "10",
+                "Clube X", "Treinador", null, "APPROVED", "AUTO_INVITE_RECONCILED", now, now);
+        when(jdbc.query(contains("WHERE a.id = ?"),
+                org.mockito.ArgumentMatchers.<org.springframework.jdbc.core.RowMapper<CoachCategoryApplicationService.ApplicationView>>any(),
+                eq(applicationId))).thenReturn(List.of(approved));
+
+        var result = service.applyForInvitedLogin(user, "token-para-categoria-com-primeiro-uso", "10", "Treinador");
+
+        assertThat(result.id()).isEqualTo(applicationId);
+        assertThat(result.status()).isEqualTo("APPROVED");
+        assertThat(user.getRole()).isEqualTo(br.com.dnafutsal.backend.identity.domain.UserRole.COACH);
+        assertThat(user.getStatus()).isEqualTo(br.com.dnafutsal.backend.identity.domain.UserStatus.ACTIVE);
+        assertThat(user.getEmailVerifiedAt()).isNull();
+        verify(contexts, never()).saveAndFlush(any());
+        verify(jdbc, never()).update(contains("INSERT INTO award_coach_category_applications"), any(Object[].class));
+        verify(jdbc, never()).update(contains("DELETE FROM award_ballots"), any(Object[].class));
+        verifyNoInteractions(rosters);
+    }
+
 }

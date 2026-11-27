@@ -34,6 +34,22 @@ public class CoachCategoryApplicationController {
 
     @GetMapping("/me")
     public List<CoachCategoryApplicationService.ApplicationView> mine() {
-        return service.mine();
+        var applications = service.mine();
+        boolean attempted = false;
+        for (var application : applications) {
+            if (!"PENDING".equals(application.status())) continue;
+            attempted = true;
+            try {
+                // Separate transactions: one blocked old request cannot hide other categories.
+                service.reconcileOwnPending(application.editionId(), application.id());
+            } catch (br.com.dnafutsal.backend.common.BusinessException ex) {
+                org.slf4j.LoggerFactory.getLogger(getClass()).debug(
+                        "Coach pending reconciliation blocked: applicationId={} code={}", application.id(), ex.code());
+            } catch (RuntimeException ex) {
+                org.slf4j.LoggerFactory.getLogger(getClass()).warn(
+                        "Coach pending reconciliation failed: applicationId={} type={}", application.id(), ex.getClass().getSimpleName());
+            }
+        }
+        return attempted ? service.mine() : applications;
     }
 }
