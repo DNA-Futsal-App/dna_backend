@@ -27,13 +27,15 @@ public class AdminCoachCategoryApplicationController {
         return service.adminList(editionId, status);
     }
 
-    public record ReconcileRequest(@NotNull Boolean dryRun, @NotNull Boolean allowExpired) { }
+    public record ReconcileRequest(@NotNull Boolean dryRun, @NotNull Boolean allowExpired,
+                                   Boolean allowRevoked) { }
 
     @PostMapping("/{applicationId}/reconcile")
     public CoachCategoryApplicationService.PendingReconciliation reconcile(
             @PathVariable UUID editionId, @PathVariable UUID applicationId,
             @Valid @RequestBody ReconcileRequest request) {
-        return service.adminReconcilePending(editionId, applicationId, request.dryRun(), request.allowExpired());
+        return service.adminReconcilePending(editionId, applicationId, request.dryRun(), request.allowExpired(),
+                Boolean.TRUE.equals(request.allowRevoked()));
     }
 
     public record RevokeRequest(@NotBlank @Size(max = 500) String reason) { }

@@ -9,6 +9,7 @@ import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -110,6 +111,15 @@ public class ApiExceptionHandler {
     ResponseEntity<ProblemDetail> handleNotFound(NoResourceFoundException exception, HttpServletRequest request) {
         return rejected(HttpStatus.NOT_FOUND, "RESOURCE_NOT_FOUND",
                 "O recurso solicitado não foi encontrado.", request, null);
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    ResponseEntity<ProblemDetail> handleMethodNotSupported(HttpRequestMethodNotSupportedException exception,
+                                                           HttpServletRequest request) {
+        ResponseEntity<ProblemDetail> result = rejected(HttpStatus.METHOD_NOT_ALLOWED, "METHOD_NOT_ALLOWED",
+                "Método HTTP não permitido para este recurso.", request, null);
+        return ResponseEntity.status(result.getStatusCode())
+                .headers(exception.getHeaders()).body(result.getBody());
     }
 
     @ExceptionHandler(Exception.class)

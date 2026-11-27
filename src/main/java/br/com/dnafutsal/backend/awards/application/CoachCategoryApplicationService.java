@@ -354,16 +354,42 @@ public class CoachCategoryApplicationService {
     @Transactional
     public PendingReconciliation adminReconcilePending(UUID editionId, UUID applicationId,
                                                        boolean dryRun, boolean allowExpired) {
-        return reconcilePending(editionId, applicationId, dryRun, allowExpired, true);
+        return reconcilePending(editionId, applicationId, dryRun, allowExpired, false, true);
+    }
+
+    @Transactional
+    public PendingReconciliation adminReconcilePending(UUID editionId, UUID applicationId,
+                                                       boolean dryRun, boolean allowExpired, boolean allowRevoked) {
+        return reconcilePending(editionId, applicationId, dryRun, allowExpired, allowRevoked, true);
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public PendingReconciliation reconcileOwnPending(UUID editionId, UUID applicationId) {
-        return reconcilePending(editionId, applicationId, false, false, false);
+        return reconcilePending(editionId, applicationId, false, false, false, false);
+    }
+
+    // A revoked invitation cannot authorize new access. An administrator may explicitly
+    // reconcile a previously recorded PENDING request, without reactivating the link.
+    static void validatePendingLink(String status, Instant expiresAt, Instant now,
+                                    boolean admin, boolean allowExpired, boolean allowRevoked) {
+        if ("REVOKED".equals(status)) {
+            if (!(admin && allowRevoked)) {
+                throw Errors.conflict("COACH_PENDING_LINK_REVOKED",
+                        "Convite original revogado. Confira o vínculo e autorize a regularização administrativa.");
+            }
+            return;
+        }
+        if (!"ACTIVE".equals(status)) {
+            throw Errors.conflict("COACH_PENDING_LINK_INVALID", "Situação do convite original inválida.");
+        }
+        if (!now.isBefore(expiresAt) && !(admin && allowExpired)) {
+            throw Errors.conflict("COACH_PENDING_LINK_EXPIRED", "Convite expirado. Confirme o vínculo ou envie novo convite válido.");
+        }
     }
 
     private PendingReconciliation reconcilePending(UUID editionId, UUID applicationId,
-                                                    boolean dryRun, boolean allowExpired, boolean admin) {
+                                                    boolean dryRun, boolean allowExpired, boolean allowRevoked,
+                                                    boolean admin) {
         UUID userId = jdbc.query("""
             SELECT user_id FROM award_coach_category_applications WHERE edition_id=? AND id=?
             """, (rs, row) -> rs.getObject("user_id", UUID.class), editionId, applicationId)
@@ -389,8 +415,8 @@ public class CoachCategoryApplicationService {
         if (edition.isClosed()) {
             throw Errors.conflict("COACH_CATEGORY_EDITION_CLOSED", "A edição está encerrada.");
         }
-        // Validate the original invitation's exact scope; an expired link requires
-        // explicit administrative confirmation. Revoked links are never overridden.
+        // Validate the original invitation's exact scope; only explicit admin
+        // confirmation can reconcile requests with an expired or revoked invitation.
         OriginalLink original = jdbc.query("""
             SELECT status, expires_at FROM award_coach_category_links
              WHERE id=? AND edition_id=? AND event_id=? AND division_id=? AND category_id=? AND gender=?
@@ -399,12 +425,8 @@ public class CoachCategoryApplicationService {
                 app.linkId(), editionId, app.eventId(), app.divisionId(), app.categoryId(), app.gender())
                 .stream().findFirst().orElseThrow(() -> Errors.conflict(
                         "COACH_PENDING_LINK_INVALID", "Convite original ausente ou incompatível."));
-        if (!"ACTIVE".equals(original.status())) {
-            throw Errors.conflict("COACH_PENDING_LINK_REVOKED", "Convite revogado. Não será regularizado automaticamente.");
-        }
-        if (!clock.instant().isBefore(original.expiresAt()) && !(admin && allowExpired)) {
-            throw Errors.conflict("COACH_PENDING_LINK_EXPIRED", "Convite expirado. Confirme o vínculo ou envie novo convite válido.");
-        }
+        validatePendingLink(original.status(), original.expiresAt(), clock.instant(),
+                admin, allowExpired, allowRevoked);
         AwardRegistrationGender gender = AwardRegistrationGender.valueOf(app.gender());
         boolean categoryValid = catalog.categories(edition.getSeason(), gender.catalogTitle(), app.divisionId())
                 .stream().anyMatch(c -> c.id() == app.categoryId() && c.eventId() == app.eventId());
@@ -412,12 +434,15 @@ public class CoachCategoryApplicationService {
             throw Errors.conflict("COACH_PENDING_CONTEXT_INVALID", "Categoria ou equipe não consta no catálogo oficial.");
         }
         boolean reused = ensurePendingContext(user, app, dryRun);
+        boolean revokedLink = "REVOKED".equals(original.status());
         if (dryRun) {
-            return new PendingReconciliation(applicationId, "READY", reused
-                    ? "Contexto existente será preservado." : "Novo contexto será criado para o pedido existente.");
+            String detail = reused ? "Contexto existente será preservado." : "Novo contexto será criado para o pedido existente.";
+            if (revokedLink) detail += " Convite original permanece revogado; liberação administrativa explícita.";
+            return new PendingReconciliation(applicationId, "READY", detail);
         }
-        approvePending(user, app, app.linkId(), admin ? "ADMIN_PENDING_RECONCILED" : "AUTO_PENDING_RECONCILED",
-                admin ? currentUser.userId() : null);
+        String reason = revokedLink ? "ADMIN_PENDING_REVOKED_LINK_RECONCILED"
+                : admin ? "ADMIN_PENDING_RECONCILED" : "AUTO_PENDING_RECONCILED";
+        approvePending(user, app, app.linkId(), reason, admin ? currentUser.userId() : null);
         return new PendingReconciliation(applicationId, "RECONCILED", reused
                 ? "Credenciamento regularizado; contexto e votos preservados." : "Credenciamento e contexto ativados.");
     }
